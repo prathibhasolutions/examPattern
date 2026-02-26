@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+
+{% block title %}Test Series — examPattern{% endblock %}
+
+{% block header %}
+<!-- Custom navbar for series page -->
+{% endblock %}
+
+{% block content %}
+<style>
+    /* Override base.html container margins */
+    main.container-fluid {
+        padding: 0 !important;
+        margin-top: 0 !important;
+    }
+    .navbar-custom {
+        background: #f8fafc;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        margin: 0 !important;
+        width: 100vw !important;
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw !important;
+        margin-right: -50vw !important;
+    }
+    .navbar-custom .navbar-brand {
+        color: #1e3c72 !important;
+        font-size: 18px;
+        color: #2a5298 !important;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .navbar-custom .navbar-brand img {
+        height: 45px;
+        width: auto;
+    }
+    .navbar-search {
+        flex: 1;
+        max-width: 500px;
+        margin: 0 30px;
+    }
+    .navbar-search .form-control {
+        border-radius: 25px;
+        border: 2px solid rgba(255,255,255,0.3);
+        background: rgba(255,255,255,0.95);
+        padding: 10px 20px;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    .navbar-search .form-control:focus {
+        border-color: #fff;
+        box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
+        background: white;
+    }
+    .navbar-profile {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .profile-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .profile-avatar:hover {
+        transform: scale(1.1);
+        border-color: white;
+    }
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .navbar-custom .nav-link {
+        color: #1e3c72 !important;
+        font-weight: 500;
+        font-size: 14px;
+        padding: 8px 16px !important;
+        border-radius: 20px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .nav-link:hover {
+        background: #e3e7f1;
+        color: #2a5298 !important;
+    }
+    .navbar-custom .btn-logout {
+        background: rgba(220, 53, 69, 0.9);
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .btn-logout:hover {
+        background: #dc3545;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    }
+    .navbar-custom .btn-login {
+        background: #2a5298;
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+        margin-left: 10px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .btn-login:hover {
+        background: #1e3c72;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(42, 82, 152, 0.2);
+    }
+
+    /* Main content styling */
+    .series-container {
+        padding: 40px 20px;
+        background: #f5f6fa;
+        min-height: 100vh;
+    }
+
+    .page-header {
+        text-align: center;
+        margin-bottom: 50px;
+    }
+
+    .page-header h1 {
+        font-size: 42px;
+        font-weight: 800;
+        color: #2a5298;
+        margin-bottom: 10px;
+    }
+
+    .page-header p {
+        font-size: 18px;
+        color: #666;
+    }
+
+    .series-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 25px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .series-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .series-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .series-card-header {
+        background: #2a5298;
+        padding: 25px;
+        color: white;
+    }
+
+    .series-card-title {
+        font-size: 22px;
+        font-weight: 700;
+        margin: 0;
+        color: white;
+    }
+
+    .series-card-body {
+        padding: 25px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .series-description {
+        color: #666;
+        font-size: 14px;
+        line-height: 1.6;
+        margin-bottom: 20px;
+        flex: 1;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .series-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .stat-box {
+        background: #f8f9fa;
+        padding: 12px;
+        border-radius: 8px;
+        text-align: center;
+        border-left: 3px solid #1e3c72;
+    }
+
+    .stat-number {
+        font-size: 24px;
+        font-weight: 700;
+        color: #1e3c72;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        color: #999;
+        margin-top: 5px;
+    }
+
+    .series-card-footer {
+        padding: 0 25px 25px;
+        border-top: 1px solid #eee;
+    }
+
+    .view-series-btn {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 25px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s;
+        width: 100%;
+    }
+
+    .view-series-btn:hover {
+        background: linear-gradient(135deg, #162b4d 0%, #1e4276 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(30, 60, 114, 0.3);
+    }
+
+    .no-series {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+    }
+
+    .no-series-icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+    }
+</style>
+
+<!-- Unified Navbar -->
+<nav class="navbar navbar-expand-lg navbar-light navbar-custom">
+    <div class="container-fluid" style="padding-left: 20px; padding-right: 20px;">
+        <!-- Logo and Institute Name (25%) -->
+        <a class="navbar-brand" href="{% url 'series_list' %}" style="flex: 0 0 25%;">
+            <img src="/static/examPattern.png" alt="examPattern">
+            <span>examPattern</span>
+        </a>
+
+        <!-- Profile and Logout (Right) -->
+        <div class="navbar-profile ms-auto">
+            {% if user.is_authenticated %}
+                <a href="{% url 'profile' %}" class="text-decoration-none">
+                    <div class="profile-avatar" title="{{ user.get_full_name|default:user.username }}">
+                        {% if user.photo %}
+                            <img src="{{ user.photo.url }}" alt="{{ user.username }}">
+                        {% else %}
+                            {{ user.username|first|upper }}
+                        {% endif %}
+                    </div>
+                </a>
+                <a href="{% url 'profile' %}" class="nav-link">{{ user.username }}</a>
+                {% if user.is_staff and user.is_superuser %}
+                    <a href="/builder/" class="nav-link" style="color: #ffc107 !important;">
+                        <i class="fas fa-tools"></i> Builder
+                    </a>
+                {% endif %}
+                <a href="{% url 'logout' %}" class="btn btn-logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-login">Login</a>
+                <a href="{% url 'register' %}" class="btn btn-login" style="background: rgba(23, 162, 184, 0.9);">
+                    Register
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<div class="series-container">
+    <div class="page-header">
+        <h1>📚 Test Series</h1>
+        <p>Choose a test series to explore sections and take tests</p>
+    </div>
+
+    {% if series %}
+    <div class="series-grid">
+        {% for s in series %}
+        <div class="series-card">
+            <div class="series-card-header">
+                <h2 class="series-card-title">{{ s.name }}</h2>
+            </div>
+            <div class="series-card-body">
+                {% if s.description %}
+                    <p class="series-description">{{ s.description }}</p>
+                {% else %}
+                    <p class="series-description text-muted">No description available</p>
+                {% endif %}
+                <div class="series-stats">
+                    <div class="stat-box">
+                        <div class="stat-number">{{ s.section_count }}</div>
+                        <div class="stat-label">Sections</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{{ s.test_count }}</div>
+                        <div class="stat-label">Tests</div>
+                    </div>
+                </div>
+            </div>
+            <div class="series-card-footer">
+                <a href="{% url 'series_detail' s.slug %}" class="view-series-btn">
+                    View Series <i class="fas fa-arrow-right ms-2"></i>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-series">
+        <div class="no-series-icon">😢</div>
+        <h3>No Test Series Found</h3>
+        <p>There are no test series available at the moment. Please check back later!</p>
+    </div>
+    {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

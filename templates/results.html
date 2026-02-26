@@ -1,0 +1,1218 @@
+{% extends "base.html" %}
+
+{% block title %}Test Results — MockTest Platform{% endblock %}
+
+{% block header %}
+<!-- Custom navbar for results page -->
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  body {
+    background: #f5f7fa;
+    margin: 0;
+    padding: 0;
+  }
+
+  main.container-fluid {
+    padding: 0 !important;
+    margin-top: 0 !important;
+  }
+
+  .navbar-custom {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    padding: 12px 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    margin: 0 !important;
+    width: 100vw !important;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw !important;
+    margin-right: -50vw !important;
+  }
+  
+  .navbar-custom .navbar-brand {
+    font-weight: 700;
+    font-size: 18px;
+    color: white !important;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .navbar-custom .navbar-brand img {
+    height: 45px;
+    width: auto;
+  }
+  
+  .navbar-search {
+    flex: 1;
+    max-width: 520px;
+    margin: 0 20px;
+    position: relative;
+  }
+  
+  .navbar-search .form-control {
+    border-radius: 25px;
+    border: 2px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.95);
+    padding: 10px 20px;
+    font-size: 14px;
+    transition: all 0.3s;
+  }
+  
+  .navbar-search .form-control:focus {
+    border-color: #fff;
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
+    background: white;
+  }
+  
+  .navbar-profile {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  
+  .profile-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  
+  .profile-avatar:hover {
+    transform: scale(1.1);
+    border-color: white;
+  }
+  
+  .profile-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  
+  .navbar-custom .nav-link {
+    color: rgba(255,255,255,0.9) !important;
+    font-weight: 500;
+    font-size: 14px;
+    padding: 8px 16px !important;
+    border-radius: 20px;
+    transition: all 0.3s;
+  }
+  
+  .navbar-custom .nav-link:hover {
+    background: rgba(255,255,255,0.15);
+    color: white !important;
+  }
+  
+  .navbar-custom .btn-logout {
+    background: rgba(220, 53, 69, 0.9);
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s;
+  }
+  
+  .navbar-custom .btn-logout:hover {
+    background: #dc3545;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+  }
+  
+  .navbar-custom .btn-login {
+    background: rgba(40, 167, 69, 0.9);
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 14px;
+    margin-left: 10px;
+    transition: all 0.3s;
+  }
+
+  .navbar-custom .btn-login:hover {
+    background: #28a745;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+  }
+
+  /* Main content two column layout */
+  .results-content {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .section-analysis-col {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .rankers-col {
+    flex: 0 0 380px;
+  }
+
+  @media (max-width: 1024px) {
+    .results-content {
+      flex-direction: column;
+    }
+    
+    .rankers-col {
+      flex: 1;
+    }
+  }
+
+  /* Performance Summary Cards */
+  .performance-summary {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    margin-bottom: 1.5rem;
+  }
+
+  .summary-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e3c72;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .metric-card {
+    text-align: center;
+    padding: 1rem;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e3e7f0 100%);
+    border-radius: 0.75rem;
+    border: 2px solid #e0e4eb;
+    transition: transform 0.2s;
+  }
+
+  .metric-card:hover {
+    transform: translateY(-3px);
+  }
+
+  .metric-icon {
+    width: 45px;
+    height: 45px;
+    margin: 0 auto 0.75rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+  }
+
+  .rank-icon {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  }
+
+  .score-icon {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+
+  .percentile-icon {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  }
+
+  .accuracy-icon {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  }
+
+  .attempted-icon {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  }
+
+  .metric-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #1e3c72;
+    margin: 0.25rem 0;
+  }
+
+  .metric-label {
+    color: #6c757d;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* Score Performance Box */
+  .score-performance {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  }
+
+  .test-breadcrumb {
+    font-size: 0.85rem;
+    opacity: 0.85;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.3px;
+  }
+
+  .test-breadcrumb span {
+    display: inline-block;
+    margin: 0 0.3rem;
+  }
+
+  .score-main {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 0.5rem 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .score-subtitle {
+    font-size: 0.95rem;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* Section Analysis Table */
+  .section-table {
+    background: white;
+    padding: 1rem;
+    border-radius: 1rem;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    margin-bottom: 1.5rem;
+  }
+
+  .table-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e3c72;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .custom-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .custom-table thead th {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 0.65rem;
+    font-weight: 600;
+    text-align: center;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .custom-table thead th:first-child {
+    border-top-left-radius: 0.5rem;
+  }
+
+  .custom-table thead th:last-child {
+    border-top-right-radius: 0.5rem;
+  }
+
+  .custom-table tbody td {
+    padding: 0.65rem;
+    text-align: center;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 0.85rem;
+  }
+
+  .custom-table tbody tr:hover {
+    background: #f8f9fa;
+  }
+
+  .custom-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .section-name-cell {
+    text-align: left !important;
+    font-weight: 600;
+    color: #1e3c72;
+  }
+
+  .score-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.25rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+
+  .score-excellent {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  .score-good {
+    background: #d1ecf1;
+    color: #0c5460;
+  }
+
+  .score-average {
+    background: #fff3cd;
+    color: #856404;
+  }
+
+  .score-poor {
+    background: #f8d7da;
+    color: #721c24;
+  }
+
+  .stat-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .correct-badge {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  .incorrect-badge {
+    background: #f8d7da;
+    color: #721c24;
+  }
+
+  .unanswered-badge {
+    background: #e2e3e5;
+    color: #383d41;
+  }
+
+  /* Top Rankers */
+  .top-rankers {
+    background: white;
+    padding: 1rem;
+    border-radius: 1rem;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    margin-bottom: 1.5rem;
+  }
+
+  .ranker-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.5rem;
+    background: #f8f9fa;
+    transition: all 0.2s;
+    font-size: 0.85rem;
+  }
+
+  .ranker-item:hover {
+    background: #e9ecef;
+    transform: translateX(3px);
+  }
+
+  .ranker-item.current-user {
+    background: linear-gradient(135deg, #e8f4f8 0%, #d1ecf1 100%);
+    border: 1px solid #17a2b8;
+  }
+
+  .rank-badge {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .rank-1 {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    color: #856404;
+  }
+
+  .rank-2 {
+    background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
+    color: #495057;
+  }
+
+  .rank-3 {
+    background: linear-gradient(135deg, #cd7f32 0%, #e39a5a 100%);
+    color: #fff;
+  }
+
+  .rank-other {
+    background: #e9ecef;
+    color: #495057;
+  }
+
+  .ranker-photo {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 1.1rem;
+    border: 2px solid #e9ecef;
+  }
+
+  .ranker-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .ranker-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .ranker-name {
+    font-weight: 600;
+    color: #1e3c72;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ranker-score {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #667eea;
+    margin-left: auto;
+    margin-right: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .ranker-percentile {
+    background: #667eea;
+    color: white;
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Action Buttons */
+  .action-bar {
+    background: white;
+    border-radius: 0.85rem;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    display: flex;
+    justify-content: center;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  #attemptSwitcher {
+    padding: 0.6rem 2.5rem 0.6rem 1.2rem;
+    border-radius: 0.6rem;
+    border: 2px solid #667eea;
+    font-weight: 600;
+    font-size: 0.95rem;
+    background: linear-gradient(135deg, #f8f9ff 0%, #e9edf7 100%);
+    color: #1e3c72;
+    cursor: pointer;
+    transition: all 0.3s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231e3c72' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.8rem center;
+    background-size: 12px;
+    min-width: 220px;
+  }
+
+  #attemptSwitcher:hover {
+    border-color: #5568d3;
+    background: linear-gradient(135deg, #eff2ff 0%, #dce3f5 100%);
+    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.2);
+    transform: translateY(-1px);
+  }
+
+  #attemptSwitcher:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+  }
+
+  #attemptSwitcher option {
+    background: white;
+    color: #1e3c72;
+    padding: 0.5rem;
+  }
+
+  .action-btn {
+    padding: 0.6rem 1.4rem;
+    border-radius: 0.6rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    white-space: nowrap;
+  }
+
+  .action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Responsive */
+  @media (max-width: 1024px) {
+    .metrics-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+    }
+
+    .metric-card {
+      padding: 0.75rem;
+    }
+
+    .metric-value {
+      font-size: 1.1rem;
+    }
+
+    .score-main {
+      font-size: 2rem;
+    }
+
+    .custom-table {
+      font-size: 0.8rem;
+    }
+
+    .custom-table thead th,
+    .custom-table tbody td {
+      padding: 0.5rem;
+    }
+
+    .results-content {
+      flex-direction: column;
+    }
+    
+    .rankers-col {
+      flex: 1;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .metrics-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+    }
+
+    .metric-card {
+      padding: 0.6rem;
+    }
+
+    .metric-value {
+      font-size: 0.95rem;
+    }
+
+    #attemptSwitcher {
+      max-width: 100%;
+      min-width: 180px;
+      font-size: 0.85rem;
+      padding: 0.55rem 2rem 0.55rem 0.9rem;
+    }
+
+    .action-buttons {
+      width: 100%;
+      justify-content: stretch;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      flex: 1;
+      font-size: 0.85rem;
+      padding: 0.5rem 1rem;
+    }
+
+    .score-main {
+      font-size: 1.8rem;
+    }
+
+    .custom-table {
+      font-size: 0.75rem;
+    }
+
+    .custom-table thead th,
+    .custom-table tbody td {
+      padding: 0.4rem;
+    }
+
+    .ranker-item {
+      flex-wrap: wrap;
+    }
+
+    .ranker-score {
+      margin-left: 0;
+      margin-top: 0.3rem;
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .metrics-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .rankers-col {
+      flex: 1;
+    }
+  }
+  
+  .footer-custom {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: white;
+    padding: 40px 0 20px;
+    margin-top: 60px;
+  }
+  .footer-content {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+  }
+  .footer-logo-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  .footer-logo-section img {
+    width: 180px;
+    max-width: 25vw;
+    height: auto;
+    object-fit: contain;
+  }
+  .footer-logo-section p {
+    color: rgba(255,255,255,0.85);
+    font-size: 14px;
+    margin: 0;
+  }
+  .footer-links {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .footer-links h6 {
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 10px;
+    color: white;
+  }
+  .footer-links a {
+    color: rgba(255,255,255,0.8);
+    text-decoration: none;
+    font-size: 14px;
+    transition: all 0.3s;
+  }
+  .footer-links a:hover {
+    color: white;
+    padding-left: 5px;
+  }
+  .footer-contact {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .footer-contact h6 {
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 10px;
+    color: white;
+  }
+  .footer-contact p {
+    color: rgba(255,255,255,0.8);
+    font-size: 14px;
+    margin: 0;
+  }
+  .footer-bottom {
+    border-top: 1px solid rgba(255,255,255,0.2);
+    padding-top: 20px;
+    text-align: center;
+  }
+  .footer-bottom p {
+    margin: 5px 0;
+    font-size: 13px;
+    color: rgba(255,255,255,0.75);
+  }
+  .footer-credit {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 10px;
+  }
+  .footer-credit a {
+    color: #ffc107;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s;
+  }
+  .footer-credit a:hover {
+    color: #ffdd57;
+    text-decoration: underline;
+  }
+  @media (max-width: 768px) {
+    .footer-content {
+      grid-template-columns: 1fr;
+      gap: 25px;
+      text-align: center;
+    }
+    .footer-logo-section img {
+      margin: 0 auto;
+    }
+    .footer-custom .container-fluid {
+      padding-left: 20px !important;
+      padding-right: 20px !important;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+  <div class="container-fluid" style="padding-left: 20px; padding-right: 20px;">
+    <a class="navbar-brand" href="{% url 'tests_list' %}" style="flex: 0 0 25%;">
+      <img src="/static/prathibha-logo.png" alt="Prathibha Institute">
+      <span>Prathibha Institute</span>
+    </a>
+
+    <div class="navbar-search d-none d-lg-block">
+      <input id="resultsSearchInput" class="form-control" type="text" placeholder="Search test series...">
+    </div>
+
+    <div class="navbar-profile ms-auto">
+      {% if user.is_authenticated %}
+        <a href="{% url 'profile' %}" class="text-decoration-none">
+          <div class="profile-avatar" title="{{ user.get_full_name|default:user.username }}">
+            {% if user.photo %}
+              <img src="{{ user.photo.url }}" alt="{{ user.username }}">
+            {% else %}
+              {{ user.username|first|upper }}
+            {% endif %}
+          </div>
+        </a>
+        <a href="{% url 'profile' %}" class="nav-link">{{ user.username }}</a>
+        {% if user.is_staff and user.is_superuser %}
+          <a href="/builder/" class="nav-link" style="color: #ffc107 !important;">
+            <i class="fas fa-tools"></i> Builder
+          </a>
+        {% endif %}
+        <a href="{% url 'logout' %}" class="btn btn-logout">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+      {% else %}
+        <a href="{% url 'login' %}" class="btn btn-login">Login</a>
+        <a href="{% url 'register' %}" class="btn btn-login" style="background: rgba(23, 162, 184, 0.9);">Register</a>
+      {% endif %}
+    </div>
+  </div>
+</nav>
+
+<div class="results-container">
+  <!-- Success Message (shown after submission) -->
+  {% if request.GET.submitted %}
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
+    <h4 class="alert-heading">
+      <i class="fas fa-check-circle me-2"></i>Test Submitted Successfully!
+    </h4>
+    <p class="mb-0">Your answers have been recorded. Results are displayed below.</p>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+  {% endif %}
+
+  {% if not evaluation %}
+  <div class="alert alert-warning">
+    <strong>Processing Results...</strong> Your test is being evaluated. Please refresh in a moment.
+  </div>
+  {% else %}
+  
+  <!-- Second Attempt Disclaimer -->
+  {% if is_second_attempt %}
+  <div class="alert alert-info alert-dismissible fade show" role="alert">
+    <h5 class="alert-heading">
+      <i class="fas fa-info-circle me-2"></i>Practice Attempt (Attempt #{{ attempt.attempt_number }})
+    </h5>
+    <p class="mb-2"><strong>This is not your first attempt.</strong> To ensure fairness and prevent any advantage from memorizing questions:</p>
+    <ul class="mb-0" style="padding-left: 1.5rem;">
+      <li>This attempt is <strong>not included in rankings or percentile calculations</strong></li>
+      <li>Only first attempts count towards competitive rankings</li>
+      <li>Your score is saved and you can review all solutions</li>
+      <li>Use this as practice to improve your understanding</li>
+    </ul>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+  {% endif %}
+  
+  <!-- Score Performance Box -->
+  <div class="score-performance">
+    <div class="test-breadcrumb">
+      <span>📚 {% if attempt.test.series %}{{ attempt.test.series.name }} -{% endif %}</span>
+      <span>📝 {{ attempt.test.name }}</span>
+    </div>
+    <div class="score-main">{{ evaluation.total_score|floatformat:2 }}/{% if evaluation.max_marks %}{{ evaluation.max_marks|floatformat:0 }}{% else %}100{% endif %}</div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="action-bar">
+    <div class="action-buttons">
+      {% if all_attempts and all_attempts.count > 1 %}
+      <select class="form-select" id="attemptSwitcher" aria-label="Select attempt">
+        {% for att in all_attempts %}
+        <option value="{% url 'results_page' att.id %}" {% if att.id == attempt.id %}selected{% endif %}>
+          Attempt {{ att.attempt_number }}{% if att.score %} - {{ att.score|floatformat:2 }}/{{ max_marks|floatformat:0 }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+      {% endif %}
+      <a href="{% url 'review_solutions' attempt.id %}" class="action-btn btn btn-primary">
+        <i class="fas fa-book-open"></i>
+        Review Solutions
+      </a>
+      <!-- {% if not is_second_attempt %}
+      <a href="{% url 'download_result_pdf' attempt.id %}" id="downloadPdfBtn" class="action-btn btn btn-success">
+        <i class="fas fa-download"></i>
+        Download PDF
+      </a>
+      {% endif %} -->
+      <a href="{% url 'tests_list' %}" class="action-btn btn btn-secondary">
+        <i class="fas fa-home"></i>
+        Back to Tests
+      </a>
+    </div>
+  </div>
+
+  <!-- Performance Summary Metrics -->
+  <div class="performance-summary">
+    <h3 class="summary-title">Performance Summary</h3>
+    <div class="metrics-grid">
+      {% if not is_second_attempt %}
+      <div class="metric-card">
+        <div class="metric-icon rank-icon">
+          <i class="fas fa-trophy" style="color: white;"></i>
+        </div>
+        <div class="metric-value">{{ evaluation.rank|default:"—" }}/{{ evaluation.total_attempts|default:"—" }}</div>
+        <div class="metric-label">Your Rank</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon percentile-icon">
+          <i class="fas fa-chart-line" style="color: white;"></i>
+        </div>
+        <div class="metric-value">{{ evaluation.percentile|floatformat:2|default:"—" }}%</div>
+        <div class="metric-label">Percentile</div>
+      </div>
+      {% endif %}
+
+      <div class="metric-card">
+        <div class="metric-icon attempted-icon">
+          <i class="fas fa-check-circle" style="color: white;"></i>
+        </div>
+        <div class="metric-value">{{ evaluation.attempted_count|default:"—" }}/{{ evaluation.total_questions|default:"—" }}</div>
+        <div class="metric-label">Attempted</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon accuracy-icon">
+          <i class="fas fa-bullseye" style="color: white;"></i>
+        </div>
+        <div class="metric-value">{{ evaluation.accuracy|floatformat:2|default:"—" }}%</div>
+        <div class="metric-label">Accuracy</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon score-icon">
+          <i class="fas fa-percentage" style="color: white;"></i>
+        </div>
+        <div class="metric-value">{{ evaluation.percentage|floatformat:2|default:"—" }}%</div>
+        <div class="metric-label">Score Percentage</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon attempted-icon">
+          <i class="fas fa-hourglass-end" style="color: white;"></i>
+        </div>
+        <div class="metric-value" id="timeSpentMetric" style="font-size: 0.95rem; word-break: break-word;">--:--/--:--</div>
+        <div class="metric-label">Time Spent</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section-wise Performance Table & Top Rankers Side by Side -->
+  <div class="results-content">
+    <!-- Left Column: Section Analysis Table -->
+    <div class="section-analysis-col">
+      <div class="section-table">
+        <h3 class="table-title">
+          <i class="fas fa-table"></i>
+          Section-wise Analysis
+        </h3>
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Section</th>
+                <th>Score</th>
+                <th>Correct</th>
+                <th>Incorrect</th>
+                <th>Unanswered</th>
+                <th>Accuracy</th>
+                <th>Time Spent</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for section_id, data in evaluation.section_scores.items %}
+              <tr>
+                <td class="section-name-cell">{{ data.section_name }}</td>
+                <td>
+                  {% if data.percentage >= 75 %}
+                    <span class="score-badge score-excellent">{{ data.score|floatformat:2 }}</span>
+                  {% elif data.percentage >= 60 %}
+                    <span class="score-badge score-good">{{ data.score|floatformat:2 }}</span>
+                  {% elif data.percentage >= 40 %}
+                    <span class="score-badge score-average">{{ data.score|floatformat:2 }}</span>
+                  {% else %}
+                    <span class="score-badge score-poor">{{ data.score|floatformat:2 }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="stat-badge correct-badge">
+                    <i class="fas fa-check"></i> {{ data.correct }}
+                  </span>
+                </td>
+                <td>
+                  <span class="stat-badge incorrect-badge">
+                    <i class="fas fa-times"></i> {{ data.incorrect }}
+                  </span>
+                </td>
+                <td>
+                  <span class="stat-badge unanswered-badge">
+                    <i class="fas fa-minus"></i> {{ data.unanswered }}
+                  </span>
+                </td>
+                <td>
+                    <strong>{{ data.accuracy|floatformat:2|default:"0.00" }}%</strong>
+                </td>
+                <td class="section-time" data-section-id="{{ section_id }}">--:--</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Top Rankers -->
+    {% if top_rankings %}
+    <div class="rankers-col">
+      <div class="top-rankers">
+        <h3 class="table-title">
+          <i class="fas fa-medal"></i>
+          Top Rankers
+          <!-- {% if is_second_attempt %} -->
+          <span style="font-size: 0.7rem; font-weight: 500; color: #6c757d; display: block; margin-top: 0.25rem;">
+            (Based on first attempts only)
+          </span>
+          <!-- {% endif %} -->
+        </h3>
+        {% for result in top_rankings %}
+        <div class="ranker-item {% if result.attempt.user == request.user %}current-user{% endif %}">
+          <div class="rank-badge {% if forloop.counter == 1 %}rank-1{% elif forloop.counter == 2 %}rank-2{% elif forloop.counter == 3 %}rank-3{% else %}rank-other{% endif %}">
+            #{{ forloop.counter }}
+          </div>
+          <div class="ranker-photo">
+            {% if result.attempt.user.photo %}
+            <img src="{{ result.attempt.user.photo.url }}" alt="{{ result.attempt.user.username }}">
+            {% else %}
+            {{ result.attempt.user.username|first|upper }}
+            {% endif %}
+          </div>
+          <div class="ranker-info">
+            <div class="ranker-name">
+              {{ result.attempt.user.username|truncatewords:2 }}
+            </div>
+            {% if result.attempt.user == request.user %}
+            <span class="badge bg-info text-white">You</span>
+            {% endif %}
+            {% if forloop.counter == 1 %}
+            <span style="font-size: 1.2rem;">🏅</span>
+            {% endif %}
+          </div>
+          <div class="ranker-score">{{ result.total_score }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% endif %}
+</div>
+
+<!-- Toast notification for PDF download -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+  <div id="pdfToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body">
+        <i class="fas fa-check-circle me-2"></i>
+        <strong>Downloaded Successfully!</strong>
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+
+<footer class="footer-custom">
+    <div class="container-fluid" style="padding-left: 60px; padding-right: 60px;">
+        <div class="footer-content">
+            <div class="footer-logo-section">
+                <img src="/static/prathibha-logo.png" alt="Prathibha Institute">
+                <p>Learn. Thrive. Succeed.</p>
+            </div>
+            
+            <div class="footer-links">
+                <h6>Quick Links</h6>
+                <a href="{% url 'tests_list' %}"><i class="fas fa-home"></i> Home</a>
+                <a href="{% url 'profile' %}"><i class="fas fa-user"></i> Profile</a>
+                {% if user.is_staff and user.is_superuser %}
+                    <a href="/builder/"><i class="fas fa-tools"></i> Test Builder</a>
+                {% endif %}
+            </div>
+            
+            <div class="footer-contact">
+                <h6>Contact Us</h6>
+                <p><i class="fas fa-envelope"></i> prathbhainstitutions@gmail.com</p>
+                <p><i class="fas fa-phone"></i> +91 9030941099</p>
+                <p><i class="fas fa-map-marker-alt"></i> Beside Bank of Maharashtra, Namdevwada, Nizamabad</p>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <p>&copy; 2026 Prathibha Institute. All rights reserved.</p>
+            <p class="footer-credit">Made by <a href="https://www.prathibhasolutions.com" target="_blank" rel="noopener noreferrer">Prathibha Solutions</a></p>
+        </div>
+    </div>
+</footer>
+
+<script src="/static/js/utils.js?v=1.0"></script>
+
+<script>
+// Prevent going back to test interface
+window.addEventListener('load', function() {
+  // Replace current URL to remove the submitted parameter from history
+  if (window.location.search.includes('submitted=true')) {
+    const newUrl = window.location.pathname;
+    window.history.replaceState({}, '', newUrl);
+  }
+  
+  // Push a new state to prevent going back to test interface
+  window.history.pushState(null, '', window.location.href);
+  
+  // Intercept back button
+  window.addEventListener('popstate', function(event) {
+    // Redirect to tests list instead of going back to test interface
+    window.location.href = '{% url "tests_list" %}';
+  });
+});
+
+// Handle attempt switcher
+const attemptSwitcher = document.getElementById('attemptSwitcher');
+if (attemptSwitcher) {
+  attemptSwitcher.addEventListener('change', function() {
+    window.location.href = this.value;
+  });
+}
+
+// Display time spent metric
+const timingData = {{ timing_data|safe }};
+if (timingData && Utils && typeof Utils.formatTimeComparison === 'function') {
+  const timeSpentMetric = document.getElementById('timeSpentMetric');
+  if (timeSpentMetric) {
+    const formatted = Utils.formatTimeComparison(timingData.total_time_spent, timingData.test_duration);
+    timeSpentMetric.textContent = formatted;
+  }
+  
+  // Populate section-wise times in table
+  const sectionTimeElements = document.querySelectorAll('.section-time');
+  sectionTimeElements.forEach(el => {
+    const sectionId = el.getAttribute('data-section-id');
+    const sectionTime = timingData.section_times[sectionId] || 0;
+    el.textContent = Utils.formatTime(sectionTime);
+  });
+}
+
+// Show toast notification when PDF download button is clicked
+const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+if (downloadPdfBtn) {
+  downloadPdfBtn.addEventListener('click', function() {
+    setTimeout(() => {
+      const toastElement = document.getElementById('pdfToast');
+      const toast = new bootstrap.Toast(toastElement, {
+        autohide: true,
+        delay: 3000
+      });
+      toast.show();
+    }, 500); // Small delay to ensure download starts
+  });
+}
+</script>{% endblock %}

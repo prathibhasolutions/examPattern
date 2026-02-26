@@ -1,0 +1,5 @@
+Django==5.0.4
+djangorestframework
+Pillow
+pytesseract
+weasyprint

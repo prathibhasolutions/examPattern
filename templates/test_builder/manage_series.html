@@ -1,0 +1,1242 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Test Series{% endblock %}
+{% block header %}
+<!-- Custom navbar for builder page -->
+{% endblock %}
+
+
+{% block content %}
+<style>
+        main.container-fluid {
+            padding: 0 !important;
+            margin-top: 0 !important;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+        }
+    
+        /* Navbar Styles (same as homepage) */
+        .navbar-custom {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            padding: 12px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            margin: 0 !important;
+            width: 100vw !important;
+            position: relative;
+            left: 50%;
+            right: 50%;
+            margin-left: -50vw !important;
+            margin-right: -50vw !important;
+        }
+        .navbar-custom .navbar-brand {
+            font-weight: 700;
+            font-size: 18px;
+            color: white !important;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .navbar-custom .navbar-brand img {
+            height: 45px;
+            width: auto;
+        }
+        .navbar-search {
+            flex: 1;
+            max-width: 520px;
+            margin: 0 20px;
+            position: relative;
+        }
+        .navbar-search .form-control {
+            border-radius: 25px;
+            border: 2px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.95);
+            padding: 10px 20px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .navbar-search .form-control:focus {
+            border-color: #fff;
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
+            background: white;
+        }
+        .navbar-profile {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .profile-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .profile-avatar:hover {
+            transform: scale(1.1);
+            border-color: white;
+        }
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .navbar-custom .nav-link {
+            color: rgba(255,255,255,0.9) !important;
+            font-weight: 500;
+            font-size: 14px;
+            padding: 8px 16px !important;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+        .navbar-custom .nav-link:hover {
+            background: rgba(255,255,255,0.15);
+            color: white !important;
+        }
+        .navbar-custom .btn-logout {
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .navbar-custom .btn-logout:hover {
+            background: #dc3545;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+        }
+        .navbar-custom .btn-login {
+            background: rgba(40, 167, 69, 0.9);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-left: 10px;
+            transition: all 0.3s;
+        }
+        .navbar-custom .btn-login:hover {
+            background: #28a745;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+    
+        /* Builder Container */
+    .builder-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+        background: #f6f8fb;
+        min-height: calc(100vh - 70px);
+    }
+    
+    .builder-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .builder-header h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    
+    .builder-header p {
+        margin: 0.5rem 0 0;
+        opacity: 0.9;
+    }
+    
+    .forms-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+    }
+    
+    .form-card:hover {
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+    
+    .form-card-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    
+    .form-card-icon {
+        font-size: 1.5rem;
+    }
+    
+    .form-card-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #333;
+        margin: 0;
+    }
+    
+    .form-card.series .form-card-header { border-color: #667eea; }
+    .form-card.series .form-card-icon { color: #667eea; }
+    
+    .form-card.section .form-card-header { border-color: #10b981; }
+    .form-card.section .form-card-icon { color: #10b981; }
+    
+    .form-card.subsection .form-card-header { border-color: #f59e0b; }
+    .form-card.subsection .form-card-icon { color: #f59e0b; }
+    
+    .form-control, .form-select {
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 0.6rem 0.75rem;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #4b5563;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .exam-details-block {
+        margin-top: 1rem;
+        padding: 1rem;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        background: #f9fafb;
+    }
+
+    .exam-details-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+        font-weight: 700;
+        color: #374151;
+    }
+
+    .exam-sections {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .exam-section-row {
+        background: white;
+        border-radius: 10px;
+        padding: 12px;
+        border: 1px solid #e5e7eb;
+    }
+
+    .exam-section-fields {
+        display: grid;
+        gap: 10px;
+    }
+
+    .exam-section-actions {
+        margin-top: 8px;
+        text-align: right;
+    }
+
+    .btn-add-section,
+    .btn-remove-section {
+        border: none;
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .btn-add-section {
+        background: #1f2937;
+        color: white;
+    }
+
+    .btn-remove-section {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .series-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
+
+    .exam-details-form {
+        margin-top: 12px;
+        padding: 12px;
+        background: #f8fafc;
+        border-radius: 12px;
+        border: 1px dashed #d1d5db;
+    }
+
+    .highlight-row {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .highlight-row .form-control {
+        margin: 0;
+    }
+
+    .hidden {
+        display: none;
+    }
+    
+    .btn-submit {
+        width: 100%;
+        padding: 0.75rem;
+        font-weight: 600;
+        border-radius: 8px;
+        border: none;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    
+    .btn-submit.primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .btn-submit.primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-submit.success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    
+    .btn-submit.success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+    
+    .btn-submit.warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+    
+    .btn-submit.warning:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+    }
+    
+    .form-hint {
+        font-size: 0.85rem;
+        color: #6b7280;
+        margin-top: 0.5rem;
+        display: block;
+    }
+    
+    .toggle-org-btn {
+        width: 100%;
+        padding: 1rem;
+        background: white;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        font-weight: 600;
+        color: #4b5563;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        font-size: 1rem;
+    }
+    
+    .toggle-org-btn:hover {
+        background: #f9fafb;
+        border-color: #667eea;
+        color: #667eea;
+    }
+    
+    .org-container {
+        display: none;
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-top: 1rem;
+        animation: slideDown 0.3s ease-out;
+    }
+    
+    .org-container.show {
+        display: block;
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .org-header {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    /* Organization search bar */
+    .org-search-container {
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+
+    .org-search-input {
+        width: 100%;
+        padding: 0.8rem 1rem 0.8rem 2.8rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        transition: all 0.3s;
+        background: #f9fafb;
+    }
+
+    .org-search-input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.12);
+        background: white;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 0.9rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+        font-size: 1.1rem;
+        pointer-events: none;
+    }
+
+    .clear-search-btn {
+        position: absolute;
+        right: 0.8rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #9ca3af;
+        cursor: pointer;
+        font-size: 1.2rem;
+        padding: 0.3rem 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .clear-search-btn:hover {
+        color: #667eea;
+    }
+
+    .clear-search-btn.hidden {
+        display: none;
+    }
+
+    .no-results-message {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: #9ca3af;
+        font-size: 1rem;
+    }
+
+    .no-results-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        opacity: 0.6;
+    }
+
+    /* Tree structure styles */
+    .series-block {
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-left: 5px solid #667eea;
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .series-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #4f46e5;
+        margin-bottom: 0.4rem;
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.4rem 0.6rem;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+
+    .series-title:hover {
+        background: rgba(79, 70, 229, 0.08);
+    }
+
+    .series-title:hover {
+        opacity: 0.85;
+    }
+
+    .series-desc {
+        color: #6b7280;
+        font-size: 0.9rem;
+        margin-bottom: 0.9rem;
+    }
+
+    .section-tree {
+        margin-top: 0.75rem;
+        padding-left: 1rem;
+        border-left: 2px dashed #d1d5db;
+    }
+
+    .section-item {
+        background: white;
+        padding: 0.9rem 1rem;
+        border-radius: 10px;
+        margin-bottom: 0.75rem;
+        border: 1px solid #eef2f7;
+        position: relative;
+    }
+
+    .section-item::before {
+        content: "";
+        position: absolute;
+        left: -1.05rem;
+        top: 1.2rem;
+        width: 1rem;
+        height: 2px;
+        background: #d1d5db;
+    }
+
+    .section-name {
+        font-weight: 600;
+        color: #059669;
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.35rem 0.5rem;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+
+    .section-name:hover {
+        background: rgba(5, 150, 105, 0.08);
+    }
+
+    .section-name:hover {
+        opacity: 0.85;
+    }
+
+    .subsection-list {
+        list-style: none;
+        padding-left: 1.1rem;
+        margin: 0.4rem 0 0 0;
+        border-left: 2px dotted #f59e0b;
+    }
+
+    .subsection-item {
+        color: #d97706;
+        font-size: 0.95rem;
+        margin-bottom: 0.35rem;
+        padding-left: 0.6rem;
+    }
+
+    .collapse-icon {
+        font-size: 0.8rem;
+        transition: transform 0.3s;
+    }
+
+    .collapsed .collapse-icon {
+        transform: rotate(-90deg);
+    }
+
+    .series-block.collapsed .section-item {
+        display: none;
+    }
+
+    .section-item.collapsed .subsection-list {
+        display: none;
+    }
+
+    .series-block.hidden {
+        display: none;
+    }
+    
+    .section-item {
+        background: #f9fafb;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+    }
+    
+    .section-name {
+        font-weight: 600;
+        color: #10b981;
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .subsection-list {
+        list-style: none;
+        padding-left: 1.25rem;
+        margin: 0.5rem 0 0 0;
+    }
+    
+    .subsection-item {
+        color: #f59e0b;
+        font-size: 0.95rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .no-items {
+        color: #9ca3af;
+        font-style: italic;
+        font-size: 0.9rem;
+    }
+    
+    @media (max-width: 768px) {
+        .forms-container {
+            grid-template-columns: 1fr;
+        }
+        
+        .builder-header h1 {
+            font-size: 1.5rem;
+        }
+    }
+</style>
+
+<div class="builder-container">
+    <!-- Navbar -->
+    <nav class="navbar navbar-custom navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'tests_list' %}">
+                🎓 Mock Test Platform
+            </a>
+        
+            <div class="navbar-search">
+                <input type="text" class="form-control" placeholder="🔍 Search tests, series..." id="navbarSearch">
+            </div>
+        
+            <div class="navbar-profile">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'profile' %}" class="profile-avatar text-decoration-none" title="{{ user.username }}">
+                        {% if user.profile.photo %}
+                            <img src="{{ user.profile.photo.url }}" alt="{{ user.username }}">
+                        {% else %}
+                            {{ user.username|first|upper }}
+                        {% endif %}
+                    </a>
+                    <a href="{% url 'builder_dashboard' %}" class="nav-link">Dashboard</a>
+                    <form method="post" action="{% url 'logout' %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-logout">Logout</button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'login' %}" class="btn-login">Login</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="builder-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1>🧩 Manage Test Series</h1>
+                <p>Create series, sections, and subsections for better test organization</p>
+            </div>
+            <a href="{% url 'builder_dashboard' %}" class="btn btn-light">← Back</a>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Horizontal forms -->
+    <div class="forms-container">
+        <!-- Create Series -->
+        <div class="form-card series">
+            <div class="form-card-header">
+                <span class="form-card-icon">📚</span>
+                <h3 class="form-card-title">Create Series</h3>
+            </div>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_series">
+                <div class="mb-3">
+                    <label class="form-label">Series Name *</label>
+                    <input type="text" name="series_name" class="form-control" required placeholder="e.g., SSC CGL 2026">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea name="series_description" class="form-control" rows="2" placeholder="Optional description"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Exam Cover Photo</label>
+                    <input type="file" name="exam_cover" class="form-control" accept="image/*">
+                    <small class="form-hint">Optional hero image for the exam details page.</small>
+                </div>
+                <div class="exam-details-block">
+                    <div class="exam-details-header">
+                        <span>Highlights (max 4)</span>
+                        <button type="button" class="btn-add-section" onclick="addHighlight('createHighlightList', 'createHighlightCount')">+ Add Highlight</button>
+                    </div>
+                    <input type="hidden" name="highlight_count" id="createHighlightCount" value="1">
+                    <div class="exam-sections" id="createHighlightList">
+                        <div class="exam-section-row" data-index="0">
+                            <div class="highlight-row">
+                                <input type="text" class="form-control" placeholder="Title (e.g., Vacancies)" data-field="title" name="highlight_title_0">
+                                <input type="text" class="form-control" placeholder="Value (e.g., 20,000+)" data-field="value" name="highlight_value_0">
+                                <input type="hidden" data-field="id" name="highlight_id_0" value="">
+                            </div>
+                            <div class="exam-section-actions">
+                                <button type="button" class="btn-remove-section" onclick="removeHighlight(this)">Remove</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="exam-details-block">
+                    <div class="exam-details-header">
+                        <span>Exam Details Sections</span>
+                        <button type="button" class="btn-add-section" onclick="addExamSection('createExamSections', 'createExamSectionCount')">+ Add Section</button>
+                    </div>
+                    <input type="hidden" name="exam_section_count" id="createExamSectionCount" value="1">
+                    <div class="exam-sections" id="createExamSections">
+                        <div class="exam-section-row" data-index="0">
+                            <div class="exam-section-fields">
+                                <input type="text" class="form-control" placeholder="Section title (e.g., Description)" data-field="title" name="exam_section_title_0">
+                                <textarea class="form-control" rows="3" placeholder="Section details" data-field="body" name="exam_section_body_0"></textarea>
+                                <input type="file" class="form-control" data-field="image" name="exam_section_image_0" accept="image/*">
+                                <input type="hidden" data-field="id" name="exam_section_id_0" value="">
+                            </div>
+                            <div class="exam-section-actions">
+                                <button type="button" class="btn-remove-section" onclick="removeExamSection(this)">Remove</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn-submit primary">Create Series</button>
+                <small class="form-hint">Default "All Tests" section will be created</small>
+            </form>
+        </div>
+
+        <!-- Create Section -->
+        <div class="form-card section">
+            <div class="form-card-header">
+                <span class="form-card-icon">📂</span>
+                <h3 class="form-card-title">Create Section</h3>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_section">
+                <div class="mb-3">
+                    <label class="form-label">Series *</label>
+                    <select name="section_series" class="form-select" required>
+                        <option value="">-- Choose Series --</option>
+                        {% for series in series_list %}
+                            <option value="{{ series.id }}">{{ series.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Section Name *</label>
+                    <input type="text" name="section_name" class="form-control" required placeholder="e.g., Full Tests">
+                </div>
+                <button type="submit" class="btn-submit success">Add Section</button>
+                <small class="form-hint">Example: Full Tests, Sectional Tests</small>
+            </form>
+        </div>
+
+        <!-- Create Subsection -->
+        <div class="form-card subsection">
+            <div class="form-card-header">
+                <span class="form-card-icon">🧩</span>
+                <h3 class="form-card-title">Create Subsection</h3>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_subsection">
+                <div class="mb-3">
+                    <label class="form-label">Section *</label>
+                    <select name="subsection_section" class="form-select" required>
+                        <option value="">-- Choose Section --</option>
+                        {% for section in sections_list %}
+                            <option value="{{ section.id }}">{{ section.series.name }} → {{ section.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Subsection Name *</label>
+                    <input type="text" name="subsection_name" class="form-control" required placeholder="e.g., Quantitative Aptitude">
+                </div>
+                <button type="submit" class="btn-submit warning">Add Subsection</button>
+                <small class="form-hint">Example: Aptitude, Reasoning</small>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toggle Organization Button -->
+    <button class="toggle-org-btn" onclick="toggleOrganization()">
+        <span id="toggleIcon">▼</span>
+        <span id="toggleText">View Current Test Series</span>
+    </button>
+
+    <!-- Organization Display (Hidden by default) -->
+    <div class="org-container" id="orgContainer">
+        <div class="org-header">
+            <span>📌</span>
+            <span>Current Test Series</span>
+        </div>
+
+        <!-- Search bar for organization -->
+        <div class="org-search-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="org-search-input" id="orgSearchInput" list="seriesSuggestions" placeholder="Search test series...">
+            <button type="button" class="clear-search-btn hidden" id="clearSearchBtn" title="Clear search">✕</button>
+            <datalist id="seriesSuggestions">
+                {% for series in series_list %}
+                    <option value="{{ series.name }}"></option>
+                {% endfor %}
+            </datalist>
+        </div>
+        
+        <!-- No results message -->
+        <div id="noResultsMessage" class="no-results-message hidden">
+            <div class="no-results-icon">🔎</div>
+            <div>No test series found matching your search</div>
+        </div>
+        
+        {% if series_list %}
+            {% for series in series_list %}
+                <div class="series-block" data-search-text="{{ series.name|lower }}">
+                    <div class="series-title" onclick="toggleSeries(this)">
+                        <span class="collapse-icon">▼</span>
+                        <span>📚 {{ series.name }}</span>
+                    </div>
+                    <div class="series-desc">{{ series.description|default:"No description" }}</div>
+                    <div class="series-actions">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleExamDetails('{{ series.id }}')">Edit Exam Details</button>
+                        {% if series.slug %}
+                            <a class="btn btn-sm btn-outline-secondary" href="{% url 'tests_series_about' series.slug %}" target="_blank" rel="noopener">Preview</a>
+                        {% endif %}
+                    </div>
+                    <div class="exam-details-form hidden" id="examDetailsForm-{{ series.id }}">
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="update_series_details">
+                            <input type="hidden" name="series_id" value="{{ series.id }}">
+                            <div class="mb-3">
+                                <label class="form-label">Exam Cover Photo</label>
+                                <input type="file" name="exam_cover" class="form-control" accept="image/*">
+                                {% if series.exam_cover %}
+                                    <small class="form-hint">Current: {{ series.exam_cover.name }}</small>
+                                {% else %}
+                                    <small class="form-hint">Optional hero image for the exam details page.</small>
+                                {% endif %}
+                            </div>
+                            <div class="exam-details-block">
+                                <div class="exam-details-header">
+                                    <span>Highlights (max 4)</span>
+                                    <button type="button" class="btn-add-section" onclick="addHighlight('highlightList-{{ series.id }}', 'highlightCount-{{ series.id }}')">+ Add Highlight</button>
+                                </div>
+                                {% with highlight_count=series.highlights.all|length %}
+                                    <input type="hidden" name="highlight_count" id="highlightCount-{{ series.id }}" value="{% if highlight_count > 0 %}{{ highlight_count }}{% else %}1{% endif %}">
+                                    <div class="exam-sections" id="highlightList-{{ series.id }}">
+                                        {% if highlight_count > 0 %}
+                                            {% for highlight in series.highlights.all %}
+                                                <div class="exam-section-row" data-index="{{ forloop.counter0 }}">
+                                                    <div class="highlight-row">
+                                                        <input type="text" class="form-control" placeholder="Title" data-field="title" name="highlight_title_{{ forloop.counter0 }}" value="{{ highlight.title }}">
+                                                        <input type="text" class="form-control" placeholder="Value" data-field="value" name="highlight_value_{{ forloop.counter0 }}" value="{{ highlight.value }}">
+                                                        <input type="hidden" data-field="id" name="highlight_id_{{ forloop.counter0 }}" value="{{ highlight.id }}">
+                                                    </div>
+                                                    <div class="exam-section-actions">
+                                                        <button type="button" class="btn-remove-section" onclick="removeHighlight(this)">Remove</button>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div class="exam-section-row" data-index="0">
+                                                <div class="highlight-row">
+                                                    <input type="text" class="form-control" placeholder="Title" data-field="title" name="highlight_title_0">
+                                                    <input type="text" class="form-control" placeholder="Value" data-field="value" name="highlight_value_0">
+                                                    <input type="hidden" data-field="id" name="highlight_id_0" value="">
+                                                </div>
+                                                <div class="exam-section-actions">
+                                                    <button type="button" class="btn-remove-section" onclick="removeHighlight(this)">Remove</button>
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endwith %}
+                            </div>
+                            <div class="exam-details-block">
+                                <div class="exam-details-header">
+                                    <span>Exam Details Sections</span>
+                                    <button type="button" class="btn-add-section" onclick="addExamSection('examSections-{{ series.id }}', 'examSectionCount-{{ series.id }}')">+ Add Section</button>
+                                </div>
+                                {% with section_count=series.exam_sections.all|length %}
+                                    <input type="hidden" name="exam_section_count" id="examSectionCount-{{ series.id }}" value="{% if section_count > 0 %}{{ section_count }}{% else %}1{% endif %}">
+                                    <div class="exam-sections" id="examSections-{{ series.id }}">
+                                        {% if section_count > 0 %}
+                                            {% for section in series.exam_sections.all %}
+                                                <div class="exam-section-row" data-index="{{ forloop.counter0 }}">
+                                                    <div class="exam-section-fields">
+                                                        <input type="text" class="form-control" placeholder="Section title" data-field="title" name="exam_section_title_{{ forloop.counter0 }}" value="{{ section.title }}">
+                                                        <textarea class="form-control" rows="3" placeholder="Section details" data-field="body" name="exam_section_body_{{ forloop.counter0 }}">{{ section.body }}</textarea>
+                                                        <input type="file" class="form-control" data-field="image" name="exam_section_image_{{ forloop.counter0 }}" accept="image/*">
+                                                        <input type="hidden" data-field="id" name="exam_section_id_{{ forloop.counter0 }}" value="{{ section.id }}">
+                                                        {% if section.image %}
+                                                            <small class="form-hint">Current: {{ section.image.name }}</small>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="exam-section-actions">
+                                                        <button type="button" class="btn-remove-section" onclick="removeExamSection(this)">Remove</button>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div class="exam-section-row" data-index="0">
+                                                <div class="exam-section-fields">
+                                                    <input type="text" class="form-control" placeholder="Section title" data-field="title" name="exam_section_title_0">
+                                                    <textarea class="form-control" rows="3" placeholder="Section details" data-field="body" name="exam_section_body_0"></textarea>
+                                                    <input type="file" class="form-control" data-field="image" name="exam_section_image_0" accept="image/*">
+                                                    <input type="hidden" data-field="id" name="exam_section_id_0" value="">
+                                                </div>
+                                                <div class="exam-section-actions">
+                                                    <button type="button" class="btn-remove-section" onclick="removeExamSection(this)">Remove</button>
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endwith %}
+                            </div>
+                            <button type="submit" class="btn-submit primary">Save Exam Details</button>
+                        </form>
+                    </div>
+
+                    {% if series.sections.all %}
+                        <div class="section-tree">
+                            {% for section in series.sections.all %}
+                                <div class="section-item">
+                                    <div class="section-name" onclick="toggleSection(this)">
+                                        <span class="collapse-icon">▼</span>
+                                        <span>📂 {{ section.name }}</span>
+                                    </div>
+                                    {% if section.subsections.all %}
+                                        <ul class="subsection-list">
+                                            {% for subsection in section.subsections.all %}
+                                                <li class="subsection-item">🧩 {{ subsection.name }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <div class="no-items">No subsections</div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="no-items">No sections yet</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="no-items">No test series created yet</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Toggle series visibility
+function toggleSeries(element) {
+    const seriesBlock = element.closest('.series-block');
+    seriesBlock.classList.toggle('collapsed');
+}
+
+// Toggle section visibility
+function toggleSection(element) {
+    const sectionItem = element.closest('.section-item');
+    sectionItem.classList.toggle('collapsed');
+}
+
+// Organization toggle
+function toggleOrganization() {
+    const container = document.getElementById('orgContainer');
+    const icon = document.getElementById('toggleIcon');
+    const text = document.getElementById('toggleText');
+
+    container.classList.toggle('show');
+
+    if (container.classList.contains('show')) {
+        icon.textContent = '▲';
+        text.textContent = 'Hide Current Test Series';
+    } else {
+        icon.textContent = '▼';
+        text.textContent = 'View Current Test Series';
+    }
+}
+
+function toggleExamDetails(seriesId) {
+    const form = document.getElementById(`examDetailsForm-${seriesId}`);
+    if (form) {
+        form.classList.toggle('hidden');
+    }
+}
+
+function addExamSection(containerId, countInputId) {
+    const container = document.getElementById(containerId);
+    const countInput = document.getElementById(countInputId);
+
+    if (!container || !countInput) {
+        return;
+    }
+
+    const index = container.querySelectorAll('.exam-section-row').length;
+    const row = document.createElement('div');
+    row.className = 'exam-section-row';
+    row.dataset.index = index.toString();
+    row.innerHTML = `
+        <div class="exam-section-fields">
+            <input type="text" class="form-control" placeholder="Section title" data-field="title" name="exam_section_title_${index}">
+            <textarea class="form-control" rows="3" placeholder="Section details" data-field="body" name="exam_section_body_${index}"></textarea>
+            <input type="file" class="form-control" data-field="image" name="exam_section_image_${index}" accept="image/*">
+            <input type="hidden" data-field="id" name="exam_section_id_${index}" value="">
+        </div>
+        <div class="exam-section-actions">
+            <button type="button" class="btn-remove-section" onclick="removeExamSection(this)">Remove</button>
+        </div>
+    `;
+
+    container.appendChild(row);
+    renumberExamSections(container, countInput);
+}
+
+function addHighlight(containerId, countInputId) {
+    const container = document.getElementById(containerId);
+    const countInput = document.getElementById(countInputId);
+
+    if (!container || !countInput) {
+        return;
+    }
+
+    const existingCount = container.querySelectorAll('.exam-section-row').length;
+    if (existingCount >= 4) {
+        alert('You can add up to 4 highlights.');
+        return;
+    }
+
+    const index = existingCount;
+    const row = document.createElement('div');
+    row.className = 'exam-section-row';
+    row.dataset.index = index.toString();
+    row.innerHTML = `
+        <div class="highlight-row">
+            <input type="text" class="form-control" placeholder="Title" data-field="title" name="highlight_title_${index}">
+            <input type="text" class="form-control" placeholder="Value" data-field="value" name="highlight_value_${index}">
+            <input type="hidden" data-field="id" name="highlight_id_${index}" value="">
+        </div>
+        <div class="exam-section-actions">
+            <button type="button" class="btn-remove-section" onclick="removeHighlight(this)">Remove</button>
+        </div>
+    `;
+
+    container.appendChild(row);
+    renumberHighlights(container, countInput);
+}
+
+function removeHighlight(button) {
+    const row = button.closest('.exam-section-row');
+    if (!row) {
+        return;
+    }
+
+    const container = row.parentElement;
+    const countInput = container?.parentElement?.querySelector('input[type="hidden"][name="highlight_count"]')
+        || document.getElementById('createHighlightCount');
+
+    row.remove();
+    if (container && countInput) {
+        renumberHighlights(container, countInput);
+    }
+}
+
+function renumberHighlights(container, countInput) {
+    const rows = container.querySelectorAll('.exam-section-row');
+    rows.forEach((row, index) => {
+        row.dataset.index = index.toString();
+        const titleInput = row.querySelector('[data-field="title"]');
+        const valueInput = row.querySelector('[data-field="value"]');
+        const idInput = row.querySelector('[data-field="id"]');
+
+        if (titleInput) {
+            titleInput.name = `highlight_title_${index}`;
+        }
+        if (valueInput) {
+            valueInput.name = `highlight_value_${index}`;
+        }
+        if (idInput) {
+            idInput.name = `highlight_id_${index}`;
+        }
+    });
+
+    countInput.value = rows.length.toString();
+}
+
+function removeExamSection(button) {
+    const row = button.closest('.exam-section-row');
+    if (!row) {
+        return;
+    }
+
+    const container = row.parentElement;
+    const countInput = container?.parentElement?.querySelector('input[type="hidden"][name="exam_section_count"]')
+        || document.getElementById('createExamSectionCount');
+
+    row.remove();
+    if (container && countInput) {
+        renumberExamSections(container, countInput);
+    }
+}
+
+function renumberExamSections(container, countInput) {
+    const rows = container.querySelectorAll('.exam-section-row');
+    rows.forEach((row, index) => {
+        row.dataset.index = index.toString();
+        const titleInput = row.querySelector('[data-field="title"]');
+        const bodyInput = row.querySelector('[data-field="body"]');
+        const imageInput = row.querySelector('[data-field="image"]');
+        const idInput = row.querySelector('[data-field="id"]');
+
+        if (titleInput) {
+            titleInput.name = `exam_section_title_${index}`;
+        }
+        if (bodyInput) {
+            bodyInput.name = `exam_section_body_${index}`;
+        }
+        if (imageInput) {
+            imageInput.name = `exam_section_image_${index}`;
+        }
+        if (idInput) {
+            idInput.name = `exam_section_id_${index}`;
+        }
+    });
+
+    countInput.value = rows.length.toString();
+}
+
+// Clear search button visibility and functionality
+const searchInput = document.getElementById('orgSearchInput');
+const clearBtn = document.getElementById('clearSearchBtn');
+const noResultsMsg = document.getElementById('noResultsMessage');
+
+if (searchInput) {
+    // Show/hide clear button based on input
+    searchInput.addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase().trim();
+        
+        if (searchTerm) {
+            clearBtn?.classList.remove('hidden');
+        } else {
+            clearBtn?.classList.add('hidden');
+        }
+        
+        // Search functionality for test series (series names only)
+        let visibleCount = 0;
+        document.querySelectorAll('.series-block').forEach(seriesBlock => {
+            const seriesText = seriesBlock.dataset.searchText || '';
+            const isMatch = !searchTerm || seriesText.includes(searchTerm);
+
+            if (isMatch) {
+                seriesBlock.classList.remove('hidden');
+                seriesBlock.classList.remove('collapsed');
+                visibleCount++;
+            } else {
+                seriesBlock.classList.add('hidden');
+            }
+        });
+        
+        // Show/hide no results message
+        if (searchTerm && visibleCount === 0) {
+            noResultsMsg?.classList.remove('hidden');
+        } else {
+            noResultsMsg?.classList.add('hidden');
+        }
+    });
+    
+    // Clear search functionality
+    clearBtn?.addEventListener('click', function() {
+        searchInput.value = '';
+        clearBtn.classList.add('hidden');
+        noResultsMsg?.classList.add('hidden');
+        
+        // Show all series
+        document.querySelectorAll('.series-block').forEach(seriesBlock => {
+            seriesBlock.classList.remove('hidden', 'collapsed');
+        });
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Mock Test App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .registration-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+        .registration-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .registration-header h2 {
+            color: #333;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .registration-header p {
+            color: #666;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+            font-size: 14px;
+        }
+        .form-control {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 12px 15px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .form-text {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+        .availability-check {
+            font-size: 12px;
+            margin-top: 5px;
+            padding: 8px;
+            border-radius: 5px;
+            display: none;
+        }
+        .availability-check.available {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        .availability-check.taken {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        .file-input-wrapper {
+            position: relative;
+        }
+        .file-input-label {
+            display: block;
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px dashed #e0e0e0;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #666;
+            font-size: 14px;
+        }
+        .file-input-label:hover {
+            border-color: #667eea;
+            background-color: #f9f9f9;
+        }
+        .form-control[type="file"] {
+            display: none;
+        }
+        .file-name {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #667eea;
+        }
+        .btn-register {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            font-weight: 600;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        .btn-register:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        .btn-register:active {
+            transform: translateY(0);
+        }
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+        .login-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+        .alert {
+            border-radius: 8px;
+            border: none;
+            margin-bottom: 20px;
+        }
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .spinner-border {
+            width: 20px;
+            height: 20px;
+            border-width: 2px;
+        }
+        .field-error {
+            border-color: #dc3545 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="registration-container">
+        <div class="registration-header">
+            <h2>Create Account</h2>
+            <p>Join our mock test platform and start practicing</p>
+        </div>
+
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" id="registrationForm">
+            {% csrf_token %}
+
+            <!-- Email Field -->
+            <div class="form-group">
+                <label for="email" class="form-label">Email Address *</label>
+                <input 
+                    type="email" 
+                    class="form-control {% if form.email.errors %}field-error{% endif %}" 
+                    id="email"
+                    name="email" 
+                    placeholder="your.email@example.com"
+                    value="{{ form.email.value|default:'' }}"
+                    required
+                >
+                <div class="availability-check" id="emailCheck"></div>
+                {% if form.email.errors %}
+                    <div class="alert alert-danger" style="margin-top: 8px;">
+                        {{ form.email.errors.0 }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Username Field -->
+            <div class="form-group">
+                <label for="username" class="form-label">Username *</label>
+                <input 
+                    type="text" 
+                    class="form-control {% if form.username.errors %}field-error{% endif %}" 
+                    id="username"
+                    name="username" 
+                    placeholder="Choose a unique username"
+                    value="{{ form.username.value|default:'' }}"
+                    minlength="3"
+                    required
+                >
+                <div class="availability-check" id="usernameCheck"></div>
+                {% if form.username.errors %}
+                    <div class="alert alert-danger" style="margin-top: 8px;">
+                        {{ form.username.errors.0 }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Mobile Number Field -->
+            <div class="form-group">
+                <label for="mobile" class="form-label">Mobile Number *</label>
+                <input 
+                    type="tel" 
+                    class="form-control {% if form.mobile.errors %}field-error{% endif %}" 
+                    id="mobile"
+                    name="mobile" 
+                    placeholder="10 digit mobile number"
+                    pattern="[0-9]{10}"
+                    value="{{ form.mobile.value|default:'' }}"
+                    required
+                >
+                <span class="form-text">10 digit Indian mobile number</span>
+                {% if form.mobile.errors %}
+                    <div class="alert alert-danger" style="margin-top: 8px;">
+                        {{ form.mobile.errors.0 }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Password Field -->
+            <div class="form-group">
+                <label for="password" class="form-label">Password *</label>
+                <input 
+                    type="password" 
+                    class="form-control {% if form.password.errors %}field-error{% endif %}" 
+                    id="password"
+                    name="password" 
+                    placeholder="Min 8 characters"
+                    minlength="8"
+                    required
+                >
+                <span class="form-text">Minimum 8 characters</span>
+                {% if form.password.errors %}
+                    <div class="alert alert-danger" style="margin-top: 8px;">
+                        {{ form.password.errors.0 }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Confirm Password Field -->
+            <div class="form-group">
+                <label for="password_confirm" class="form-label">Confirm Password *</label>
+                <input 
+                    type="password" 
+                    class="form-control {% if form.password_confirm.errors %}field-error{% endif %}" 
+                    id="password_confirm"
+                    name="password_confirm" 
+                    placeholder="Re-enter your password"
+                    required
+                >
+                {% if form.password_confirm.errors %}
+                    <div class="alert alert-danger" style="margin-top: 8px;">
+                        {{ form.password_confirm.errors.0 }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Photo Field (Optional) -->
+            <div class="form-group">
+                <label for="photo" class="form-label">Profile Photo (Optional)</label>
+                <div class="file-input-wrapper">
+                    <label for="photo" class="file-input-label">
+                        <span>📷 Click to upload or drag & drop</span><br>
+                        <small>JPG or PNG, max 100KB</small>
+                    </label>
+                    <input 
+                        type="file" 
+                        class="form-control" 
+                        id="photo"
+                        name="photo" 
+                        accept="image/jpeg,image/png"
+                    >
+                </div>
+                <div class="file-name" id="fileName"></div>
+                {% if form.photo.errors %}
+                    <div class="alert alert-danger" style="margin-top: 8px;">
+                        {{ form.photo.errors.0 }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn-register" id="submitBtn">Create Account</button>
+
+            <!-- Login Link -->
+            <div class="login-link">
+                Already have an account? <a href="{% url 'login' %}">Login here</a>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Debounce function
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Check username availability
+        const checkUsername = debounce(function() {
+            const username = document.getElementById('username').value.trim();
+            const checkDiv = document.getElementById('usernameCheck');
+            
+            if (username.length < 3) {
+                checkDiv.style.display = 'none';
+                return;
+            }
+
+            fetch(`/accounts/check-username/?username=${encodeURIComponent(username)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.available) {
+                        checkDiv.className = 'availability-check available';
+                        checkDiv.textContent = '✓ ' + data.message;
+                    } else {
+                        checkDiv.className = 'availability-check taken';
+                        checkDiv.textContent = '✗ ' + data.message;
+                    }
+                });
+        }, 500);
+
+        // Check email availability
+        const checkEmail = debounce(function() {
+            const email = document.getElementById('email').value.trim();
+            const checkDiv = document.getElementById('emailCheck');
+            
+            if (!email || !email.includes('@')) {
+                checkDiv.style.display = 'none';
+                return;
+            }
+
+            fetch(`/accounts/check-email/?email=${encodeURIComponent(email)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.available) {
+                        checkDiv.className = 'availability-check available';
+                        checkDiv.textContent = '✓ ' + data.message;
+                    } else {
+                        checkDiv.className = 'availability-check taken';
+                        checkDiv.textContent = '✗ ' + data.message;
+                    }
+                });
+        }, 500);
+
+        // File input handler
+        document.getElementById('photo').addEventListener('change', function(e) {
+            const fileName = document.getElementById('fileName');
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+                fileName.textContent = `📁 ${file.name} (${sizeMB} MB)`;
+            } else {
+                fileName.textContent = '';
+            }
+        });
+
+        // Drag and drop for file input
+        const photoLabel = document.querySelector('.file-input-label');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            photoLabel.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            photoLabel.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            photoLabel.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            photoLabel.style.backgroundColor = '#f0f0f0';
+        }
+
+        function unhighlight(e) {
+            photoLabel.style.backgroundColor = 'transparent';
+        }
+
+        photoLabel.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            document.getElementById('photo').files = files;
+            
+            // Trigger change event
+            const event = new Event('change', { bubbles: true });
+            document.getElementById('photo').dispatchEvent(event);
+        }
+
+        // Add event listeners for real-time validation
+        document.getElementById('username').addEventListener('input', checkUsername);
+        document.getElementById('email').addEventListener('input', checkEmail);
+
+        // Form submission
+        document.getElementById('registrationForm').addEventListener('submit', function(e) {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating Account...';
+        });
+    </script>
+</body>
+</html>

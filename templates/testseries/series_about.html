@@ -1,0 +1,538 @@
+{% extends "base.html" %}
+
+{% block title %}{{ series.name }} - Exam Details{% endblock %}
+
+{% block header %}
+{% endblock %}
+
+{% block content %}
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+  :root {
+    --ink: #0f1f3a;
+    --navy: #122444;
+    --teal: #1f7a7a;
+    --amber: #f2a43b;
+    --paper: #f5f7fb;
+    --card: #ffffff;
+    --muted: #6b7280;
+  }
+
+  main.container-fluid {
+    padding: 0 !important;
+    margin-top: 0 !important;
+  }
+
+  body {
+    background: var(--paper);
+  }
+
+  .navbar-custom {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    padding: 12px 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    margin: 0 !important;
+    width: 100vw !important;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw !important;
+    margin-right: -50vw !important;
+  }
+
+  .navbar-custom .navbar-brand {
+    font-weight: 700;
+    font-size: 18px;
+    color: white !important;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .navbar-custom .navbar-brand img {
+    height: 45px;
+    width: auto;
+  }
+
+  .navbar-search {
+    flex: 1;
+    max-width: 520px;
+    margin: 0 20px;
+    position: relative;
+  }
+
+  .navbar-search .form-control {
+    border-radius: 25px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.95);
+    padding: 10px 20px;
+    font-size: 14px;
+    transition: all 0.3s;
+  }
+
+  .navbar-search .form-control:focus {
+    border-color: #fff;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+    background: white;
+  }
+
+  .navbar-profile {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+
+  .profile-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .profile-avatar:hover {
+    transform: scale(1.1);
+    border-color: white;
+  }
+
+  .profile-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .navbar-custom .nav-link {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 500;
+    font-size: 14px;
+    padding: 8px 16px !important;
+    border-radius: 20px;
+    transition: all 0.3s;
+  }
+
+  .navbar-custom .nav-link:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white !important;
+  }
+
+  .navbar-custom .btn-logout {
+    background: rgba(220, 53, 69, 0.9);
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s;
+  }
+
+  .navbar-custom .btn-logout:hover {
+    background: #dc3545;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+  }
+
+  .navbar-custom .btn-login {
+    background: rgba(40, 167, 69, 0.9);
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 14px;
+    margin-left: 10px;
+    transition: all 0.3s;
+  }
+
+  .navbar-custom .btn-login:hover {
+    background: #28a745;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+  }
+
+  .exam-hero {
+    position: relative;
+    padding: 72px 24px 48px;
+    color: white;
+    background: radial-gradient(circle at top left, rgba(242, 164, 59, 0.35), transparent 45%),
+      radial-gradient(circle at 80% 20%, rgba(31, 122, 122, 0.45), transparent 48%),
+      linear-gradient(135deg, #0d1a32 0%, #1a2e52 60%, #13324a 100%);
+    overflow: hidden;
+  }
+
+  .exam-hero::after {
+    content: "";
+    position: absolute;
+    inset: -40% -20% auto auto;
+    width: 320px;
+    height: 320px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+    filter: blur(0);
+  }
+
+  .exam-shell {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .hero-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .hero-media {
+    width: min(320px, 100%);
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 35px rgba(15, 31, 58, 0.25);
+  }
+
+  .hero-media img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+  }
+
+  .exam-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(30px, 4vw, 44px);
+    font-weight: 700;
+    margin: 0 0 8px;
+    letter-spacing: 0.2px;
+  }
+
+  .exam-tagline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 0 0 18px;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .cta-btn {
+    background: var(--amber);
+    color: #1b1b1b;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 999px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    box-shadow: 0 10px 20px rgba(242, 164, 59, 0.3);
+  }
+
+  .cta-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 26px rgba(242, 164, 59, 0.4);
+    color: #1b1b1b;
+  }
+
+  .ghost-btn {
+    background: transparent;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .ghost-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+  }
+
+  .hero-card {
+    margin-top: 26px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .mini-stat {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 14px 16px;
+    border-radius: 16px;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+
+  .mini-stat span {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 4px;
+  }
+
+  .mini-stat strong {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .exam-content {
+    max-width: 1100px;
+    margin: 0 auto 60px;
+    padding: 0 24px 24px;
+  }
+
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .content-card {
+    background: linear-gradient(180deg, #ffffff 0%, #f1f4f9 100%);
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow: 0 16px 30px rgba(15, 31, 58, 0.12);
+    border: 1px solid rgba(15, 31, 58, 0.12);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .content-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 6px;
+    background: linear-gradient(180deg, #1e3c72 0%, #f2a43b 100%);
+  }
+
+  .content-card h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 17px;
+    color: #0b1b33;
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+
+  .content-card p {
+    color: #1f2937;
+    font-size: 15px;
+    line-height: 1.7;
+    margin: 0;
+  }
+
+  .section-image {
+    margin-top: 14px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(15, 31, 58, 0.08);
+  }
+
+  .section-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+  }
+
+  .pill-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .pill-list li {
+    list-style: none;
+    padding: 10px 12px;
+    background: var(--paper);
+    border-radius: 12px;
+    font-size: 14px;
+    color: var(--ink);
+    border: 1px solid rgba(15, 31, 58, 0.06);
+  }
+
+  .facts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+  }
+
+  .fact-chip {
+    padding: 12px;
+    background: #fdf6ec;
+    border-radius: 14px;
+    border: 1px solid rgba(242, 164, 59, 0.3);
+    font-family: 'Space Grotesk', sans-serif;
+  }
+
+  .fact-chip span {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #8b5e19;
+  }
+
+  .fact-chip strong {
+    font-size: 14px;
+    color: #3b2a10;
+  }
+
+  @media (max-width: 640px) {
+    .exam-hero {
+      padding: 60px 18px 36px;
+    }
+
+    .exam-content {
+      margin-top: 0;
+      padding: 0 18px 18px;
+    }
+
+    .hero-actions {
+      width: 100%;
+    }
+
+    .cta-btn,
+    .ghost-btn {
+      flex: 1 1 auto;
+      justify-content: center;
+    }
+
+    .hero-media {
+      width: 100%;
+    }
+
+    .hero-card {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>
+
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+  <div class="container-fluid" style="padding-left: 20px; padding-right: 20px;">
+    <a class="navbar-brand" href="{% url 'tests_list' %}" style="flex: 0 0 25%;">
+      <img src="/static/examPattern.png" alt="examPattern">
+    </a>
+
+    <div class="navbar-search d-none d-lg-block">
+      <input id="seriesSearchInput" class="form-control" type="text" placeholder="Search test series...">
+    </div>
+
+    <div class="navbar-profile ms-auto">
+      {% if user.is_authenticated %}
+        <a href="{% url 'profile' %}" class="text-decoration-none">
+          <div class="profile-avatar" title="{{ user.get_full_name|default:user.username }}">
+            {% if user.photo %}
+              <img src="{{ user.photo.url }}" alt="{{ user.username }}">
+            {% else %}
+              {{ user.username|first|upper }}
+            {% endif %}
+          </div>
+        </a>
+        <a href="{% url 'profile' %}" class="nav-link">{{ user.username }}</a>
+        {% if user.is_staff and user.is_superuser %}
+          <a href="/builder/" class="nav-link" style="color: #ffc107 !important;">
+            <i class="fas fa-tools"></i> Builder
+          </a>
+        {% endif %}
+        <a href="{% url 'logout' %}" class="btn btn-logout">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+      {% else %}
+        <a href="{% url 'login' %}" class="btn btn-login">Login</a>
+        <a href="{% url 'register' %}" class="btn btn-login" style="background: rgba(23, 162, 184, 0.9);">Register</a>
+      {% endif %}
+    </div>
+  </div>
+</nav>
+
+
+
+<section class="exam-hero">
+  <div class="exam-shell">
+    <div class="hero-top">
+      <div>
+        <h1 class="exam-title">{{ series.name }}</h1>
+        <p class="exam-tagline">{{ tagline }}</p>
+        <div class="hero-actions">
+          <a class="cta-btn" href="{% url 'tests_series_detail' series.slug %}">Go to Test Series</a>
+          <a class="ghost-btn" href="{% url 'tests_list' %}">Back to Test Series</a>
+        </div>
+      </div>
+      {% if series.exam_cover %}
+        <div class="hero-media">
+          <img src="{{ series.exam_cover.url }}" alt="{{ series.name }} cover">
+        </div>
+      {% endif %}
+    </div>
+    <div class="hero-card">
+      {% for item in highlights %}
+        <div class="mini-stat">
+          <span>{{ item.title }}</span>
+          <strong>{{ item.value }}</strong>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+<br>
+<br>
+
+<section class="exam-content">
+  <div class="content-grid">
+    {% for section in sections %}
+      <div class="content-card">
+        <h3>{{ section.title }}</h3>
+        {% if section.body %}
+          <p>{{ section.body|linebreaksbr }}</p>
+        {% endif %}
+        {% if section.image %}
+          <div class="section-image">
+            <img src="{{ section.image.url }}" alt="{{ section.title }}">
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<script>
+  const searchInput = document.getElementById('seriesSearchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      const query = this.value.trim();
+      if (query.length === 0) {
+        return;
+      }
+      window.location.href = `{% url 'tests_list' %}?q=${encodeURIComponent(query)}`;
+    });
+  }
+</script>
+{% endblock %}

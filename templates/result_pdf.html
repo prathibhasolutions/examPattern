@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+{% load custom_filters %}
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Test Result Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.55;
+            color: #1f2a3a;
+            background: #ffffff;
+        }
+
+        .container {
+            width: 100%;
+        }
+
+        .page1 {
+            page-break-after: always;
+            padding: 18px 20px 16px 20px;
+        }
+
+        .header-table {
+            width: 100%;
+            border-bottom: 3px solid #2d5be3;
+            margin-bottom: 18px;
+        }
+
+        .header-table td {
+            vertical-align: middle;
+            padding-bottom: 12px;
+        }
+
+        .header-logo {
+            width: 90px;
+        }
+
+        .header-logo img {
+            width: 80px;
+            height: auto;
+        }
+
+        .header-title {
+            text-align: center;
+        }
+
+        .header-title h1 {
+            font-size: 24px;
+            color: #2d5be3;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .header-title p {
+            font-size: 12px;
+            color: #5b6a7a;
+        }
+
+        .header-score {
+            width: 140px;
+            text-align: right;
+        }
+
+        .score-badge {
+            background: #e7f0ff;
+            border: 1px solid #c9dbff;
+            padding: 8px 10px;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        .score-badge .label {
+            font-size: 11px;
+            color: #4462a6;
+        }
+
+        .score-badge .value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2d5be3;
+            margin-top: 2px;
+        }
+
+        .grid-table {
+            width: 100%;
+        }
+
+        .grid-table td {
+            vertical-align: top;
+        }
+
+        .grid-left {
+            width: 52%;
+            padding-right: 12px;
+        }
+
+        .grid-right {
+            width: 48%;
+            padding-left: 12px;
+        }
+
+        .card {
+            background: #f7f9fc;
+            border: 1px solid #e1e6ef;
+            border-left: 5px solid #2d5be3;
+            border-radius: 6px;
+            padding: 12px 14px;
+            margin-bottom: 12px;
+        }
+
+        .card h3 {
+            font-size: 13px;
+            color: #2d5be3;
+            margin-bottom: 10px;
+        }
+
+        .card-row {
+            width: 100%;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+
+        .card-label {
+            font-weight: 600;
+            color: #2f3b4a;
+            width: 38%;
+            display: inline-block;
+        }
+
+        .card-value {
+            color: #3f4c5f;
+            width: 60%;
+            display: inline-block;
+        }
+
+        .performance {
+            background: #2d5be3;
+            color: #ffffff;
+            border-radius: 8px;
+            padding: 14px;
+        }
+
+        .performance h3 {
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .score-row {
+            width: 100%;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+
+        .score-cell {
+            width: 33%;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .score-cell .num {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .score-cell .lab {
+            font-size: 10px;
+            opacity: 0.9;
+        }
+
+        .stat-row {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .stat-box {
+            width: 24%;
+            display: inline-block;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 5px;
+            padding: 8px 4px;
+            margin-right: 1%;
+        }
+
+        .stat-box.last {
+            margin-right: 0;
+        }
+
+        .stat-box .num {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .stat-box .lab {
+            font-size: 9px;
+            opacity: 0.9;
+        }
+
+        .breakdown {
+            margin-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+            padding-top: 8px;
+            font-size: 10px;
+        }
+
+        .breakdown-title {
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .breakdown-item {
+            margin-bottom: 4px;
+        }
+
+        .page2 {
+            padding: 16px 20px 20px 20px;
+        }
+
+        .questions-title {
+            font-size: 16px;
+            color: #2d5be3;
+            border-bottom: 2px solid #2d5be3;
+            padding-bottom: 8px;
+            margin-bottom: 14px;
+        }
+
+        .question-item {
+            border: 1px solid #e1e6ef;
+            border-radius: 6px;
+            background: #ffffff;
+            padding: 12px;
+            margin-bottom: 14px;
+            page-break-inside: avoid;
+        }
+
+        .question-header {
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .question-num {
+            display: inline-block;
+            background: #2d5be3;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-right: 8px;
+        }
+
+        .question-text {
+            display: inline;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #1f2a3a;
+        }
+
+        .options-list {
+            margin-top: 8px;
+        }
+
+        .option-item {
+            border: 1px solid #d7dce4;
+            border-radius: 4px;
+            padding: 7px 8px;
+            margin-bottom: 6px;
+            font-size: 11.5px;
+            background: #f9fbff;
+        }
+
+        .option-label {
+            font-weight: bold;
+            margin-right: 6px;
+        }
+
+        .option-item.user-answer {
+            background: #fff4d6;
+            border: 2px solid #f3b421;
+        }
+
+        .option-item.correct-answer {
+            background: #e8f7ed;
+            border: 2px solid #34a853;
+        }
+
+        .option-item.both {
+            background: #e8f7ed;
+            border: 2px solid #34a853;
+            color: #1b5e20;
+            font-weight: bold;
+        }
+
+        .solution {
+            background: #eef5ff;
+            border-left: 4px solid #2d5be3;
+            padding: 8px 10px;
+            margin-top: 8px;
+            font-size: 11px;
+            border-radius: 3px;
+        }
+
+        .solution-title {
+            font-weight: bold;
+            color: #244bbd;
+            margin-bottom: 4px;
+        }
+
+        @page {
+            size: A4;
+            margin: 14px;
+        }
+
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="page1">
+            <table class="header-table" cellpadding="0" cellspacing="0">
+                <tr>
+                    <td class="header-logo">
+                        <img src="file:///{{ logo_path }}" alt="examPattern">
+                    </td>
+                    <td class="header-title">
+                        <h1>Test Result Report</h1>
+                        <p>Prathibha Institute</p>
+                    </td>
+                    <td class="header-score">
+                        {% if evaluation %}
+                        <div class="score-badge">
+                            <div class="label">Score</div>
+                            <div class="value">{{ evaluation.total_score|floatformat:1 }}</div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+            </table>
+
+            <table class="grid-table" cellpadding="0" cellspacing="0">
+                <tr>
+                    <td class="grid-left">
+                        <div class="card">
+                            <h3>Candidate Details</h3>
+                            <div class="card-row">
+                                <span class="card-label">Name:</span>
+                                <span class="card-value">{{ request.user.get_full_name|default:request.user.username }}</span>
+                            </div>
+                            <div class="card-row">
+                                <span class="card-label">Email:</span>
+                                <span class="card-value">{{ request.user.email }}</span>
+                            </div>
+                            <div class="card-row">
+                                <span class="card-label">Phone:</span>
+                                <span class="card-value">{{ request.user.mobile|default:"N/A" }}</span>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3>Test Details</h3>
+                            <div class="card-row">
+                                <span class="card-label">Series:</span>
+                                <span class="card-value">{{ attempt.test.series.name }}</span>
+                            </div>
+                            <div class="card-row">
+                                <span class="card-label">Test:</span>
+                                <span class="card-value">{{ attempt.test.name }}</span>
+                            </div>
+                            <div class="card-row">
+                                <span class="card-label">Date:</span>
+                                <span class="card-value">{{ attempt.started_at|date:"d/m/Y" }}</span>
+                            </div>
+                            <div class="card-row">
+                                <span class="card-label">Time:</span>
+                                <span class="card-value">{{ attempt.started_at|date:"H:i" }}</span>
+                            </div>
+                            <div class="card-row">
+                                <span class="card-label">Duration:</span>
+                                <span class="card-value">{{ attempt.duration_seconds|floatformat:0 }} seconds</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="grid-right">
+                        {% if evaluation %}
+                        <div class="performance">
+                            <h3>Performance Summary</h3>
+                            <div class="score-row">
+                                <div class="score-cell">
+                                    <div class="num">{{ evaluation.total_score|floatformat:1 }}</div>
+                                    <div class="lab">Obtained</div>
+                                </div>
+                                <div class="score-cell">
+                                    <div class="num">{{ attempt.test.questions.count }}</div>
+                                    <div class="lab">Total</div>
+                                </div>
+                                <div class="score-cell">
+                                    <div class="num">{{ evaluation.percentage|floatformat:1 }}%</div>
+                                    <div class="lab">Percentage</div>
+                                </div>
+                            </div>
+
+                            <div class="stat-row">
+                                <div class="stat-box">
+                                    <div class="num">{{ evaluation.correct }}</div>
+                                    <div class="lab">Correct</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="num">{{ evaluation.incorrect }}</div>
+                                    <div class="lab">Incorrect</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="num">{{ evaluation.unanswered }}</div>
+                                    <div class="lab">Unanswered</div>
+                                </div>
+                                <div class="stat-box last">
+                                    <div class="num">{{ evaluation.accuracy|floatformat:1 }}%</div>
+                                    <div class="lab">Accuracy</div>
+                                </div>
+                            </div>
+
+                            <div class="breakdown">
+                                <div class="breakdown-title">Section Breakdown</div>
+                                {% for section_id, data in evaluation.section_scores.items %}
+                                    <div class="breakdown-item">
+                                        <strong>{{ data.section_name }}:</strong>
+                                        {{ data.score }} pts (C {{ data.correct }}, I {{ data.incorrect }}, U {{ data.unanswered }})
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="page2">
+            <div class="questions-title">Detailed Review</div>
+
+            {% for question in questions %}
+            <div class="question-item">
+                <div class="question-header">
+                    <span class="question-num">Q{{ forloop.counter }}</span>
+                    <span class="question-text">{{ question.text }}</span>
+                </div>
+
+                <div class="options-list">
+                    {% for option in question.options.all %}
+                        {% with user_ans=user_answers|get_item:question.id correct_id=correct_answers|get_item:question.id %}
+                            <div class="option-item {% if user_ans == option.id and user_ans == correct_id %}both{% elif user_ans == option.id %}user-answer{% elif correct_id == option.id %}correct-answer{% endif %}">
+                                <span class="option-label">{{ option.get_option_label }}.</span>
+                                {{ option.text }}
+                            </div>
+                        {% endwith %}
+                    {% endfor %}
+                </div>
+
+                {% if question.explanation %}
+                <div class="solution">
+                    <div class="solution-title">Solution</div>
+                    <div class="solution-text">{{ question.explanation }}</div>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

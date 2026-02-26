@@ -1,0 +1,598 @@
+{% extends "base.html" %}
+
+{% block title %}Test Results & Analysis - {{ test.name }}{% endblock %}
+
+{% block content %}
+<style>
+    .footer-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        padding: 40px 0 20px;
+        margin-top: 60px;
+    }
+    .footer-content {
+        display: grid;
+        grid-template-columns: 1fr 2fr 1fr;
+        gap: 30px;
+        margin-bottom: 30px;
+    }
+    .footer-logo-section {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    .footer-logo-section img {
+        width: 180px;
+        max-width: 25vw;
+        height: auto;
+        object-fit: contain;
+    }
+    .footer-logo-section p {
+        color: rgba(255,255,255,0.85);
+        font-size: 14px;
+        margin: 0;
+    }
+    .footer-links {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .footer-links h6 {
+        font-weight: 700;
+        font-size: 16px;
+        margin-bottom: 10px;
+        color: white;
+    }
+    .footer-links a {
+        color: rgba(255,255,255,0.8);
+        text-decoration: none;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    .footer-links a:hover {
+        color: white;
+        padding-left: 5px;
+    }
+    .footer-contact {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .footer-contact h6 {
+        font-weight: 700;
+        font-size: 16px;
+        margin-bottom: 10px;
+        color: white;
+    }
+    .footer-contact p {
+        color: rgba(255,255,255,0.8);
+        font-size: 14px;
+        margin: 0;
+    }
+    .footer-bottom {
+        border-top: 1px solid rgba(255,255,255,0.2);
+        padding-top: 20px;
+        text-align: center;
+    }
+    .footer-bottom p {
+        margin: 5px 0;
+        font-size: 13px;
+        color: rgba(255,255,255,0.75);
+    }
+    .footer-credit {
+        font-size: 12px;
+        color: rgba(255,255,255,0.6);
+        margin-top: 10px;
+    }
+    .footer-credit a {
+        color: #ffc107;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    .footer-credit a:hover {
+        color: #ffdd57;
+        text-decoration: underline;
+    }
+    @media (max-width: 768px) {
+        .footer-content {
+            grid-template-columns: 1fr;
+            gap: 25px;
+            text-align: center;
+        }
+        .footer-logo-section img {
+            margin: 0 auto;
+        }
+        .footer-custom .container-fluid {
+            padding-left: 20px !important;
+            padding-right: 20px !important;
+        }
+    }
+
+    .results-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 40px 20px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+
+    .results-header h1 {
+        margin: 0 0 10px 0;
+        font-size: 32px;
+        font-weight: 700;
+    }
+
+    .results-header p {
+        margin: 0;
+        font-size: 16px;
+        opacity: 0.9;
+    }
+
+    .attempt-card {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        border-left: 5px solid #667eea;
+        transition: all 0.3s ease;
+    }
+
+    .attempt-card:hover {
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+
+    .attempt-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .attempt-number {
+        background: #667eea;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .attempt-status {
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .status-submitted {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-in-progress {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .attempt-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .detail-item {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+    }
+
+    .detail-label {
+        display: block;
+        font-size: 12px;
+        color: #666;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }
+
+    .detail-value {
+        display: block;
+        font-size: 20px;
+        font-weight: 700;
+        color: #333;
+    }
+
+    .score-display {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .score-display .detail-value {
+        color: white;
+        font-size: 28px;
+    }
+
+    .score-display .detail-label {
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .no-attempts-message {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 12px;
+    }
+
+    .no-attempts-icon {
+        font-size: 80px;
+        margin-bottom: 20px;
+    }
+
+    .no-attempts-message h4 {
+        color: #333;
+        margin-bottom: 10px;
+    }
+
+    .no-attempts-message p {
+        color: #666;
+        margin-bottom: 20px;
+    }
+
+    .comparison-table {
+        width: 100%;
+        margin-top: 25px;
+        border-collapse: collapse;
+    }
+
+    .comparison-table th {
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: #333;
+        border-bottom: 2px solid #e0e0e0;
+    }
+
+    .comparison-table td {
+        padding: 12px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .comparison-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .performance-metric {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .metric-name {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .metric-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: #667eea;
+    }
+
+    .view-details-btn {
+        display: inline-block;
+        background: #667eea;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+    }
+
+    .view-details-btn:hover {
+        background: #764ba2;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        color: white;
+        text-decoration: none;
+    }
+
+    .back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #f0f0f0;
+        color: #333;
+        padding: 10px 20px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        transition: all 0.3s ease;
+    }
+
+    .back-btn:hover {
+        background: #e0e0e0;
+        color: #333;
+        text-decoration: none;
+    }
+
+    .attempt-analysis {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 2px solid #f0f0f0;
+    }
+
+    .analysis-section {
+        margin: 15px 0;
+    }
+
+    .analysis-title {
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 14px;
+    }
+
+    .attempt-footer {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-top: 20px;
+    }
+</style>
+
+<div class="container mt-4">
+    <a href="{% url 'tests_list' %}" class="back-btn">
+        <i class="fas fa-arrow-left"></i> Back to Tests
+    </a>
+
+    <div class="results-header">
+        <h1>📊 Test Results & Analysis</h1>
+        <p>{{ test.name }}</p>
+    </div>
+
+    {% if no_attempts %}
+        <div class="no-attempts-message">
+            <div class="no-attempts-icon">🎯</div>
+            <h4>No Attempts Yet</h4>
+            <p>You haven't attempted this test yet. Start your first attempt now!</p>
+            <a href="{% url 'tests_list' %}" class="view-details-btn">
+                <i class="fas fa-play-circle"></i> Start Test
+            </a>
+        </div>
+    {% else %}
+        {% for data in attempts_data %}
+            <div class="attempt-card">
+                <div class="attempt-header">
+                    <span class="attempt-number">
+                        <i class="fas fa-{% if data.attempt.attempt_number == 1 %}play-circle{% else %}redo{% endif %}"></i>
+                        Attempt {{ data.attempt.attempt_number }}
+                    </span>
+                    <span class="attempt-status {% if data.attempt.status == 'submitted' %}status-submitted{% else %}status-in-progress{% endif %}">
+                        {% if data.attempt.status == 'submitted' %}
+                            ✓ Submitted
+                        {% elif data.attempt.status == 'abandoned' %}
+                            ⏸ Abandoned
+                        {% else %}
+                            ⏳ In Progress
+                        {% endif %}
+                    </span>
+                </div>
+
+                {% if data.evaluation %}
+                    <div class="attempt-details">
+                        <div class="detail-item score-display">
+                            <span class="detail-label">Your Score</span>
+                            <span class="detail-value">{{ data.evaluation.total_score|floatformat:1 }}</span>
+                        </div>
+
+                        <div class="detail-item">
+                            <span class="detail-label">Time Taken</span>
+                            <span class="detail-value">
+                                {% if data.attempt.duration_seconds %}
+                                    {{ data.attempt.duration_seconds|add:59|divisibleby:60|yesno:",-" }}
+                                    {% with mins=data.attempt.duration_seconds|divisibleby:60 %}
+                                        {{ mins }}m
+                                    {% endwith %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </span>
+                        </div>
+
+                        <div class="detail-item">
+                            <span class="detail-label">Correct Answers</span>
+                            <span class="detail-value">{{ data.evaluation.correct_count|default:0 }}</span>
+                        </div>
+
+                        <div class="detail-item">
+                            <span class="detail-label">Wrong Answers</span>
+                            <span class="detail-value">{{ data.evaluation.incorrect_count|default:0 }}</span>
+                        </div>
+
+                        <div class="detail-item">
+                            <span class="detail-label">Unanswered</span>
+                            <span class="detail-value">{{ data.evaluation.unattempted_count|default:0 }}</span>
+                        </div>
+                    </div>
+
+                    <div class="attempt-analysis">
+                        <div class="analysis-section">
+                            <div class="analysis-title">Accuracy</div>
+                            <div class="metric-value">
+                                {% if data.evaluation.correct_count %}
+                                    {{ data.evaluation.accuracy_percentage|floatformat:1 }}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle"></i>
+                        Results are being evaluated. This page will update automatically.
+                    </div>
+                {% endif %}
+
+                <div class="attempt-footer">
+                    <a href="{% url 'results_page' data.attempt.id %}" class="view-details-btn">
+                        <i class="fas fa-eye"></i> View Detailed Results
+                    </a>
+                    <a href="{% url 'review_solutions' data.attempt.id %}" class="view-details-btn" style="background: #17a2b8;">
+                        <i class="fas fa-list"></i> Review Solutions
+                    </a>
+                </div>
+            </div>
+        {% endfor %}
+
+        {% if attempts_data|length > 1 %}
+            <div class="attempt-card" style="border-left-color: #28a745;">
+                <h5 style="margin-top: 0; color: #333;">
+                    <i class="fas fa-chart-line"></i> Improvement Analysis
+                </h5>
+                
+                {% with attempt1=attempts_data.0.evaluation attempt2=attempts_data.1.evaluation %}
+                    {% if attempt1 and attempt2 %}
+                        <table class="comparison-table">
+                            <thead>
+                                <tr>
+                                    <th>Metric</th>
+                                    <th>Attempt 1</th>
+                                    <th>Attempt 2</th>
+                                    <th>Change</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Score</strong></td>
+                                    <td>{{ attempt1.total_score|floatformat:1 }}</td>
+                                    <td>{{ attempt2.total_score|floatformat:1 }}</td>
+                                    <td>
+                                        <span style="color: {% if attempt2.total_score >= attempt1.total_score %}#28a745{% else %}#dc3545{% endif %};">
+                                            {% if attempt2.total_score >= attempt1.total_score %}
+                                                ↑ +{{ attempt2.total_score|add:"-"|add:attempt1.total_score|floatformat:1 }}
+                                            {% else %}
+                                                ↓ {{ attempt2.total_score|add:"-"|add:attempt1.total_score|floatformat:1 }}
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Correct Answers</strong></td>
+                                    <td>{{ attempt1.correct_count }}</td>
+                                    <td>{{ attempt2.correct_count }}</td>
+                                    <td>
+                                        <span style="color: {% if attempt2.correct_count >= attempt1.correct_count %}#28a745{% else %}#dc3545{% endif %};">
+                                            {% if attempt2.correct_count > attempt1.correct_count %}
+                                                ↑ +{{ attempt2.correct_count|add:"-"|add:attempt1.correct_count }}
+                                            {% elif attempt2.correct_count < attempt1.correct_count %}
+                                                ↓ {{ attempt2.correct_count|add:"-"|add:attempt1.correct_count }}
+                                            {% else %}
+                                                = Same
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Accuracy</strong></td>
+                                    <td>{{ attempt1.accuracy_percentage|floatformat:1 }}%</td>
+                                    <td>{{ attempt2.accuracy_percentage|floatformat:1 }}%</td>
+                                    <td>
+                                        {% with diff=attempt2.accuracy_percentage|add:"-"|add:attempt1.accuracy_percentage %}
+                                            <span style="color: {% if diff >= 0 %}#28a745{% else %}#dc3545{% endif %};">
+                                                {% if diff > 0 %}
+                                                    ↑ +{{ diff|floatformat:1 }}%
+                                                {% elif diff < 0 %}
+                                                    ↓ {{ diff|floatformat:1 }}%
+                                                {% else %}
+                                                    = No change
+                                                {% endif %}
+                                            </span>
+                                        {% endwith %}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-lightbulb"></i>
+                            <strong>Analysis:</strong>
+                            {% with score_diff=attempt2.total_score|add:"-"|add:attempt1.total_score %}
+                                {% if score_diff > 0 %}
+                                    Great improvement! Your second attempt scored {{ score_diff|floatformat:1 }} points higher.
+                                {% elif score_diff < 0 %}
+                                    Your second attempt had a lower score. Review the mistakes and practice more on weak areas.
+                                {% else %}
+                                    Both attempts had the same score. Try focusing on different strategies in future attempts.
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+
+<footer class="footer-custom">
+    <div class="container-fluid" style="padding-left: 60px; padding-right: 60px;">
+        <div class="footer-content">
+            <div class="footer-logo-section">
+                <img src="/static/examPattern.png" alt="examPattern">
+                <p>Learn. Thrive. Succeed.</p>
+            </div>
+            
+            <div class="footer-links">
+                <h6>Quick Links</h6>
+                <a href="{% url 'tests_list' %}"><i class="fas fa-home"></i> Home</a>
+                <a href="{% url 'profile' %}"><i class="fas fa-user"></i> Profile</a>
+                {% if user.is_staff and user.is_superuser %}
+                    <a href="/builder/"><i class="fas fa-tools"></i> Test Builder</a>
+                {% endif %}
+            </div>
+            
+            <div class="footer-contact">
+                <h6>Contact Us</h6>
+                <p><i class="fas fa-envelope"></i> prathbhainstitutions@gmail.com</p>
+                <p><i class="fas fa-phone"></i> +91 9030941099</p>
+                <p><i class="fas fa-map-marker-alt"></i> Beside Bank of Maharashtra, Namdevwada, Nizamabad</p>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <p>&copy; 2026 examPattern. All rights reserved.</p>
+            <p class="footer-credit">Made by <a href="https://www.prathibhasolutions.com" target="_blank" rel="noopener noreferrer">Prathibha Solutions</a></p>
+        </div>
+    </div>
+</footer>
+
+<script>
+    // Auto-refresh for in-progress attempts
+    {% if not no_attempts %}
+        {% for data in attempts_data %}
+            {% if data.attempt.status == 'submitted' and not data.evaluation %}
+                // Set up auto-refresh for evaluation results
+                setTimeout(() => {
+                    location.reload();
+                }, 3000);
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+</script>
+{% endblock %}

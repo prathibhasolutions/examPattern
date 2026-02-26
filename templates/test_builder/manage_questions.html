@@ -1,0 +1,648 @@
+{% extends "base.html" %}
+
+{% block title %}Add Questions - {{ section.name }}{% endblock %}
+
+{% block header %}
+<!-- Custom navbar -->
+{% endblock %}
+
+{% block content %}
+<style>
+    main.container-fluid {
+        padding: 0 !important;
+        margin-top: 0 !important;
+    }
+    body {
+        margin: 0;
+        padding: 0;
+    }
+    .navbar-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        margin: 0 !important;
+        width: 100vw !important;
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw !important;
+        margin-right: -50vw !important;
+    }
+    .navbar-custom .navbar-brand {
+        font-weight: 700;
+        font-size: 18px;
+        color: white !important;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .navbar-custom .navbar-brand img {
+        height: 45px;
+        width: auto;
+    }
+    .navbar-profile {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .profile-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .profile-avatar:hover {
+        transform: scale(1.1);
+        border-color: white;
+    }
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .navbar-custom .nav-link {
+        color: rgba(255,255,255,0.9) !important;
+        font-weight: 500;
+        font-size: 14px;
+        padding: 8px 16px !important;
+        border-radius: 20px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .nav-link:hover {
+        background: rgba(255,255,255,0.15);
+        color: white !important;
+    }
+    .navbar-custom .btn-logout {
+        background: rgba(220, 53, 69, 0.9);
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .btn-logout:hover {
+        background: #dc3545;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    }
+    .footer-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        padding: 40px 0 20px;
+        margin-top: 60px;
+    }
+    .footer-content {
+        display: grid;
+        grid-template-columns: 1fr 2fr 1fr;
+        gap: 30px;
+        margin-bottom: 30px;
+    }
+    .footer-logo-section {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    .footer-logo-section img {
+        width: 180px;
+        max-width: 25vw;
+        height: auto;
+        object-fit: contain;
+    }
+    .footer-logo-section p {
+        color: rgba(255,255,255,0.85);
+        font-size: 14px;
+        margin: 0;
+    }
+    .footer-links {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .footer-links h6 {
+        font-weight: 700;
+        font-size: 16px;
+        margin-bottom: 10px;
+        color: white;
+    }
+    .footer-links a {
+        color: rgba(255,255,255,0.8);
+        text-decoration: none;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    .footer-links a:hover {
+        color: white;
+        padding-left: 5px;
+    }
+    .footer-contact {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .footer-contact h6 {
+        font-weight: 700;
+        font-size: 16px;
+        margin-bottom: 10px;
+        color: white;
+    }
+    .footer-contact p {
+        color: rgba(255,255,255,0.8);
+        font-size: 14px;
+        margin: 0;
+    }
+    .footer-bottom {
+        border-top: 1px solid rgba(255,255,255,0.2);
+        padding-top: 20px;
+        text-align: center;
+    }
+    .footer-bottom p {
+        margin: 5px 0;
+        font-size: 13px;
+        color: rgba(255,255,255,0.75);
+    }
+    .footer-credit {
+        font-size: 12px;
+        color: rgba(255,255,255,0.6);
+        margin-top: 10px;
+    }
+    .footer-credit a {
+        color: #ffc107;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    .footer-credit a:hover {
+        color: #ffdd57;
+        text-decoration: underline;
+    }
+    @media (max-width: 768px) {
+        .footer-content {
+            grid-template-columns: 1fr;
+            gap: 25px;
+            text-align: center;
+        }
+        .footer-logo-section img {
+            margin: 0 auto;
+        }
+        .footer-custom .container-fluid {
+            padding-left: 20px !important;
+            padding-right: 20px !important;
+        }
+    }
+    .form-section {
+        border-radius: 6px;
+    }
+    .form-section h6 {
+        margin-bottom: 15px;
+    }
+    .card {
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .border-left-4 {
+        border-left: 4px solid #17a2b8 !important;
+    }
+</style>
+
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <div class="container-fluid" style="padding-left: 20px; padding-right: 20px;">
+        <a class="navbar-brand" href="{% url 'tests_list' %}" style="flex: 0 0 25%;">
+            <img src="/static/examPattern.png" alt="examPattern">
+        </a>
+
+        <div class="navbar-profile ms-auto">
+            {% if user.is_authenticated %}
+                <a href="{% url 'profile' %}" class="text-decoration-none">
+                    <div class="profile-avatar" title="{{ user.get_full_name|default:user.username }}">
+                        {% if user.photo %}
+                            <img src="{{ user.photo.url }}" alt="{{ user.username }}">
+                        {% else %}
+                            {{ user.username|first|upper }}
+                        {% endif %}
+                    </div>
+                </a>
+                <a href="{% url 'profile' %}" class="nav-link">{{ user.username }}</a>
+                {% if user.is_staff and user.is_superuser %}
+                    <a href="/builder/" class="nav-link" style="color: #ffc107 !important;">
+                        <i class="fas fa-tools"></i> Builder
+                    </a>
+                {% endif %}
+                <a href="{% url 'logout' %}" class="btn btn-logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-login">Login</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-5" style="padding: 40px 20px;">
+    <h2 class="mb-2">📝 {{ section.name }}</h2>
+    <p class="text-muted mb-4">Test: {{ draft.name }}</p>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Existing Questions List -->
+    {% if questions %}
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">📋 Questions in {{ section.name }} ({{ questions.count }})</h5>
+            </div>
+            <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                {% for question in questions %}
+                    <div class="card mb-3 border-left-4" style="border-left: 4px solid #17a2b8;">
+                        <div class="card-body pb-2">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h6 class="mb-1"><strong>Question {{ question.order }}</strong></h6>
+                                    <p class="mb-2">{{ question.question_text }}</p>
+                                    
+                                    {% if question.question_image %}
+                                        <div class="mb-2">
+                                            <img src="{{ question.question_image.url }}" class="img-thumbnail" style="max-width: 150px;">
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <form method="post" style="display: inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete_question">
+                                    <input type="hidden" name="question_id" value="{{ question.id }}">
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this question?')">
+                                        🗑️ Delete
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Options in compact view -->
+                            <div class="mb-2">
+                                <small class="text-muted"><strong>Options:</strong></small>
+                                <div style="background: #f8f9fa; padding: 8px; border-radius: 4px;">
+                                    {% for option in question.options.all %}
+                                        <div class="mb-1">
+                                            {% if option.is_correct %}
+                                                <span class="badge bg-success">✓</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">✗</span>
+                                            {% endif %}
+                                            {{ option.option_text }}
+                                            {% if option.option_image %}
+                                                <img src="{{ option.option_image.url }}" style="max-height: 30px; margin-left: 5px;">
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Solution in compact view -->
+                            {% if question.solution_text or question.solution_image %}
+                                <div class="mt-2">
+                                    <small class="text-muted"><strong>Solution:</strong></small>
+                                    {% if question.solution_text %}
+                                        <p class="mb-1" style="font-size: 13px; color: #555;">{{ question.solution_text|truncatewords:15 }}</p>
+                                    {% endif %}
+                                    {% if question.solution_image %}
+                                        <img src="{{ question.solution_image.url }}" style="max-height: 50px;">
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+
+                            <!-- Edit/Delete buttons -->
+                            <div class="mt-3 pt-2 border-top">
+                                <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editQuestionModal" onclick="populateEditForm({{ question.id }}, '{{ question.question_text|escapejs }}', '{{ question.solution_text|escapejs }}')">
+                                    ✏️ Edit
+                                </button>
+                                <form method="post" style="display: inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete_question">
+                                    <input type="hidden" name="question_id" value="{{ question.id }}">
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this question?')">
+                                        🗑️ Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Add New Question Form -->
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">➕ Add New Question</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data" id="questionForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_question">
+
+                <!-- Question Text Section -->
+                <div class="form-section mb-4 p-3" style="background: #f0f7ff; border-left: 4px solid #007bff; border-radius: 4px;">
+                    <h6 class="mb-3"><strong>📌 Question Details</strong></h6>
+                    
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Question Text</strong></label>
+                        <textarea name="question_text" class="form-control" rows="4" placeholder="Type your question here..."></textarea>
+                        <small class="text-muted">Required if no image is provided</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Question Image (Optional)</strong></label>
+                        <input type="file" name="question_image" class="form-control" accept="image/*">
+                        <small class="text-muted">Add an image if your question has diagrams/figures</small>
+                    </div>
+                </div>
+
+                <!-- Options Section -->
+                <div class="form-section mb-4 p-3" style="background: #f0fff4; border-left: 4px solid #28a745; border-radius: 4px;">
+                    <h6 class="mb-3"><strong>🔘 Add Options (Multiple Choice)</strong></h6>
+                    <p class="text-muted small mb-3">Add 4 options. Mark the correct answer with checkbox.</p>
+                    
+                    <div class="row">
+                        {% for i in "1234" %}
+                            <div class="col-md-6 col-lg-3 mb-3">
+                                <div class="card h-100" style="border: 1px solid #dee2e6;">
+                                    <div class="card-body p-2">
+                                        <div class="form-check mb-2">
+                                            <input type="checkbox" name="option_{{ i }}_correct" class="form-check-input" id="option{{ i }}Correct">
+                                            <label class="form-check-label" for="option{{ i }}Correct" style="font-size: 13px;">
+                                                <strong>✓ Correct</strong>
+                                            </label>
+                                        </div>
+                                        
+                                        <div class="mb-2">
+                                            <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">Option {{ i }}</label>
+                                            <input type="text" name="option_{{ i }}_text" class="form-control form-control-sm" placeholder="Text">
+                                        </div>
+                                        
+                                        <div class="mb-0">
+                                            <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">Image</label>
+                                            <input type="file" name="option_{{ i }}_image" class="form-control form-control-sm" accept="image/*">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Solution Section -->
+                <div class="form-section mb-4 p-3" style="background: #fff3e0; border-left: 4px solid #ff9800; border-radius: 4px;">
+                    <h6 class="mb-3"><strong>💡 Solution (Important for Student Learning!)</strong></h6>
+                    <p class="text-muted small mb-3">Students will see this after they submit the test. Write a clear explanation.</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Solution Text</strong></label>
+                        <textarea name="solution_text" class="form-control" rows="5" placeholder="Explain step-by-step how to solve this question...&#10;&#10;Example: &#10;1. First, identify...&#10;2. Then, apply...&#10;3. Finally, calculate..."></textarea>
+                        <small class="text-muted">Write in simple language. Include step-by-step explanation.</small>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label"><strong>Solution Image (Optional)</strong></label>
+                        <input type="file" name="solution_image" class="form-control" accept="image/*">
+                        <small class="text-muted">Upload if solution has diagrams, formulas, or working steps</small>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="d-flex gap-2 sticky-bottom" style="background: white; padding: 15px 0; border-top: 1px solid #ddd; margin-top: 20px;">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        ✓ Add This Question
+                    </button>
+                    <button type="reset" class="btn btn-light btn-lg">
+                        🔄 Clear Form
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="mt-4 mb-4 d-flex gap-2">
+        <a href="{% url 'manage_sections' draft.id %}" class="btn btn-secondary btn-lg" id="backButton">
+            ← Back to Sections
+        </a>
+    </div>
+
+</div>
+
+<!-- Unsaved Changes Confirmation Modal -->
+<div class="modal fade" id="unsavedModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Unsaved Changes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">This question has not been saved yet. Are you sure you want to leave this page?</p>
+                <p class="text-muted mt-2 mb-0"><small>Any unsaved changes will be lost.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="{% url 'manage_sections' draft.id %}" class="btn btn-danger" id="confirmLeave">
+                    Yes, Leave Page
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="footer-custom">
+    <div class="container-fluid" style="padding-left: 60px; padding-right: 60px;">
+        <div class="footer-content">
+            <div class="footer-logo-section">
+                <img src="/static/examPattern.png" alt="examPattern">
+                <p>Learn. Thrive. Succeed.</p>
+            </div>
+            
+            <div class="footer-links">
+                <h6>Quick Links</h6>
+                <a href="{% url 'tests_list' %}"><i class="fas fa-home"></i> Home</a>
+                <a href="{% url 'profile' %}"><i class="fas fa-user"></i> Profile</a>
+                {% if user.is_staff and user.is_superuser %}
+                    <a href="/builder/"><i class="fas fa-tools"></i> Test Builder</a>
+                {% endif %}
+            </div>
+            
+            <div class="footer-contact">
+                <h6>Contact Us</h6>
+                <p><i class="fas fa-envelope"></i> prathbhainstitutions@gmail.com</p>
+                <p><i class="fas fa-phone"></i> +91 9030941099</p>
+                <p><i class="fas fa-map-marker-alt"></i> Beside Bank of Maharashtra, Namdevwada, Nizamabad</p>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <p>&copy; 2026 examPattern. All rights reserved.</p>
+            <p class="footer-credit">Made by <a href="https://www.prathibhasolutions.com" target="_blank" rel="noopener noreferrer">Prathibha Solutions</a></p>
+        </div>
+    </div>
+</footer>
+
+<!-- Edit Question Modal -->
+<div class="modal fade" id="editQuestionModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">✏️ Edit Question</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" enctype="multipart/form-data" id="editQuestionForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="edit_question">
+                    <input type="hidden" name="question_id" id="editQuestionId" value="">
+
+                    <!-- Question Text -->
+                    <div class="form-group mb-3">
+                        <label class="form-label"><strong>Question Text</strong></label>
+                        <textarea name="question_text" id="editQuestionText" class="form-control" rows="3"></textarea>
+                        <small class="text-muted">Required if no image is provided</small>
+                    </div>
+
+                    <!-- Question Image -->
+                    <div class="form-group mb-3">
+                        <label class="form-label">Question Image (optional)</label>
+                        <input type="file" name="question_image" class="form-control" accept="image/*">
+                    </div>
+
+                    <!-- Options Section -->
+                    <div class="form-section p-3 mb-3" style="background: #f0f7ff; border-left: 4px solid #28a745; border-radius: 4px;">
+                        <h6 style="color: #28a745; margin-bottom: 15px;">Options (Mark correct answer)</h6>
+                        <div class="row">
+                            {% for i in "1234" %}
+                                <div class="col-md-6 col-lg-3 mb-3">
+                                    <div class="card h-100" style="border: 1px solid #dee2e6;">
+                                        <div class="card-body p-2">
+                                            <div class="form-check mb-2">
+                                                <input type="checkbox" name="option_{{ i }}_correct" class="form-check-input" style="margin: 0;">
+                                                <label class="form-check-label" style="font-size: 13px;">
+                                                    <strong>✓ Correct</strong>
+                                                </label>
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">Option {{ i }}</label>
+                                                <input type="text" name="option_{{ i }}_text" class="form-control form-control-sm edit-option-text-{{ i }}" placeholder="Text">
+                                            </div>
+                                            <div class="mb-0">
+                                                <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">Image</label>
+                                                <input type="file" name="option_{{ i }}_image" class="form-control form-control-sm" accept="image/*">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Solution Section -->
+                    <div class="form-section p-3 mb-3" style="background: #fff3cd; border-left: 4px solid #ff9800; border-radius: 4px;">
+                        <h6 style="color: #ff9800;">Solution (For student learning)</h6>
+                        <textarea name="solution_text" id="editSolutionText" class="form-control mb-2" rows="3" placeholder="Explain the solution..."></textarea>
+                        <label class="form-label">Solution Image (optional)</label>
+                        <input type="file" name="solution_image" class="form-control" accept="image/*">
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-warning flex-grow-1">💾 Save Changes</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function populateEditForm(questionId, questionText, solutionText) {
+    document.getElementById('editQuestionId').value = questionId;
+    document.getElementById('editQuestionText').value = questionText;
+    document.getElementById('editSolutionText').value = solutionText;
+    
+    // In a real scenario, you'd fetch the question options via AJAX
+    // For now, we clear the form for user to re-enter options
+    for (let i = 1; i <= 4; i++) {
+        document.querySelector(`.edit-option-text-${i}`).value = '';
+        document.querySelector(`input[name="option_${i}_correct"]`).checked = false;
+    }
+}
+
+// Track form changes for unsaved warning
+let formChanged = false;
+const questionForm = document.getElementById('questionForm');
+const backButton = document.getElementById('backButton');
+const unsavedModal = new bootstrap.Modal(document.getElementById('unsavedModal'));
+
+if (questionForm) {
+    // Track any changes in the form
+    questionForm.addEventListener('input', function() {
+        formChanged = true;
+    });
+
+    // Also track file input changes
+    const fileInputs = questionForm.querySelectorAll('input[type="file"]');
+    fileInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            formChanged = true;
+        });
+    });
+
+    // Reset flag when form is submitted
+    questionForm.addEventListener('submit', function() {
+        formChanged = false;
+    });
+
+    // Reset flag when reset button is clicked
+    const resetButton = questionForm.querySelector('button[type="reset"]');
+    if (resetButton) {
+        resetButton.addEventListener('click', function() {
+            formChanged = false;
+        });
+    }
+}
+
+// Intercept back button click
+if (backButton) {
+    backButton.addEventListener('click', function(e) {
+        if (formChanged) {
+            e.preventDefault();
+            unsavedModal.show();
+        }
+    });
+}
+
+// Also warn when trying to leave page with unsaved changes
+window.addEventListener('beforeunload', function(e) {
+    if (formChanged) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+    }
+});
+</script>
+{% endblock %}
+

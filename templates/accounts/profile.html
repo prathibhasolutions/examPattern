@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - examPattern</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link rel="shortcut icon" type="image/png" href="/static/favicon.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .navbar-custom {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            padding: 12px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            margin: 0 !important;
+            width: 100vw !important;
+            position: relative;
+            left: 50%;
+            right: 50%;
+            margin-left: -50vw !important;
+            margin-right: -50vw !important;
+        }
+        .navbar-custom .navbar-brand {
+            font-weight: 700;
+            font-size: 18px;
+            color: white !important;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .navbar-custom .navbar-brand img {
+            height: 45px;
+            width: auto;
+        }
+        .navbar-search {
+            flex: 1;
+            max-width: 520px;
+            margin: 0 20px;
+            position: relative;
+        }
+        .navbar-search .form-control {
+            border-radius: 25px;
+            border: 2px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.95);
+            padding: 10px 20px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .navbar-search .form-control:focus {
+            border-color: #fff;
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
+            background: white;
+        }
+        .navbar-profile {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .profile-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .profile-avatar:hover {
+            transform: scale(1.1);
+            border-color: white;
+        }
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .navbar-custom .nav-link {
+            color: rgba(255,255,255,0.9) !important;
+            font-weight: 500;
+            font-size: 14px;
+            padding: 8px 16px !important;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+        .navbar-custom .nav-link:hover {
+            background: rgba(255,255,255,0.15);
+            color: white !important;
+        }
+        .navbar-custom .btn-logout {
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .navbar-custom .btn-logout:hover {
+            background: #dc3545;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+        }
+        .navbar-custom .btn-login {
+            background: rgba(40, 167, 69, 0.9);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-left: 10px;
+            transition: all 0.3s;
+        }
+        .navbar-custom .btn-login:hover {
+            background: #28a745;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+        main.container-fluid {
+            padding: 0 !important;
+            margin-top: 0 !important;
+        }
+        .profile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+        .profile-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+        .profile-photo {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 5px solid white;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+        .profile-info {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .info-item {
+            padding: 15px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .info-item:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            color: #999;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            display: block;
+        }
+        .info-value {
+            color: #333;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .btn-logout {
+            background: #dc3545;
+            border: none;
+            color: white;
+            padding: 10px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-logout:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+        }
+        .btn-back {
+            background: #667eea;
+            border: none;
+            color: white;
+            padding: 10px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-back:hover {
+            background: #5568d3;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        .badge-verified {
+            background-color: #28a745;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-unverified {
+            background-color: #ffc107;
+            color: #333;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .container {
+            max-width: 900px;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .attempted-tests-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            margin-top: 30px;
+        }
+        .attempted-tests-section h3 {
+            color: #333;
+            margin-bottom: 25px;
+            font-weight: 700;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 15px;
+        }
+        .test-item {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        .test-item:hover {
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+            transform: translateX(5px);
+        }
+        .test-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .test-details {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+            color: #666;
+            font-size: 14px;
+        }
+        .test-detail-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .test-detail-item i {
+            color: #667eea;
+        }
+        .test-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .btn-small {
+            padding: 6px 16px;
+            font-size: 13px;
+            border-radius: 6px;
+            text-decoration: none;
+            display: inline-block;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-view-results {
+            background: #667eea;
+            color: white;
+        }
+        .btn-view-results:hover {
+            background: #5568d3;
+            color: white;
+        }
+        .btn-view-solutions {
+            background: #20c997;
+            color: white;
+        }
+        .btn-view-solutions:hover {
+            background: #1aa179;
+            color: white;
+        }
+        .no-attempts {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        .no-attempts i {
+            font-size: 48px;
+            color: #ddd;
+            margin-bottom: 15px;
+            display: block;
+        }
+        .footer-custom {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 40px 0 20px;
+            margin-top: 60px;
+        }
+        .footer-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .footer-logo-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .footer-logo-section img {
+            width: 180px;
+            max-width: 25vw;
+            height: auto;
+            object-fit: contain;
+        }
+        .footer-logo-section p {
+            color: rgba(255,255,255,0.85);
+            font-size: 14px;
+            margin: 0;
+        }
+        .footer-links {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .footer-links h6 {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: white;
+        }
+        .footer-links a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .footer-links a:hover {
+            color: white;
+            padding-left: 5px;
+        }
+        .footer-contact {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .footer-contact h6 {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: white;
+        }
+        .footer-contact p {
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+            margin: 0;
+        }
+        .footer-bottom {
+            border-top: 1px solid rgba(255,255,255,0.2);
+            padding-top: 20px;
+            text-align: center;
+        }
+        .footer-bottom p {
+            margin: 5px 0;
+            font-size: 13px;
+            color: rgba(255,255,255,0.75);
+        }
+        .footer-credit {
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+            margin-top: 10px;
+        }
+        .footer-credit a {
+            color: #ffc107;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .footer-credit a:hover {
+            color: #ffdd57;
+            text-decoration: underline;
+        }
+        @media (max-width: 768px) {
+            .footer-content {
+                grid-template-columns: 1fr;
+                gap: 25px;
+                text-align: center;
+            }
+            .footer-logo-section img {
+                margin: 0 auto;
+            }
+            .footer-custom .container-fluid {
+                padding-left: 20px !important;
+                padding-right: 20px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+        <div class="container-fluid" style="padding-left: 20px; padding-right: 20px;">
+            <a class="navbar-brand" href="{% url 'tests_list' %}" style="flex: 0 0 25%;">
+                <img src="/static/examPattern.png" alt="examPattern">
+            </a>
+
+            <div class="navbar-search d-none d-lg-block">
+                <input class="form-control" type="text" placeholder="Search test series...">
+            </div>
+
+            <div class="navbar-profile ms-auto">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'profile' %}" class="text-decoration-none">
+                        <div class="profile-avatar" title="{{ user.get_full_name|default:user.username }}">
+                            {% if user.photo %}
+                                <img src="{{ user.photo.url }}" alt="{{ user.username }}">
+                            {% else %}
+                                {{ user.username|first|upper }}
+                            {% endif %}
+                        </div>
+                    </a>
+                    <a href="{% url 'profile' %}" class="nav-link">{{ user.username }}</a>
+                    {% if user.is_staff and user.is_superuser %}
+                        <a href="/builder/" class="nav-link" style="color: #ffc107 !important;">
+                            <i class="fas fa-tools"></i> Builder
+                        </a>
+                    {% endif %}
+                    <a href="{% url 'logout' %}" class="btn btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                {% else %}
+                    <a href="{% url 'login' %}" class="btn btn-login">Login</a>
+                    <a href="{% url 'register' %}" class="btn btn-login" style="background: rgba(23, 162, 184, 0.9);">Register</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Profile Section -->
+    <div class="container mt-5 mb-5">
+        <!-- Header -->
+        <div class="profile-header text-center">
+            <div style="position: relative; display: inline-block;">
+                {% if user.photo %}
+                    <img src="{{ user.photo.url }}" alt="Profile Photo" class="profile-photo mb-3">
+                {% else %}
+                    <div style="width: 150px; height: 150px; background: rgba(255,255,255,0.2); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-user" style="font-size: 60px;"></i>
+                    </div>
+                {% endif %}
+                <button type="button" class="btn btn-sm" data-bs-toggle="modal" data-bs-target="#photoModal" style="position: absolute; bottom: 15px; right: -10px; background: white; color: #667eea; border: 2px solid #667eea; border-radius: 50%; width: 45px; height: 45px; padding: 0; box-shadow: 0 3px 10px rgba(0,0,0,0.2); transition: all 0.3s;">
+                    <i class="fas fa-camera"></i>
+                </button>
+            </div>
+            <h1 class="mb-2">{{ user.get_full_name|default:user.username }}</h1>
+            <p class="mb-0">@{{ user.username }}</p>
+            {% if user.is_verified %}
+                <div style="margin-top: 15px;">
+                    <span class="badge-verified"><i class="fas fa-check-circle"></i> Email Verified</span>
+                </div>
+            {% else %}
+                <div style="margin-top: 15px;">
+                    <span class="badge-unverified"><i class="fas fa-clock"></i> Pending Verification</span>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Profile Information -->
+        <div class="profile-info">
+            <div class="info-item">
+                <span class="info-label"><i class="fas fa-envelope"></i> Email Address</span>
+                <span class="info-value">{{ user.email }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label"><i class="fas fa-phone"></i> Mobile Number</span>
+                <span class="info-value">{{ user.mobile }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label"><i class="fas fa-user-circle"></i> Username</span>
+                <span class="info-value">{{ user.username }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label"><i class="fas fa-calendar"></i> Member Since</span>
+                <span class="info-value">{{ user.created_at|date:"M d, Y" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label"><i class="fas fa-clock"></i> Account Status</span>
+                <span class="info-value">
+                    {% if user.is_active %}
+                        <span style="color: #28a745;"><i class="fas fa-check-circle"></i> Active</span>
+                    {% else %}
+                        <span style="color: #dc3545;"><i class="fas fa-times-circle"></i> Inactive</span>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions">
+            <a href="{% url 'tests_list' %}" class="btn-back">
+                <i class="fas fa-arrow-left"></i> Back to Tests
+            </a>
+            <a href="{% url 'logout' %}" class="btn-logout">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+
+        <!-- Attempted Tests Button -->
+        <div class="attempted-tests-section">
+            {% if attempted_tests %}
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#attemptsModal" style="padding: 12px 30px; font-size: 16px; font-weight: 600;">
+                    <i class="fas fa-history"></i> All Attempted Tests ({{ attempted_tests|length }})
+                </button>
+            {% else %}
+                <div class="no-attempts">
+                    <i class="fas fa-inbox"></i>
+                    <p>No tests attempted yet.</p>
+                    <p style="font-size: 13px; margin-top: 10px;">Start taking tests to see your history here.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Attempted Tests Modal -->
+    <div class="modal fade" id="attemptsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-history"></i> All Attempted Tests</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <input type="text" id="searchAttempts" class="form-control" placeholder="🔍 Search by test name...">
+                    </div>
+                    <div id="attemptsList">
+                        {% for attempt in attempted_tests %}
+                            <div class="attempt-item" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin-bottom: 12px; transition: all 0.3s ease;">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                                    <div>
+                                        <h6 class="test-name-search" style="margin: 0 0 8px 0; font-weight: 600; color: #333;">{{ attempt.test.name }}</h6>
+                                        <div style="font-size: 13px; color: #666;">
+                                            <span><i class="fas fa-calendar-alt"></i> {{ attempt.submitted_at|date:"M d, Y" }}</span>
+                                            <span style="margin-left: 15px;"><i class="fas fa-clock"></i> {{ attempt.submitted_at|date:"H:i" }}</span>
+                                            <span style="margin-left: 15px;"><i class="fas fa-list-ol"></i> Attempt #{{ attempt.attempt_number }}</span>
+                                            {% if attempt.score %}
+                                                <span style="margin-left: 15px;"><i class="fas fa-star"></i> Score: <strong>{{ attempt.score }}</strong></span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <a href="{% url 'results_page' attempt.id %}" class="btn btn-sm btn-info" style="font-size: 12px;">
+                                        <i class="fas fa-chart-bar"></i> View Results
+                                    </a>
+                                    <a href="{% url 'review_solutions' attempt.id %}" class="btn btn-sm btn-success" style="font-size: 12px;">
+                                        <i class="fas fa-book"></i> View Solutions
+                                    </a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div id="noResults" style="text-align: center; padding: 40px 20px; color: #999; display: none;">
+                        <i class="fas fa-search" style="font-size: 40px; margin-bottom: 10px; display: block; color: #ddd;"></i>
+                        <p>No tests found matching your search.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- Profile Photo Management Modal -->
+    <div class="modal fade" id="photoModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-camera"></i> Manage Profile Photo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        {% if user.photo %}
+                            <img src="{{ user.photo.url }}" alt="Current Photo" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 3px solid #667eea; margin-bottom: 15px;">
+                        {% else %}
+                            <div style="width: 150px; height: 150px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-user" style="font-size: 50px; color: white;"></i>
+                            </div>
+                            <p class="text-muted">No photo uploaded</p>
+                        {% endif %}
+                    </div>
+
+                    <form method="POST" action="{% url 'update_profile_photo' %}" enctype="multipart/form-data" id="photoUploadForm">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="photoInput" class="form-label" style="font-weight: 600;">Choose New Photo</label>
+                            <input type="file" class="form-control" id="photoInput" name="photo" accept="image/jpeg,image/jpg,image/png" required>
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i> JPG, JPEG or PNG format. Max size: 2MB
+                            </small>
+                        </div>
+                        <div id="photoPreview" style="display: none; text-align: center; margin-bottom: 15px;">
+                            <img id="previewImage" style="max-width: 200px; max-height: 200px; border-radius: 10px; border: 2px solid #667eea;">
+                        </div>
+                        <button type="submit" class="btn w-100" style="background: #667eea; color: white; padding: 12px; font-weight: 600;">
+                            <i class="fas fa-upload"></i> Upload Photo
+                        </button>
+                    </form>
+
+                    {% if user.photo %}
+                        <hr class="my-4">
+                        <form method="POST" action="{% url 'remove_profile_photo' %}" id="photoRemoveForm">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger w-100" onclick="return confirm('Are you sure you want to remove your profile photo?');">
+                                <i class="fas fa-trash-alt"></i> Remove Current Photo
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Image preview before upload
+        document.getElementById('photoInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Check file size (2MB max)
+                if (file.size > 2 * 1024 * 1024) {
+                    alert('File size must be less than 2MB');
+                    this.value = '';
+                    return;
+                }
+
+                // Preview image
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    document.getElementById('previewImage').src = event.target.result;
+                    document.getElementById('photoPreview').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Search functionality for attempted tests
+        document.getElementById('searchAttempts').addEventListener('keyup', function() {
+            const searchTerm = this.value.toLowerCase();
+            const attemptItems = document.querySelectorAll('.attempt-item');
+            let visibleCount = 0;
+
+            attemptItems.forEach(item => {
+                const testName = item.querySelector('.test-name-search').textContent.toLowerCase();
+                if (testName.includes(searchTerm)) {
+                    item.style.display = '';
+                    visibleCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            // Show/hide no results message
+            const noResults = document.getElementById('noResults');
+            if (visibleCount === 0) {
+                noResults.style.display = 'block';
+            } else {
+                noResults.style.display = 'none';
+            }
+        });
+    </script>
+
+    <footer class="footer-custom">
+        <div class="container-fluid" style="padding-left: 60px; padding-right: 60px;">
+            <div class="footer-content">
+                <div class="footer-logo-section">
+                    <img src="/static/examPattern.png" alt="examPattern">
+                    <p>Learn. Thrive. Succeed.</p>
+                </div>
+                
+                <div class="footer-links">
+                    <h6>Quick Links</h6>
+                    <a href="{% url 'tests_list' %}"><i class="fas fa-home"></i> Home</a>
+                    <a href="{% url 'profile' %}"><i class="fas fa-user"></i> Profile</a>
+                    {% if user.is_staff and user.is_superuser %}
+                        <a href="/builder/"><i class="fas fa-tools"></i> Test Builder</a>
+                    {% endif %}
+                </div>
+                
+                <div class="footer-contact">
+                    <h6>Contact Us</h6>
+                    <p><i class="fas fa-envelope"></i> prathbhainstitutions@gmail.com</p>
+                    <p><i class="fas fa-phone"></i> +91 9030941099</p>
+                    <p><i class="fas fa-map-marker-alt"></i> Beside Bank of Maharashtra, Namdevwada, Nizamabad</p>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2026 Prathibha Institute. All rights reserved.</p>
+                <p class="footer-credit">Made by <a href="https://www.prathibhasolutions.com" target="_blank" rel="noopener noreferrer">Prathibha Solutions</a></p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

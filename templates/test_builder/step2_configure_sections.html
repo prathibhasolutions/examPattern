@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load test_builder_filters %}
+
+{% block title %}Configure Sections — {{ test_draft.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5" style="max-width: 1000px;">
+    <div class="mb-4">
+        <h2>⚙️ Step 2: Configure Sections</h2>
+        <p class="text-muted">Define section details, timing, and marking scheme</p>
+    </div>
+    
+    <form method="post">
+        {% csrf_token %}
+        
+        {% for section in sections %}
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Section {{ section.order }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Section Name *</label>
+                        <input type="text" name="section_{{ section.id }}_name" value="{{ section.name }}" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Number of Questions *</label>
+                        <input type="number" name="section_{{ section.id }}_required_questions" value="{{ section.required_questions }}" class="form-control" min="1" required>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Time Limit (minutes)</label>
+                        <input type="number" name="section_{{ section.id }}_time_limit" value="{{ section.time_limit_seconds|seconds_to_minutes }}" class="form-control" placeholder="Optional">
+                        <small class="text-muted">Leave blank to use test duration</small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Marks per Question</label>
+                        <input type="number" step="0.5" name="section_{{ section.id }}_marks" value="{{ section.marks_per_question|default:'' }}" class="form-control" placeholder="Use test default">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Negative Marks</label>
+                        <input type="number" step="0.25" name="section_{{ section.id }}_neg_marks" value="{{ section.negative_marks_per_question|default:'' }}" class="form-control" placeholder="Use test default">
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        
+        <div class="d-flex gap-3 mt-4">
+            <button type="submit" class="btn btn-primary btn-lg">Save & Add Questions →</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

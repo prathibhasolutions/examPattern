@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Review Test Draft — {{ test_draft.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5" style="max-width: 1200px;">
+    <div class="mb-4">
+        <h2>📋 Step 4: Review & Publish Test</h2>
+        <p class="text-muted">Review your test before publishing it to students</p>
+    </div>
+    
+    <!-- Test Summary -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Test Summary</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Test Name:</strong> {{ test_draft.name }}</p>
+                    <p><strong>Series:</strong> {{ test_draft.test_series.name }}</p>
+                    <p><strong>Duration:</strong> {{ test_draft.duration }} minutes</p>
+                    <p><strong>Total Sections:</strong> {{ sections.count }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Default Marks:</strong> +{{ test_draft.marks_per_question }}</p>
+                    <p><strong>Default Negative:</strong> -{{ test_draft.negative_marks_per_question }}</p>
+                    <p><strong>Description:</strong> {{ test_draft.description|default:"N/A" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Completion Status -->
+    {% if is_complete %}
+    <div class="alert alert-success">
+        <h5>✅ Test is Complete!</h5>
+        <p class="mb-0">All sections have the required number of questions. You can now publish this test.</p>
+    </div>
+    {% else %}
+    <div class="alert alert-danger">
+        <h5>❌ Test is Incomplete</h5>
+        <p class="mb-0">Complete: {{ complete_sections }} / {{ total_sections }} sections</p>
+        <p class="mb-0">Total Questions: {{ total_questions }}</p>
+        <p class="mb-1"><strong>Please add more questions to the sections below:</strong></p>
+        <ul class="mb-0">
+            {% for section, is_done, q_count, required in sections_status %}
+            {% if not is_done %}
+            <li>{{ section.name }}: {{ q_count }} / {{ required }} questions</li>
+            {% endif %}
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    
+    <!-- Sections Breakdown -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Sections Overview</h5>
+        </div>
+        <div class="list-group list-group-flush">
+            {% for section in sections %}
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">{{ section.name }}</h6>
+                        <small class="text-muted">
+                            Questions: {{ section.questions.count }} / {{ section.required_questions }}
+                            {% if section.time_limit %}
+                            | Time: {{ section.time_limit }} mins
+                            {% endif %}
+                            {% if section.marks_per_question %}
+                            | Marks: +{{ section.marks_per_question }}/{{ section.negative_marks_per_question }}
+                            {% endif %}
+                        </small>
+                    </div>
+                    <div>
+                        {% if section.is_complete %}
+                        <span class="badge bg-success">✓ Complete</span>
+                        {% else %}
+                        <span class="badge bg-warning">⚠ Incomplete</span>
+                        {% endif %}
+                        <a href="{% url 'add_questions' test_draft.id section.id %}" class="btn btn-sm btn-outline-primary ms-2">Edit</a>
+                    </div>
+                </div>
+                
+                <!-- Questions in Section -->
+                {% if section.questions.all %}
+                <div class="mt-2">
+                    <details>
+                        <summary class="text-primary" style="cursor: pointer;">View Questions ({{ section.questions.count }})</summary>
+                        <ul class="mt-2 mb-0">
+                            {% for q in section.questions.all %}
+                            <li class="mb-1">
+                                {{ q.text|truncatewords:20 }}
+                                <span class="badge bg-secondary">{{ q.options.count }} options</span>
+                                {% if q.solution %}
+                                <span class="badge bg-info">Has solution</span>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </details>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Action Buttons -->
+    <div class="d-flex justify-content-between align-items-center">
+        <a href="{% url 'configure_sections' test_draft.id %}" class="btn btn-secondary btn-lg">
+            ← Edit Section Configuration
+        </a>
+        
+        {% if is_complete %}
+        <form method="post" action="{% url 'publish_test' test_draft.id %}" onsubmit="return confirm('Publish this test? This action cannot be undone.');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success btn-lg">
+                🚀 Publish Test
+            </button>
+        </form>
+        {% else %}
+        <button class="btn btn-secondary btn-lg" disabled title="Complete all sections to publish">
+            🚀 Publish Test (Incomplete)
+        </button>
+        {% endif %}
+    </div>
+    
+    {% if is_complete %}
+    <div class="alert alert-info mt-3">
+        <strong>What happens when you publish?</strong>
+        <ul class="mb-0">
+            <li>The test will be created and available to students</li>
+            <li>This draft will be marked as completed</li>
+            <li>You can continue to edit the published test from the admin panel</li>
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

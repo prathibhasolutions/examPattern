@@ -1,0 +1,761 @@
+{% extends "base.html" %}
+
+{% block title %}Test Builder Dashboard{% endblock %}
+
+{% block header %}
+<!-- Custom navbar for builder page -->
+{% endblock %}
+
+{% block content %}
+<style>
+    main.container-fluid {
+        padding: 0 !important;
+        margin-top: 0 !important;
+    }
+    body {
+        margin: 0;
+        padding: 0;
+    }
+    .navbar-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        margin: 0 !important;
+        width: 100vw !important;
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw !important;
+        margin-right: -50vw !important;
+    }
+    .navbar-custom .navbar-brand {
+        font-weight: 700;
+        font-size: 18px;
+        color: white !important;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .navbar-custom .navbar-brand img {
+        height: 45px;
+        width: auto;
+    }
+    .navbar-search {
+        flex: 1;
+        max-width: 520px;
+        margin: 0 20px;
+        position: relative;
+    }
+    .navbar-search .form-control {
+        border-radius: 25px;
+        border: 2px solid rgba(255,255,255,0.3);
+        background: rgba(255,255,255,0.95);
+        padding: 10px 20px;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    .navbar-search .form-control:focus {
+        border-color: #fff;
+        box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
+        background: white;
+    }
+    .navbar-profile {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .profile-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .profile-avatar:hover {
+        transform: scale(1.1);
+        border-color: white;
+    }
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .navbar-custom .nav-link {
+        color: rgba(255,255,255,0.9) !important;
+        font-weight: 500;
+        font-size: 14px;
+        padding: 8px 16px !important;
+        border-radius: 20px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .nav-link:hover {
+        background: rgba(255,255,255,0.15);
+        color: white !important;
+    }
+    .navbar-custom .btn-logout {
+        background: rgba(220, 53, 69, 0.9);
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .btn-logout:hover {
+        background: #dc3545;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    }
+    .navbar-custom .btn-login {
+        background: rgba(40, 167, 69, 0.9);
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+        margin-left: 10px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .btn-login:hover {
+        background: #28a745;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+    }
+    .builder-main-content {
+        margin-top: 2rem;
+    }
+</style>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <div class="container-fluid" style="padding-left: 20px; padding-right: 20px;">
+        <a class="navbar-brand" href="{% url 'tests_list' %}" style="flex: 0 0 25%;">
+            <img src="/static/examPattern.png" alt="examPattern">
+        </a>
+
+        <div class="navbar-search d-none d-lg-block">
+            <input id="builderSearchInput" class="form-control" type="text" placeholder="Search tests or series...">
+        </div>
+
+        <div class="navbar-profile ms-auto">
+            {% if user.is_authenticated %}
+                <a href="{% url 'profile' %}" class="text-decoration-none">
+                    <div class="profile-avatar" title="{{ user.get_full_name|default:user.username }}">
+                        {% if user.profile.photo %}
+                            <img src="{{ user.profile.photo.url }}" alt="{{ user.username }}">
+                        {% else %}
+                            {{ user.username|first|upper }}
+                        {% endif %}
+                    </div>
+                </a>
+                <a href="{% url 'profile' %}" class="nav-link">{{ user.username }}</a>
+                <a href="{% url 'tests_list' %}" class="nav-link">
+                    <i class="fas fa-home"></i> Home
+                </a>
+                <a href="{% url 'logout' %}" class="btn btn-logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-login">Login</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<div class="container builder-main-content">
+<div>
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-6">
+            <h1>🚀 Test Builder Dashboard</h1>
+            <div class="mt-3">
+                <span class="badge bg-success">
+                    <i class="fas fa-crown"></i> Admin Access
+                </span>
+                <small class="text-muted ms-2">Only administrators can access this page</small>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="d-flex gap-2 justify-content-end">
+                <a href="{% url 'tests_list' %}" class="btn btn-secondary btn-lg">
+                    ← View Tests
+                </a>
+                <a href="{% url 'builder_manage_series' %}" class="btn btn-outline-primary btn-lg">
+                    🧩 Manage Series
+                </a>
+                <a href="{% url 'builder_create_test' %}" class="btn btn-primary btn-lg">
+                    ➕ Create New Test
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="card mb-4" style="border: 2px solid #667eea;">
+        <div class="card-body">
+            <form method="get" id="searchForm">
+                <div class="position-relative">
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text bg-white">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input 
+                            type="text" 
+                            name="search" 
+                            id="searchInput"
+                            class="form-control" 
+                            placeholder="Search tests or test series (e.g., JEE, Physics, Mock Test)..."
+                            value="{{ search_query }}"
+                            autocomplete="off"
+                        >
+                        {% if search_query %}
+                            <a href="{% url 'builder_dashboard' %}" class="btn btn-outline-secondary">
+                                ✕ Clear
+                            </a>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Search Suggestions Dropdown -->
+                    <div id="suggestionsBox" class="position-absolute w-100 bg-white border rounded shadow-lg" style="display: none; z-index: 1000; max-height: 300px; overflow-y: auto; margin-top: 5px;">
+                        <!-- Suggestions will be populated here -->
+                    </div>
+                </div>
+                
+                {% if search_query %}
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i> 
+                            Showing results for: <strong>"{{ search_query }}"</strong>
+                            ({{ total_drafts }} drafts, {{ total_published }} published)
+                        </small>
+                    </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Draft Tests Section -->
+    <div class="mb-5">
+        <h2 class="mb-4">
+            📝 Draft Tests 
+            <span class="badge bg-secondary">{{ total_drafts }}</span>
+        </h2>
+        
+        {% if drafts_by_series %}
+            {% for series, tests in drafts_by_series.items %}
+                <div class="card mb-4" style="border-left: 4px solid #f59e0b;">
+                    <div class="card-header bg-light" style="border-bottom: 2px solid #f59e0b;">
+                        <h4 class="mb-0">
+                            📚 {{ series.name }}
+                            <span class="badge bg-warning text-dark">{{ tests|length }} draft{{ tests|length|pluralize }}</span>
+                        </h4>
+                        <small class="text-muted">{{ series.description }}</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for draft in tests %}
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="card h-100 shadow-sm" style="border: 1px solid #fbbf24;">
+                                        <div class="card-header bg-warning bg-opacity-25">
+                                            <h5 class="card-title mb-0">
+                                                {{ draft.name }}
+                                                {% if draft.locked_by %}
+                                                    {% if draft.locked_by == request.user %}
+                                                        <span class="badge bg-info text-white ms-2" style="font-size: 0.7rem;">
+                                                            <i class="fas fa-lock"></i> You're editing
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-danger text-white ms-2" style="font-size: 0.7rem;">
+                                                            <i class="fas fa-lock"></i> Locked by {{ draft.locked_by.username }}
+                                                        </span>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="card-text text-muted small">
+                                                <strong>Duration:</strong> {{ draft.duration_minutes }} minutes<br>
+                                                <strong>Marks:</strong> +{{ draft.marks_per_question }}/-{{ draft.negative_marks }}<br>
+                                                <strong>Sections:</strong> {{ draft.sections.count }}<br>
+                                                {% with total_q=draft.sections.all|length %}
+                                                    <strong>Questions:</strong> 
+                                                    {% for sec in draft.sections.all %}
+                                                        {{ sec.questions.count }}{% if not forloop.last %}+{% endif %}
+                                                    {% endfor %}
+                                                {% endwith %}
+                                            </p>
+                                        </div>
+                                        <div class="card-footer bg-transparent">
+                                            <div class="d-grid gap-2">
+                                                <a href="{% url 'manage_sections' draft.id %}" class="btn btn-sm btn-primary">
+                                                    ✏️ Continue Editing
+                                                </a>
+                                                
+                                                <a href="{% url 'builder_publish_test' draft.id %}" class="btn btn-sm btn-success">
+                                                    ✓ Publish
+                                                </a>
+                                                
+                                                <a href="{% url 'builder_delete_draft' draft.id %}" class="btn btn-sm btn-outline-danger">
+                                                    🗑️ Delete Draft
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info" role="alert">
+                <h5 class="alert-heading">
+                    <i class="fas fa-info-circle"></i> No Draft Tests Found
+                </h5>
+                {% if search_query %}
+                    <p class="mb-0">No drafts match your search "{{ search_query }}". Try different keywords or <a href="{% url 'builder_dashboard' %}" class="alert-link">view all tests</a>.</p>
+                {% else %}
+                    <p class="mb-0">You haven't created any draft tests yet. Click "Create New Test" to get started!</p>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Published Tests Section -->
+    <div class="mb-5">
+        <h2 class="mb-4">
+            ✅ Published Tests 
+            <span class="badge bg-success">{{ total_published }}</span>
+        </h2>
+        
+        {% if published_by_series %}
+            {% for series, tests in published_by_series.items %}
+                <div class="card mb-4" style="border-left: 4px solid #10b981;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white;">
+                        <h4 class="mb-0">
+                            📚 {{ series.name }}
+                            <span class="badge bg-light text-dark">{{ tests|length }} published</span>
+                        </h4>
+                        <small>{{ series.description }}</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for draft in tests %}
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="card h-100 shadow-sm" style="border: 2px solid #10b981;">
+                                        <div class="card-header bg-success text-white">
+                                            <h5 class="card-title mb-0">
+                                                {{ draft.name }}
+                                                <span class="badge bg-light text-success float-end">
+                                                    <i class="fas fa-check-circle"></i> Live
+                                                </span>
+                                            </h5>
+                                            {% if draft.locked_by %}
+                                                {% if draft.locked_by == request.user %}
+                                                    <small class="text-light">
+                                                        <i class="fas fa-lock"></i> You're accessing this
+                                                    </small>
+                                                {% else %}
+                                                    <small class="text-warning">
+                                                        <i class="fas fa-lock"></i> Accessed by {{ draft.locked_by.username }}
+                                                    </small>
+                                                {% endif %}
+                                            {% endif %}
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="card-text text-muted small">
+                                                <strong>Duration:</strong> {{ draft.duration_minutes }} minutes<br>
+                                                <strong>Marks:</strong> +{{ draft.marks_per_question }}/-{{ draft.negative_marks }}<br>
+                                                <strong>Sections:</strong> {{ draft.sections.count }}<br>
+                                                <strong>Published:</strong> {{ draft.created_at|date:"M d, Y" }}
+                                            </p>
+                                        </div>
+                                        <div class="card-footer bg-transparent">
+                                            <div class="d-grid gap-2">
+                                                <!-- Toggle Active/Inactive Switch -->
+                                                <div class="d-flex align-items-center justify-content-between p-2 bg-light rounded">
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-eye-slash"></i> Show/Hide:
+                                                    </small>
+                                                    <div class="form-check form-switch m-0">
+                                                        <input 
+                                                            class="form-check-input test-active-toggle" 
+                                                            type="checkbox" 
+                                                            id="toggle_{{ draft.id }}"
+                                                            data-draft-id="{{ draft.id }}"
+                                                            data-test-id="{{ draft.published_test_id }}"
+                                                            {% if draft.is_published %}checked{% endif %}
+                                                            style="cursor: pointer; width: 2.5em; height: 1.5em;"
+                                                        >
+                                                    </div>
+                                                </div>
+                                                <small class="text-muted text-center" style="font-size: 0.75rem;">
+                                                    Toggle to show/hide from students. Data remains safe.
+                                                </small>
+                                                
+                                                <a href="{% url 'builder_unpublish_test' draft.id %}" class="btn btn-sm btn-warning">
+                                                    ✏️ Edit Test
+                                                </a>
+                                                
+                                                <a href="{% url 'builder_delete_published' draft.id %}" class="btn btn-sm btn-outline-danger">
+                                                    🗑️ Delete Permanently
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-secondary" role="alert">
+                <h5 class="alert-heading">
+                    <i class="fas fa-info-circle"></i> No Published Tests
+                </h5>
+                {% if search_query %}
+                    <p class="mb-0">No published tests match your search "{{ search_query }}". <a href="{% url 'builder_dashboard' %}" class="alert-link">View all tests</a>.</p>
+                {% else %}
+                    <p class="mb-0">You haven't published any tests yet. Complete your draft tests and publish them to make them live!</p>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    {% if not drafts_by_series and not published_by_series %}
+        <div class="card text-center py-5">
+            <div class="card-body">
+                <h3 class="mb-3">📚 No Tests Yet</h3>
+                <p class="text-muted mb-4">Create your first test to get started</p>
+                <a href="{% url 'builder_create_test' %}" class="btn btn-primary btn-lg">
+                    ➕ Create First Test
+                </a>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Quick Tips -->
+    <div class="alert alert-info mt-5" style="background: #e7f3ff; border-color: #0066cc;">
+        <h6 class="alert-heading">💡 Quick Tips</h6>
+        <ul class="mb-0">
+            <li><strong>Save time:</strong> You can edit tests multiple times before publishing</li>
+            <li><strong>Solutions matter:</strong> Always add solutions - they help students learn</li>
+            <li><strong>Test preview:</strong> Once published, students will see test interface immediately</li>
+            <li><strong>Edit published tests:</strong> Click "Edit" on published tests to unpublish, make changes, and republish</li>
+        </ul>
+    </div>
+
+    <div class="mt-4 mb-4">
+        <a href="{% url 'tests_list' %}" class="btn btn-secondary btn-lg">
+            ← Go to Tests Page
+        </a>
+    </div>
+</div>
+
+<!-- Toggle Confirmation Modal -->
+<div class="modal fade" id="toggleConfirmModal" tabindex="-1" aria-labelledby="toggleConfirmLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pt-4 pb-2">
+                <h5 class="modal-title" id="toggleConfirmLabel">
+                    <i class="fas fa-exclamation-circle text-warning"></i> Confirm Action
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body px-4 py-3">
+                <p id="toggleConfirmMessage" class="mb-0 text-dark" style="font-size: 1.05rem; line-height: 1.6;"></p>
+            </div>
+            <div class="modal-footer border-top-0 pb-4 px-4 pt-2">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border: 1px solid #ddd;">
+                    Cancel
+                </button>
+                <button type="button" class="btn btn-primary" id="toggleConfirmBtn">
+                    <i class="fas fa-check"></i> Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-group-sm > .btn {
+        padding: 0.4rem 0.7rem;
+        font-size: 0.85rem;
+    }
+    
+    #suggestionsBox .suggestion-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #e9ecef;
+        transition: background-color 0.2s;
+    }
+    
+    #suggestionsBox .suggestion-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    #suggestionsBox .suggestion-item:last-child {
+        border-bottom: none;
+    }
+    
+    .suggestion-type-badge {
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        border-radius: 3px;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const suggestionsBox = document.getElementById('suggestionsBox');
+    let debounceTimer;
+    
+    // Handle search input
+    searchInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+            suggestionsBox.style.display = 'none';
+            return;
+        }
+        
+        // Debounce to avoid too many requests
+        debounceTimer = setTimeout(() => {
+            fetchSuggestions(query);
+        }, 300);
+    });
+    
+    // Fetch suggestions from backend
+    function fetchSuggestions(query) {
+        fetch(`/builder/search-suggestions/?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                displaySuggestions(data.suggestions);
+            })
+            .catch(error => {
+                console.error('Error fetching suggestions:', error);
+            });
+    }
+    
+    // Display suggestions
+    function displaySuggestions(suggestions) {
+        if (suggestions.length === 0) {
+            suggestionsBox.style.display = 'none';
+            return;
+        }
+        
+        let html = '';
+        suggestions.forEach(suggestion => {
+            const badgeClass = suggestion.type === 'series' ? 'bg-primary' : 'bg-info';
+            const icon = suggestion.type === 'series' ? '📚' : '📝';
+            
+            html += `
+                <div class="suggestion-item" data-text="${suggestion.text}">
+                    <span>${icon} ${suggestion.text}</span>
+                    <span class="badge suggestion-type-badge ${badgeClass} float-end">
+                        ${suggestion.type}
+                    </span>
+                </div>
+            `;
+        });
+        
+        suggestionsBox.innerHTML = html;
+        suggestionsBox.style.display = 'block';
+        
+        // Add click handlers to suggestions
+        document.querySelectorAll('.suggestion-item').forEach(item => {
+            item.addEventListener('click', function() {
+                searchInput.value = this.dataset.text;
+                suggestionsBox.style.display = 'none';
+                document.getElementById('searchForm').submit();
+            });
+        });
+    }
+    
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!searchInput.contains(event.target) && !suggestionsBox.contains(event.target)) {
+            suggestionsBox.style.display = 'none';
+        }
+    });
+    
+    // Handle keyboard navigation
+    searchInput.addEventListener('keydown', function(e) {
+        const items = suggestionsBox.querySelectorAll('.suggestion-item');
+        
+        if (e.key === 'Escape') {
+            suggestionsBox.style.display = 'none';
+        }
+    });
+});
+
+// Handle test active/inactive toggle
+document.querySelectorAll('.test-active-toggle').forEach(toggle => {
+    toggle.addEventListener('change', function(e) {
+        const draftId = this.dataset.draftId;
+        const isChecked = this.checked;
+        const currentToggle = this;
+        let confirmationGiven = false;
+        
+        // Show confirmation modal
+        const confirmMessage = isChecked 
+            ? "Are you sure you want to <strong>publish</strong> this test? It will be <strong>visible to students</strong> immediately."
+            : "Are you sure you want to <strong>unpublish</strong> this test? <strong>Students won't be able to take it</strong>, but their previous attempts will remain safe.";
+        
+        document.getElementById('toggleConfirmMessage').innerHTML = confirmMessage;
+        
+        const modal = new bootstrap.Modal(document.getElementById('toggleConfirmModal'));
+        modal.show();
+        
+        // Handle confirm button
+        const confirmBtn = document.getElementById('toggleConfirmBtn');
+        
+        const handleConfirm = () => {
+            confirmationGiven = true;
+            
+            // Get CSRF token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                             document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] || '';
+            
+            // Send AJAX request to toggle status
+            fetch(`/builder/${draftId}/toggle-active/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Hide modal first
+                    modal.hide();
+                    
+                    // Show success message with beautiful toast
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-4';
+                    alertDiv.style.zIndex = '9999';
+                    alertDiv.style.minWidth = '350px';
+                    alertDiv.innerHTML = `
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-check-circle me-2" style="font-size: 1.2rem;"></i>
+                            <div>
+                                <strong>Success!</strong><br>
+                                <small>${data.message}</small>
+                            </div>
+                            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+                        </div>
+                    `;
+                    document.body.appendChild(alertDiv);
+                    
+                    // Auto-remove alert after 4 seconds
+                    setTimeout(() => alertDiv.remove(), 4000);
+                    
+                    // Update the toggle state to match server response
+                    currentToggle.checked = data.is_active;
+                } else {
+                    // Hide modal first
+                    modal.hide();
+                    
+                    // Show error with beautiful modal
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-4';
+                    errorDiv.style.zIndex = '9999';
+                    errorDiv.style.minWidth = '350px';
+                    errorDiv.innerHTML = `
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-times-circle me-2" style="font-size: 1.2rem;"></i>
+                            <div>
+                                <strong>Error!</strong><br>
+                                <small>${data.message}</small>
+                            </div>
+                            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+                        </div>
+                    `;
+                    document.body.appendChild(errorDiv);
+                    
+                    // Auto-remove alert after 4 seconds
+                    setTimeout(() => errorDiv.remove(), 4000);
+                    
+                    // Revert toggle on error
+                    currentToggle.checked = !isChecked;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                
+                // Hide modal first
+                modal.hide();
+                
+                // Show error message
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-4';
+                errorDiv.style.zIndex = '9999';
+                errorDiv.style.minWidth = '350px';
+                errorDiv.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-times-circle me-2" style="font-size: 1.2rem;"></i>
+                        <div>
+                            <strong>Error!</strong><br>
+                            <small>Error toggling test status. Please try again.</small>
+                        </div>
+                        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+                document.body.appendChild(errorDiv);
+                
+                // Auto-remove alert after 4 seconds
+                setTimeout(() => errorDiv.remove(), 4000);
+                
+                // Revert toggle on error
+                currentToggle.checked = !isChecked;
+            });
+        };
+        
+        // Remove any existing listeners before adding new one
+        confirmBtn.removeEventListener('click', handleConfirm);
+        confirmBtn.addEventListener('click', handleConfirm);
+        
+        // Handle modal close (cancel) - only revert if user didn't confirm
+        const handleModalHide = () => {
+            if (!confirmationGiven) {
+                // User cancelled - revert toggle
+                currentToggle.checked = !isChecked;
+            }
+            // Clean up listeners
+            confirmBtn.removeEventListener('click', handleConfirm);
+            document.getElementById('toggleConfirmModal').removeEventListener('hidden.bs.modal', handleModalHide);
+        };
+        
+        document.getElementById('toggleConfirmModal').addEventListener('hidden.bs.modal', handleModalHide);
+    });
+});
+</script>
+{% endblock %}

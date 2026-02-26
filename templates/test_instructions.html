@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Instructions - {{ test.name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+        }
+        .instructions-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            max-width: 950px;
+            width: 100%;
+            padding: 0;
+            overflow: hidden;
+            max-height: 95vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .instructions-header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+        }
+        .instructions-header h2 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 24px;
+        }
+        .instructions-body {
+            padding: 25px 35px;
+            flex: 1;
+            overflow-y: auto;
+            display: none;
+        }
+        .instructions-body.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .instructions-body h3 {
+            color: #1e3c72;
+            font-weight: 700;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        .instructions-body h4 {
+            color: #2a5298;
+            font-weight: 600;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        .instructions-body p {
+            margin-bottom: 10px;
+            line-height: 1.6;
+            color: #333;
+            font-size: 14px;
+        }
+        .instructions-body ul {
+            margin-bottom: 10px;
+            padding-left: 20px;
+        }
+        .instructions-body li {
+            margin-bottom: 6px;
+            line-height: 1.6;
+            color: #333;
+            font-size: 14px;
+        }
+        .status-symbol {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin: 5px 0;
+            padding: 8px 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        .status-symbol-box {
+            width: 26px;
+            height: 26px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .status-symbol-red {
+            background: #dc3545;
+            border-color: #dc3545;
+            color: white;
+        }
+        .status-symbol-green {
+            background: #28a745;
+            border-color: #28a745;
+            color: white;
+        }
+        .status-symbol-purple {
+            background: #6f42c1;
+            border-color: #6f42c1;
+            color: white;
+        }
+        .status-symbol-text {
+            color: #555;
+            font-size: 13px;
+        }
+        .exam-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        .exam-table thead {
+            background: #1e3c72;
+            color: white;
+        }
+        .exam-table th {
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            border: 1px solid #ddd;
+        }
+        .exam-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+            background: #fff;
+        }
+        .exam-table tbody tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .exam-table tbody tr:hover {
+            background: #f0f2f5;
+        }
+        .exam-table tr.total-row {
+            background: #e7f3ff;
+            font-weight: 700;
+        }
+        .exam-table tr.total-row td {
+            border-top: 2px solid #1e3c72;
+        }
+        .instructions-footer {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 30px;
+            background: #f8f9fa;
+            border-top: 1px solid #ddd;
+            flex-shrink: 0;
+        }
+        .form-check {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .form-check input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .form-check label {
+            margin-bottom: 0;
+            cursor: pointer;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-nav {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        .btn-prev {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-prev:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+        .btn-next {
+            background: #28a745;
+            color: white;
+        }
+        .btn-next:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+        .btn-start {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+        }
+        .btn-start:hover {
+            background: linear-gradient(135deg, #162b4d 0%, #1e4276 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(30, 60, 114, 0.3);
+        }
+        .btn-start:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .page-indicator {
+            color: #666;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .note-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+        .note-box strong {
+            color: #856404;
+            font-size: 14px;
+        }
+        .note-box p {
+            margin: 0;
+            color: #856404;
+            font-size: 13px;
+        }
+        .note-box ul {
+            margin: 8px 0 0 0;
+            padding-left: 20px;
+        }
+        .note-box li {
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="instructions-container">
+        <!-- Header -->
+        <div class="instructions-header">
+            <h2>{% if test.series %}<span style="font-weight: 500; font-size: 20px;">{{ test.series.name }}</span><br>{% endif %}{{ test.name }}</h2>
+            <p style="margin: 10px 0 0 0; font-size: 16px;">Test Instructions</p>
+        </div>
+
+        <!-- Instructions Body -->
+        <div class="instructions-body active" id="page1">
+            <div class="note-box" style="background: #d1ecf1; border-left-color: #0c5460; margin-bottom: 20px;">
+                <p><strong><i class="fas fa-exclamation-circle"></i> Important Notice About Test Attempts:</strong></p>
+                <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                    <li style="color: #0c5460;"><strong>Maximum Attempts:</strong> You can attempt this test a maximum of <strong>2 times</strong>.</li>
+                    <li style="color: #0c5460;"><strong>Rankings & Percentile:</strong> Only your <strong>first attempt</strong> will be included in rankings and percentile calculations.</li>
+                    <li style="color: #0c5460;"><strong>Second Attempt:</strong> Your second attempt is for practice and review. It will be saved and you can view solutions, but it will <strong>not affect your rank</strong>.</li>
+                    <li style="color: #0c5460;"><strong>Why This Policy?</strong> This ensures fairness for all students, as second attempts may benefit from remembering questions and answers from the first attempt.</li>
+                </ul>
+            </div>
+
+            <h3><i class="fas fa-info-circle"></i> How Our App Works</h3>
+            
+            <h4><i class="fas fa-clock"></i> 1. Timer</h4>
+            <p>The countdown timer at the top right corner will display the remaining time available to complete the examination. When the timer reaches zero, the test will automatically end.</p>
+
+            <h4><i class="fas fa-palette"></i> 2. Question Palette & Status Symbols</h4>
+            <p>The Question Palette on the right side shows the status of each question using the following symbols:</p>
+            
+            <div class="status-symbol">
+                <div class="status-symbol-box" style="background: white; border: 2px solid #ddd;"></div>
+                <span class="status-symbol-text"><strong>White/Empty Box:</strong> You have not visited this question yet.</span>
+            </div>
+
+            <div class="status-symbol">
+                <div class="status-symbol-box status-symbol-red">✓</div>
+                <span class="status-symbol-text"><strong>Red Circle:</strong> You have not answered this question.</span>
+            </div>
+
+            <div class="status-symbol">
+                <div class="status-symbol-box status-symbol-green">✓</div>
+                <span class="status-symbol-text"><strong>Green Circle:</strong> You have answered this question.</span>
+            </div>
+
+            <div class="status-symbol">
+                <div class="status-symbol-box status-symbol-purple" style="background: #9c4eb3; border-color: #9c4eb3;">✓</div>
+                <span class="status-symbol-text"><strong>Light Purple Circle:</strong> You have NOT answered the question, but marked it for review.</span>
+            </div>
+
+            <div class="status-symbol">
+                <div class="status-symbol-box status-symbol-purple">✓</div>
+                <span class="status-symbol-text"><strong>Dark Purple Circle:</strong> You have answered the question AND marked it for review.</span>
+            </div>
+
+            <h4><i class="fas fa-arrow-right"></i> 3. Navigating a Question</h4>
+            <ul>
+                <li><strong>Click on a question number</strong> in the Question Palette to navigate directly to that question.</li>
+                <li><strong>Click "Save & Next"</strong> to save your answer and move to the next question.</li>
+                <li><strong>Click "Mark for Review & Next"</strong> to save and mark a question for review, then move to the next.</li>
+            </ul>
+            
+            <div class="note-box">
+                <p><strong>⚠️ Important:</strong> Your answer will NOT be saved if you navigate directly without clicking Save or Mark for Review.</p>
+            </div>
+
+            <h4><i class="fas fa-file-alt"></i> 4. Answering a Question</h4>
+            <p>To answer a multiple choice question:</p>
+            <ul>
+                <li>Choose one answer from the 4 options (A, B, C, D)</li>
+                <li>Click the bubble before your chosen option to select it</li>
+                <li>To deselect your answer, click the bubble again or click "Clear Response"</li>
+            </ul>
+        </div>
+
+        <!-- Second Page: Exam Instructions -->
+        <div class="instructions-body" id="page2">
+            <h3><i class="fas fa-file-pdf"></i> Exam Pattern & Marking Scheme</h3>
+            {% if use_sectional_timing %}
+                <p><strong>⏱️ Sectional Timing Enabled:</strong> Each section has its own time limit and will auto-advance when time ends.</p>
+            {% else %}
+                <p><strong>Total Duration:</strong> {{ test_duration_minutes }} minutes | <strong>Total Questions:</strong> {{ total_questions }} | <strong>Total Marks:</strong> {{ total_marks }}</p>
+            {% endif %}
+
+            <table class="exam-table">
+                <thead>
+                    <tr>
+                        <th>S.No</th>
+                        <th>Subjects/Sections</th>
+                        <th>Questions</th>
+                        <th>Marks</th>
+                        <th>Duration</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if sections %}
+                        {% for section in sections %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ section.name }}</td>
+                                <td>{{ section.question_count }}</td>
+                                <td>{{ section.marks }}</td>
+                                <td>{% if use_sectional_timing %}{{ section.duration_minutes }} min{% elif section.duration_minutes == "No limit" %}No Limit{% else %}{{ section.duration_minutes }} min{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td>1</td>
+                            <td>All Questions</td>
+                            <td>{{ total_questions }}</td>
+                            <td>{{ total_marks }}</td>
+                            <td>{% if test_duration_minutes %}{{ test_duration_minutes }} min{% else %}No Limit{% endif %}</td>
+                        </tr>
+                    {% endif %}
+                    <tr class="total-row">
+                        <td colspan="2" style="text-align: right;">Total</td>
+                        <td>{{ total_questions }}</td>
+                        <td>{{ total_marks }}</td>
+                        <td>{% if use_sectional_timing %}Sectional{% elif test_duration_minutes %}{{ test_duration_minutes }} min{% else %}No Limit{% endif %}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="note-box">
+                <p><strong>📝 Key Points:</strong></p>
+                <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                    {% if use_sectional_timing %}
+                        <li>This test uses sectional timing - each section has its own time limit.</li>
+                        <li>When a section's time runs out, you will automatically advance to the next section.</li>
+                        <li>Any unanswered questions in the current section will be marked as visited but unanswered.</li>
+                        <li>The final section will be automatically submitted when time runs out.</li>
+                    {% else %}
+                        <li>You have {{ test_duration_minutes }} minute(s) to complete the entire test.</li>
+                    {% endif %}
+                    <li>The test contains a total of {{ total_questions }} questions.</li>
+                    <li>You will be awarded marks for each correct answer as per the marking scheme above.</li>
+                    <li>Make sure you understand the exam pattern before proceeding.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="instructions-footer">
+            <div class="form-check" id="checkboxContainer" style="display: none;">
+                <input type="checkbox" id="confirmCheckbox" class="form-check-input">
+                <label for="confirmCheckbox" class="form-check-label">
+                    I have read and understood the instructions
+                </label>
+            </div>
+
+            <div style="display: flex; gap: 15px; align-items: center; margin-left: auto;">
+                <span class="page-indicator">
+                    <span id="currentPage">1</span> / 2
+                </span>
+                <div class="nav-buttons">
+                    <button class="btn-nav btn-prev" id="prevBtn" style="display: none;" onclick="previousPage()">
+                        <i class="fas fa-arrow-left"></i> Previous
+                    </button>
+                    <button class="btn-nav btn-next" id="nextBtn" onclick="nextPage()">
+                        Next <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <button class="btn-nav btn-start" id="startBtn" style="display: none;" disabled onclick="startTest()">
+                        <i class="fas fa-play"></i> I am ready to begin
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        const totalPages = 2;
+        const testId = {{ test.id }};
+
+        function showPage(page) {
+            // Hide all pages
+            document.getElementById('page1').classList.remove('active');
+            document.getElementById('page2').classList.remove('active');
+            
+            // Show current page
+            document.getElementById(`page${page}`).classList.add('active');
+            
+            // Update page indicator
+            document.getElementById('currentPage').textContent = page;
+            
+            // Update buttons
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const startBtn = document.getElementById('startBtn');
+            const checkboxContainer = document.getElementById('checkboxContainer');
+            
+            if (page === 1) {
+                prevBtn.style.display = 'none';
+                nextBtn.style.display = 'inline-flex';
+                startBtn.style.display = 'none';
+                checkboxContainer.style.display = 'none';
+            } else if (page === totalPages) {
+                prevBtn.style.display = 'inline-flex';
+                nextBtn.style.display = 'none';
+                startBtn.style.display = 'inline-flex';
+                checkboxContainer.style.display = 'flex';
+                
+                // Check if checkbox is checked
+                const isChecked = document.getElementById('confirmCheckbox').checked;
+                startBtn.disabled = !isChecked;
+            } else {
+                prevBtn.style.display = 'inline-flex';
+                nextBtn.style.display = 'inline-flex';
+                startBtn.style.display = 'none';
+                checkboxContainer.style.display = 'none';
+            }
+        }
+
+        function nextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                showPage(currentPage);
+            }
+        }
+
+        function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                showPage(currentPage);
+            }
+        }
+
+        async function startTest() {
+            try {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                                 getCookie('csrftoken');
+                
+                const response = await fetch(`/api/v1/tests/${testId}/start_attempt/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                    },
+                    credentials: 'same-origin',
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    alert(data.error || 'Failed to start test');
+                    return;
+                }
+
+                const attempt = await response.json();
+                window.location.href = `/test/${testId}/?attempt_id=${attempt.id}`;
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let cookie of cookies) {
+                    cookie = cookie.trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Toggle start button based on checkbox
+        document.getElementById('confirmCheckbox').addEventListener('change', function() {
+            const startBtn = document.getElementById('startBtn');
+            startBtn.disabled = !this.checked;
+        });
+
+        // Initialize
+        showPage(1);
+    </script>
+</body>
+</html>

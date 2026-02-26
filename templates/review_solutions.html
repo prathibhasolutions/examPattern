@@ -1,0 +1,976 @@
+{% extends "base.html" %}
+
+{% block title %}Review Solutions - {{ attempt.test.name }}{% endblock %}
+
+{% block header %}<!-- Navbar removed for review interface -->{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden;
+        background: #f3f5f9;
+    }
+
+    main.container-fluid {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* Mobile Palette Toggle Button */
+    .palette-toggle {
+        display: none;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        position: relative;
+        padding: 0;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+    }
+
+    .palette-toggle:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .palette-toggle .hamburger-line {
+        width: 20px;
+        height: 2px;
+        background: white;
+        border-radius: 2px;
+        transition: all 0.3s;
+    }
+
+    .palette-toggle.active .hamburger-line:nth-child(1) {
+        transform: translateY(7px) rotate(45deg);
+    }
+
+    .palette-toggle.active .hamburger-line:nth-child(2) {
+        opacity: 0;
+    }
+
+    .palette-toggle.active .hamburger-line:nth-child(3) {
+        transform: translateY(-7px) rotate(-45deg);
+    }
+
+    /* Top Navigation Bar */
+    .top-navbar {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        padding: 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .sections-bar {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .sections-bar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .section-tab {
+        padding: 12px 24px;
+        cursor: pointer;
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.8);
+        font-weight: 500;
+        font-size: 14px;
+        transition: all 0.3s;
+        border-bottom: 3px solid transparent;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .section-tab:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+    }
+
+    .section-tab.active {
+        background: rgba(255, 255, 255, 0.15);
+        color: white;
+        border-bottom-color: #4caf50;
+        font-weight: 600;
+    }
+
+    .user-info-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 20px;
+        background: rgba(0, 0, 0, 0.1);
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .user-profile {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .user-photo {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 2px solid white;
+        object-fit: cover;
+    }
+
+    .user-name {
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .user-meta {
+        font-size: 12px;
+        opacity: 0.85;
+    }
+
+    .review-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .attempt-switcher {
+        min-width: 200px;
+        background: rgba(255, 255, 255, 0.15);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        border-radius: 0.5rem;
+        padding: 6px 28px 6px 10px;
+        font-size: 12px;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        background-size: 12px;
+    }
+
+    .attempt-switcher:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
+    }
+
+    .attempt-switcher option {
+        color: #1e3c72;
+    }
+
+    .back-btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 6px 12px;
+        border-radius: 0.375rem;
+        font-size: 12px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .back-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        color: white;
+    }
+
+    /* Review Layout */
+    .test-layout {
+        display: flex;
+        height: calc(100vh - 106px);
+        overflow: hidden;
+    }
+
+    .main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: #ffffff;
+    }
+
+    .question-header {
+        background: #f8f9fa;
+        padding: 12px 20px;
+        border-bottom: 2px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .question-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 14px;
+    }
+
+    .question-number {
+        font-weight: 700;
+        color: #1e3c72;
+    }
+
+    .question-status {
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .status-correct {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-incorrect {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .status-unanswered {
+        background: #e2e3e5;
+        color: #383d41;
+    }
+
+    .question-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .action-btn {
+        padding: 5px 12px;
+        border: 1px solid #ddd;
+        background: white;
+        border-radius: 0.25rem;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+        background: #f0f0f0;
+    }
+
+    .question-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+    }
+
+    .question-text {
+        font-size: 1.05rem;
+        margin-bottom: 1.2rem;
+        line-height: 1.6;
+        color: #212529;
+    }
+
+    .question-image {
+        max-width: min(450px, 100%);
+        max-height: 225px;
+        width: auto;
+        height: auto;
+        margin: 1rem 0;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        object-fit: contain;
+        display: block;
+    }
+
+    .solution-image {
+        max-width: min(500px, 100%);
+        max-height: 250px;
+        width: auto;
+        height: auto;
+        margin: 0.8rem 0 0.2rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        object-fit: contain;
+        display: block;
+    }
+
+    .option-image {
+        max-width: 150px;
+        max-height: 100px;
+        width: auto;
+        height: auto;
+        margin-top: 0.5rem;
+        border-radius: 0.25rem;
+        object-fit: contain;
+    }
+
+    .option-group {
+        margin-top: 1.2rem;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .option-row {
+        display: block;
+        width: 100%;
+        padding: 0.7rem 1rem;
+        margin-bottom: 0.7rem;
+        border: 2px solid #e0e0e0;
+        border-radius: 0.5rem;
+        background: white;
+    }
+
+    .option-row.correct {
+        background: #e9f7ef;
+        border-color: #4caf50;
+    }
+
+    .option-row.incorrect {
+        background: #fdecea;
+        border-color: #ef5350;
+    }
+
+    .option-row.selected {
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .option-badges {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 6px;
+    }
+
+    .badge-soft {
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .badge-correct {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .badge-wrong {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .badge-user {
+        background: #dbe7ff;
+        color: #1e3c72;
+    }
+
+    .response-box {
+        background: #f8f9fa;
+        border: 1px dashed #bdbdbd;
+        border-radius: 0.5rem;
+        padding: 12px;
+        margin-top: 12px;
+    }
+
+    .solution-block {
+        background: #fff7e6;
+        border: 1px solid #ffe0b2;
+        border-radius: 0.6rem;
+        padding: 14px;
+        margin-top: 16px;
+    }
+
+    .solution-title {
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    /* Right Sidebar */
+    .right-sidebar {
+        width: 320px;
+        background: #f8f9fa;
+        border-left: 2px solid #e0e0e0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        transition: transform 0.3s ease;
+    }
+
+    .right-sidebar.mobile-hidden {
+        transform: translateX(100%);
+    }
+
+    .legend-section {
+        padding: 15px;
+        background: white;
+        border-bottom: 2px solid #e0e0e0;
+    }
+
+    .legend-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: #666;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+    }
+
+    .legend-items {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+    }
+
+    .legend-box {
+        width: 20px;
+        height: 20px;
+        border-radius: 3px;
+        flex-shrink: 0;
+        border: 1px solid #d0d0d0;
+    }
+
+    .palette-section {
+        padding: 15px;
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .palette-header {
+        font-weight: 700;
+        font-size: 13px;
+        color: #1e3c72;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #667eea;
+        text-transform: uppercase;
+    }
+
+    .palette-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+    }
+
+    .question-item {
+        width: 100%;
+        aspect-ratio: 1;
+        border: 2px solid transparent;
+        border-radius: 50%;
+        font-size: clamp(9px, 2.2vw, 13px);
+        font-weight: 700;
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .question-item:hover {
+        transform: scale(1.1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .question-item.active {
+        border-width: 3px;
+        border-color: #2a5298;
+        box-shadow: 0 0 0 2px rgba(42, 82, 152, 0.3);
+    }
+
+    .palette-correct {
+        background: #4caf50;
+        color: white;
+        border-color: #4caf50;
+    }
+
+    .palette-incorrect {
+        background: #ef5350;
+        color: white;
+        border-color: #ef5350;
+    }
+
+    .palette-unanswered {
+        background: white;
+        color: #424242;
+        border: 2px solid #bdbdbd;
+    }
+
+    /* Responsive */
+    @media (max-width: 992px) {
+        .palette-toggle {
+            display: flex;
+        }
+
+        .right-sidebar {
+            position: fixed;
+            right: 0;
+            top: 106px;
+            height: calc(100vh - 106px);
+            z-index: 200;
+            width: min(85vw, 300px);
+        }
+
+        .right-sidebar.mobile-hidden {
+            transform: translateX(100%);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .question-body {
+            padding: 16px;
+        }
+
+        .palette-grid {
+            grid-template-columns: repeat(6, 1fr);
+            gap: 6px;
+        }
+
+        .user-info-bar {
+            padding: 10px 14px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .section-tab {
+            padding: 10px 16px;
+            font-size: 13px;
+        }
+
+        .question-image,
+        .solution-image {
+            max-width: 100%;
+            max-height: 195px;
+        }
+
+        .palette-grid {
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="review-page">
+    <div class="top-navbar">
+        <div class="sections-bar" id="sectionsBar"></div>
+        <div class="user-info-bar">
+            <div class="user-profile">
+                <img src="/static/examPattern.png" alt="User" class="user-photo">
+                <div>
+                    <div class="user-name">{{ request.user.username }}</div>
+                    <div class="user-meta">
+                        {{ attempt.test.series.name }} • {{ attempt.test.name }} • <span id="currentSectionName">Section</span>
+                    </div>
+                </div>
+            </div>
+            <div class="review-actions">
+                {% if all_attempts and all_attempts.count > 1 %}
+                <select class="form-select form-select-sm attempt-switcher" id="attemptSwitcher" aria-label="Select attempt">
+                    {% for att in all_attempts %}
+                    <option value="{% url 'review_solutions' att.id %}" {% if att.id == attempt.id %}selected{% endif %}>
+                        Attempt {{ att.attempt_number }}{% if att.score %} ({{ att.score|floatformat:2 }}/{{ max_marks|floatformat:0 }}){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+                <button class="palette-toggle" id="paletteToggle" aria-label="Toggle Question Palette">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+                <a href="{% url 'results_page' attempt.id %}" class="back-btn">Back to Results</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-layout">
+        <div class="main-content">
+            <div class="question-header">
+                <div class="question-info">
+                    <span class="question-number" id="questionNumber">Question 1</span>
+                    <span class="question-status status-unanswered" id="questionStatus">Not Answered</span>
+                    <div style="display: flex; align-items: center; gap: 15px; margin-left: auto; margin-right: 20px;">
+                        <span id="questionTime" style="font-size: 13px; color: #666; font-weight: 500;">⏱️ --:--</span>
+                        <span id="avgTime" style="font-size: 13px; color: #999; font-weight: 500;">📊 Avg: --:--</span>
+                        <span id="timeEmoji" style="font-size: 18px;"></span>
+                    </div>
+                </div>
+                <div class="question-actions">
+                    <button class="action-btn" id="btn-prev">Previous</button>
+                    <button class="action-btn" id="btn-next">Next</button>
+                </div>
+            </div>
+
+            <div class="question-body" id="questionContainer">
+                <div class="text-muted">Loading question...</div>
+            </div>
+        </div>
+
+        <div class="right-sidebar" id="rightSidebar">
+            <div class="legend-section">
+                <div class="legend-title">Legend</div>
+                <div class="legend-items">
+                    <div class="legend-item"><span class="legend-box" style="background:#4caf50;"></span>Correct</div>
+                    <div class="legend-item"><span class="legend-box" style="background:#ef5350;"></span>Wrong</div>
+                    <div class="legend-item"><span class="legend-box" style="background:#ffffff;"></span>Unanswered</div>
+                </div>
+            </div>
+            <div class="palette-section">
+                <div class="palette-header">Question Palette</div>
+                <div class="palette-grid" id="palette"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ review_payload|json_script:"review-data" }}
+
+<script src="/static/js/utils.js?v=1.0"></script>
+
+<script>
+    const reviewData = JSON.parse(document.getElementById('review-data').textContent || '{}');
+    const sections = reviewData.sections || [];
+    const questions = reviewData.questions || [];
+
+    const questionContainer = document.getElementById('questionContainer');
+    const questionNumberEl = document.getElementById('questionNumber');
+    const questionStatusEl = document.getElementById('questionStatus');
+    const currentSectionNameEl = document.getElementById('currentSectionName');
+    const paletteEl = document.getElementById('palette');
+    const sectionsBar = document.getElementById('sectionsBar');
+    const rightSidebar = document.getElementById('rightSidebar');
+    const attemptSwitcher = document.getElementById('attemptSwitcher');
+    const paletteToggle = document.getElementById('paletteToggle');
+
+    let currentQuestionId = null;
+    let currentSectionId = null;
+
+    const questionById = new Map(questions.map(q => [q.id, q]));
+    const questionsBySection = sections.reduce((acc, section) => {
+        acc[section.id] = questions.filter(q => q.section_id === section.id);
+        return acc;
+    }, {});
+
+    const orderedQuestions = [...questions].sort((a, b) => {
+        if (a.section_order !== b.section_order) {
+            return a.section_order - b.section_order;
+        }
+        return a.question_number - b.question_number;
+    });
+
+    const escapeHtml = (value) => {
+        const div = document.createElement('div');
+        div.textContent = value || '';
+        return div.innerHTML;
+    };
+
+    const statusText = (status) => {
+        if (status === 'correct') return 'Correct';
+        if (status === 'incorrect') return 'Wrong';
+        return 'Not Answered';
+    };
+
+    const statusClass = (status) => {
+        if (status === 'correct') return 'status-correct';
+        if (status === 'incorrect') return 'status-incorrect';
+        return 'status-unanswered';
+    };
+
+    const paletteClass = (status) => {
+        if (status === 'correct') return 'palette-correct';
+        if (status === 'incorrect') return 'palette-incorrect';
+        return 'palette-unanswered';
+    };
+
+    const renderSectionTabs = () => {
+        sectionsBar.innerHTML = '';
+        sections.forEach(section => {
+            const btn = document.createElement('button');
+            btn.className = 'section-tab';
+            btn.textContent = section.name;
+            btn.dataset.sectionId = section.id;
+            btn.addEventListener('click', () => {
+                setActiveSection(section.id);
+                const firstQuestion = questionsBySection[section.id][0];
+                if (firstQuestion) {
+                    selectQuestion(firstQuestion.id);
+                }
+            });
+            sectionsBar.appendChild(btn);
+        });
+    };
+
+    const setActiveSection = (sectionId) => {
+        currentSectionId = sectionId;
+        const section = sections.find(s => s.id === sectionId);
+        if (section) {
+            currentSectionNameEl.textContent = section.name;
+        }
+        document.querySelectorAll('.section-tab').forEach(tab => {
+            tab.classList.toggle('active', parseInt(tab.dataset.sectionId, 10) === sectionId);
+        });
+        renderPalette(sectionId);
+    };
+
+    const renderPalette = (sectionId) => {
+        paletteEl.innerHTML = '';
+        const list = questionsBySection[sectionId] || [];
+        list.forEach(q => {
+            const btn = document.createElement('button');
+            btn.className = `question-item ${paletteClass(q.status)}`;
+            btn.textContent = q.question_number;
+            btn.dataset.questionId = q.id;
+            if (q.id === currentQuestionId) {
+                btn.classList.add('active');
+            }
+            btn.addEventListener('click', () => selectQuestion(q.id));
+            paletteEl.appendChild(btn);
+        });
+    };
+
+    const updatePaletteActive = () => {
+        document.querySelectorAll('.question-item').forEach(btn => {
+            btn.classList.toggle('active', parseInt(btn.dataset.questionId, 10) === currentQuestionId);
+        });
+    };
+
+    const renderQuestion = (question) => {
+        if (!question) return;
+
+        const displayText = question.extracted_text || question.text || '';
+        let html = '';
+
+        if (displayText) {
+            html += `<div class="question-text">${escapeHtml(displayText)}</div>`;
+        }
+
+        if (question.image_url) {
+            html += `<img src="${question.image_url}" alt="Question" class="question-image">`;
+        }
+
+        if (question.options && question.options.length > 0) {
+            html += '<div class="option-group">';
+            question.options.forEach(option => {
+                const isSelected = question.user_option_ids.includes(option.id);
+                const isCorrect = option.is_correct;
+                const classes = ['option-row'];
+                if (isCorrect) classes.push('correct');
+                if (isSelected && !isCorrect) classes.push('incorrect');
+                if (isSelected) classes.push('selected');
+
+                html += `<div class="${classes.join(' ')}">`;
+                html += '<div class="option-badges">';
+                if (isCorrect) {
+                    html += '<span class="badge-soft badge-correct">Correct Answer</span>';
+                }
+                if (isSelected) {
+                    html += '<span class="badge-soft badge-user">Your Answer</span>';
+                }
+                if (!isCorrect && isSelected) {
+                    html += '<span class="badge-soft badge-wrong">Wrong</span>';
+                }
+                html += '</div>';
+                html += `<div>${escapeHtml(option.text || '')}</div>`;
+                if (option.image_url) {
+                    html += `<img src="${option.image_url}" alt="Option" class="option-image">`;
+                }
+                html += '</div>';
+            });
+            html += '</div>';
+        } else {
+            html += '<div class="response-box">';
+            if (question.response_text) {
+                html += `<strong>Your Response:</strong> ${escapeHtml(question.response_text)}`;
+            } else {
+                html += '<em>No response submitted.</em>';
+            }
+            html += '</div>';
+        }
+
+        if (question.solution_explanation || question.solution_image_url) {
+            html += '<div class="solution-block">';
+            html += '<div class="solution-title">Solution</div>';
+            if (question.solution_explanation) {
+                html += `<div>${escapeHtml(question.solution_explanation)}</div>`;
+            }
+            if (question.solution_image_url) {
+                html += `<img src="${question.solution_image_url}" alt="Solution" class="solution-image">`;
+            }
+            html += '</div>';
+        } else {
+            html += '<div class="solution-block"><em>No solution provided for this question.</em></div>';
+        }
+
+        questionContainer.innerHTML = html;
+
+        if (window.MathJax) {
+            MathJax.typesetPromise([questionContainer]).catch(err => console.error('MathJax error:', err));
+        }
+    };
+
+    const updateQuestionHeader = (question) => {
+        questionNumberEl.textContent = `Question ${question.question_number}`;
+        questionStatusEl.textContent = statusText(question.status);
+        questionStatusEl.className = `question-status ${statusClass(question.status)}`;
+        
+        // Display time spent on question
+        const questionTimeEl = document.getElementById('questionTime');
+        const avgTimeEl = document.getElementById('avgTime');
+        const timeEmojiEl = document.getElementById('timeEmoji');
+        
+        if (questionTimeEl) {
+            const userTime = question.time_spent_seconds || 0;
+            const avgTime = question.average_time_seconds || 0;
+            const timeFormatted = Utils.formatTime(userTime);
+            const avgTimeFormatted = Utils.formatTime(avgTime);
+            
+            questionTimeEl.textContent = `⏱️ You: ${timeFormatted}`;
+            avgTimeEl.textContent = `📊 Avg: ${avgTimeFormatted}`;
+            
+            // Add emoji based on comparison
+            if (avgTime > 0 && userTime > 0) {
+                const diff = userTime - avgTime;
+                const percentDiff = Math.abs(diff) / avgTime;
+                
+                if (percentDiff <= 0.1) {
+                    // Within 10% - neutral
+                    timeEmojiEl.textContent = '😐';
+                    timeEmojiEl.title = 'About average';
+                } else if (userTime < avgTime) {
+                    // Faster than average
+                    if (percentDiff > 0.3) {
+                        timeEmojiEl.textContent = '🎉';
+                        timeEmojiEl.title = 'Much faster than average!';
+                    } else {
+                        timeEmojiEl.textContent = '😊';
+                        timeEmojiEl.title = 'Faster than average';
+                    }
+                } else {
+                    // Slower than average
+                    timeEmojiEl.textContent = '😢';
+                    timeEmojiEl.title = 'Slower than average';
+                }
+            } else {
+                timeEmojiEl.textContent = '';
+                timeEmojiEl.title = '';
+            }
+        }
+    };
+
+    const selectQuestion = (questionId) => {
+        const question = questionById.get(questionId);
+        if (!question) return;
+
+        currentQuestionId = questionId;
+        if (currentSectionId !== question.section_id) {
+            setActiveSection(question.section_id);
+        }
+        updateQuestionHeader(question);
+        renderQuestion(question);
+        updatePaletteActive();
+    };
+
+    const bindNavigation = () => {
+        const prevBtn = document.getElementById('btn-prev');
+        const nextBtn = document.getElementById('btn-next');
+
+        const updateButtons = () => {
+            const index = orderedQuestions.findIndex(q => q.id === currentQuestionId);
+            if (prevBtn) prevBtn.disabled = index <= 0;
+            if (nextBtn) nextBtn.disabled = index === orderedQuestions.length - 1;
+        };
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                const index = orderedQuestions.findIndex(q => q.id === currentQuestionId);
+                if (index > 0) {
+                    selectQuestion(orderedQuestions[index - 1].id);
+                    updateButtons();
+                }
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                const index = orderedQuestions.findIndex(q => q.id === currentQuestionId);
+                if (index < orderedQuestions.length - 1) {
+                    selectQuestion(orderedQuestions[index + 1].id);
+                    updateButtons();
+                }
+            });
+        }
+
+        updateButtons();
+    };
+
+    const initPaletteToggle = () => {
+        if (!paletteToggle || !rightSidebar) return;
+        paletteToggle.addEventListener('click', () => {
+            paletteToggle.classList.toggle('active');
+            rightSidebar.classList.toggle('mobile-hidden');
+        });
+
+        document.addEventListener('click', (event) => {
+            const isClickInsideSidebar = rightSidebar.contains(event.target);
+            const isClickToggle = paletteToggle.contains(event.target);
+            if (!isClickInsideSidebar && !isClickToggle && window.innerWidth <= 992) {
+                rightSidebar.classList.add('mobile-hidden');
+                paletteToggle.classList.remove('active');
+            }
+        });
+    };
+
+    const initAttemptSwitcher = () => {
+        if (!attemptSwitcher) return;
+        attemptSwitcher.addEventListener('change', (event) => {
+            const targetUrl = event.target.value;
+            if (targetUrl) {
+                window.location.href = targetUrl;
+            }
+        });
+    };
+
+    const initReview = () => {
+        if (!questions.length || !sections.length) {
+            questionContainer.innerHTML = '<div class="text-muted">No questions found for this attempt.</div>';
+            return;
+        }
+
+        renderSectionTabs();
+        setActiveSection(sections[0].id);
+        selectQuestion(orderedQuestions[0].id);
+        bindNavigation();
+        initPaletteToggle();
+        initAttemptSwitcher();
+
+        if (window.innerWidth <= 992) {
+            rightSidebar.classList.add('mobile-hidden');
+            paletteToggle.classList.remove('active');
+        }
+    };
+
+    initReview();
+</script>
+{% endblock %}

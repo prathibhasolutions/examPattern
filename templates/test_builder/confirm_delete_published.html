@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Published Test{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg" style="border-top: 5px solid #dc3545;">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-trash-alt"></i> Delete Published Test
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i> <strong>WARNING: This action cannot be undone!</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>The published test will be <strong>permanently deleted</strong></li>
+                            <li>All student attempts and results will be <strong>lost</strong></li>
+                            <li>The draft will also be <strong>removed</strong></li>
+                            <li>This is a <strong>permanent deletion</strong></li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-4">
+                        <h5>Test to Delete:</h5>
+                        <p class="mb-2"><strong>Name:</strong> {{ draft.name }}</p>
+                        <p class="mb-2"><strong>Series:</strong> {{ draft.series.name }}</p>
+                        <p class="mb-2"><strong>Sections:</strong> {{ draft.sections.count }}</p>
+                        <p class="mb-2"><strong>Published:</strong> {{ draft.created_at|date:"M d, Y" }}</p>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <strong>Alternative:</strong> Instead of deleting, consider unpublishing the test to make it editable. This preserves student data.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger btn-lg" onclick="return confirm('Are you absolutely sure? This will delete all data!')">
+                                <i class="fas fa-trash-alt"></i> Yes, Delete Permanently
+                            </button>
+                            <a href="{% url 'builder_dashboard' %}" class="btn btn-secondary btn-lg">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border-radius: 15px;
+        overflow: hidden;
+    }
+    .card-header {
+        border-bottom: none;
+        padding: 20px;
+    }
+    .card-body {
+        padding: 30px;
+    }
+    .alert {
+        border-radius: 10px;
+    }
+</style>
+{% endblock %}

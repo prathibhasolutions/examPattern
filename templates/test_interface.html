@@ -1,0 +1,1233 @@
+{% extends "base.html" %}
+
+{% block title %}Test — MockTest Platform{% endblock %}
+
+{% block header %}<!-- Navbar removed for test interface -->{% endblock %}
+
+{% block extra_css %}
+<style>
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+
+  main.container-fluid {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Mobile Palette Toggle Button */
+  .palette-toggle {
+    display: none;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    padding: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+  }
+
+  .palette-toggle:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  .palette-toggle .hamburger-line {
+    width: 20px;
+    height: 2px;
+    background: white;
+    border-radius: 2px;
+    transition: all 0.3s;
+  }
+
+  .palette-toggle.active .hamburger-line:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+  }
+
+  .palette-toggle.active .hamburger-line:nth-child(2) {
+    opacity: 0;
+  }
+
+  .palette-toggle.active .hamburger-line:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+  }
+
+  /* Top Navigation Bar */
+  .top-navbar {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: white;
+    padding: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .sections-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .sections-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .section-tab {
+    padding: 12px 24px;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.3s;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .section-tab:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+
+  .section-tab.active {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border-bottom-color: #4caf50;
+    font-weight: 600;
+  }
+
+  .user-info-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background: rgba(0, 0, 0, 0.1);
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .user-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .user-photo {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid white;
+    object-fit: cover;
+  }
+
+  .user-name {
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .timer-section {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+
+  .timer-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .timer-display {
+    font-size: 1.5rem;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    color: white;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+    min-width: 80px;
+    text-align: center;
+  }
+
+  .timer-display.warning {
+    color: #ffa726;
+    animation: pulse 1s ease-in-out infinite;
+  }
+
+  .timer-display.danger {
+    color: #ef5350;
+    animation: pulse 0.5s ease-in-out infinite;
+  }
+
+  .timer-display.paused {
+    color: #ffa726;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  /* Pause Button */
+  .pause-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    padding: 0;
+  }
+
+  .pause-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.6);
+    transform: scale(1.05);
+  }
+
+  .pause-btn.paused {
+    background: rgba(255, 167, 38, 0.3);
+    border-color: #ffa726;
+    animation: pausePulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pausePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  /* Pause Overlay */
+  .pause-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .pause-overlay.active {
+    display: flex;
+  }
+
+  .pause-message {
+    text-align: center;
+    color: white;
+  }
+
+  .pause-icon {
+    font-size: 5rem;
+    color: #ffa726;
+    margin-bottom: 1rem;
+    animation: pausePulse 1.5s ease-in-out infinite;
+  }
+
+  .pause-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .pause-subtitle {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 2rem;
+  }
+
+  .resume-btn {
+    padding: 1rem 3rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    color: #1e3c72;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(67, 233, 123, 0.4);
+  }
+
+  .resume-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(67, 233, 123, 0.5);
+  }
+
+  .fullscreen-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 0;
+  }
+
+  .fullscreen-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  .fullscreen-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Test Layout */
+  .test-layout {
+    display: flex;
+    height: calc(100vh - 117px);
+    overflow: hidden;
+  }
+
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .question-header {
+    background: #f8f9fa;
+    padding: 12px 20px;
+    border-bottom: 2px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .question-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 14px;
+  }
+
+  .question-number {
+    font-weight: 700;
+    color: #1e3c72;
+  }
+
+  .question-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .action-btn {
+    padding: 5px 12px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 0.25rem;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .action-btn:hover {
+    background: #f0f0f0;
+  }
+
+  .question-content {
+    flex: 1;
+    padding: 25px 30px 20px 30px;
+    overflow-y: auto;
+    background: white;
+    min-height: 0;
+  }
+
+  .question-text {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.7;
+    color: #212529;
+  }
+
+  .question-image {
+    max-width: min(450px, 100%);
+    max-height: 225px;
+    width: auto;
+    height: auto;
+    margin: 1rem 0;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    object-fit: contain;
+    display: block;
+  }
+
+  .option-image {
+    max-width: 150px;
+    max-height: 100px;
+    width: auto;
+    height: auto;
+    margin-top: 0.5rem;
+    border-radius: 0.25rem;
+    object-fit: contain;
+  }
+
+  .option-group {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .option {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: white;
+  }
+
+  .option:hover {
+    background: #f5f5f5;
+    border-color: #667eea;
+    transform: translateX(4px);
+  }
+
+  .option input[type="radio"],
+  .option input[type="checkbox"] {
+    margin-right: 0.75rem;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+
+  .option.selected {
+    background: #e8eaf6;
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+  }
+
+  .response-text {
+    width: 100%;
+    min-height: 100px;
+    margin-top: 1rem;
+  }
+
+  .bottom-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    padding: 15px 20px;
+    background: #f8f9fa;
+    border-top: 2px solid #e0e0e0;
+    flex-shrink: 0;
+  }
+
+  .bottom-actions button {
+    min-width: 160px;
+    font-weight: 600;
+    padding: 10px 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+  }
+
+  .bottom-actions button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Right Sidebar */
+  .right-sidebar {
+    width: 320px;
+    background: #f8f9fa;
+    border-left: 2px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+  }
+
+  .right-sidebar.mobile-hidden {
+    transform: translateX(100%);
+  }
+
+  .legend-section {
+    padding: 15px;
+    background: white;
+    border-bottom: 2px solid #e0e0e0;
+  }
+
+  .legend-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  .legend-items {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .legend-box {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .palette-section {
+    padding: 15px;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .palette-header {
+    font-weight: 700;
+    font-size: 13px;
+    color: #1e3c72;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #667eea;
+    text-transform: uppercase;
+  }
+
+  .palette-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+
+  .question-item {
+    width: 100%;
+    aspect-ratio: 1;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    font-size: clamp(9px, 2.2vw, 14px);
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .question-item:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .question-item.active {
+    border-width: 3px;
+    border-color: #2a5298;
+    box-shadow: 0 0 0 2px rgba(42, 82, 152, 0.3);
+  }
+
+  /* Status colors */
+  .not-visited {
+    background: white;
+    color: #424242;
+    border: 2px solid #bdbdbd;
+  }
+
+  .visited {
+    background: #ff5252;
+    color: white;
+    border-color: #ff5252;
+  }
+
+  .answered {
+    background: #4caf50;
+    color: white;
+    border-color: #4caf50;
+  }
+
+  .marked-for-review {
+    background: #c084fc;
+    color: white;
+    border-color: #c084fc;
+  }
+
+  .answered-and-marked {
+    background: #7c3aed;
+    color: white;
+    border-color: #7c3aed;
+  }
+
+  .submit-section {
+    padding: 15px;
+    background: white;
+    border-top: 2px solid #e0e0e0;
+  }
+
+  .submit-section button {
+    width: 100%;
+    font-weight: 600;
+  }
+
+  .text-muted-small {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  /* Responsive Styles */
+  @media (max-width: 768px) {
+    .palette-toggle {
+      display: flex;
+    }
+
+    .right-sidebar {
+      position: fixed;
+      right: 0;
+      top: 0;
+      height: 100vh;
+      z-index: 1000;
+      box-shadow: -4px 0 12px rgba(0, 0, 0, 0.2);
+      width: min(85vw, 300px);
+    }
+    .palette-grid {
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+    }
+
+    .right-sidebar.mobile-hidden {
+      transform: translateX(100%);
+    }
+
+    .user-profile {
+      gap: 8px;
+    }
+
+    .user-photo {
+      width: 32px;
+      height: 32px;
+    }
+
+    .user-name {
+      font-size: 12px;
+    }
+
+    .timer-display {
+      font-size: 1.2rem;
+    }
+
+    .text-muted-small {
+      font-size: 0.65rem;
+    }
+
+    .fullscreen-btn {
+      width: 28px;
+      height: 28px;
+    }
+
+    .fullscreen-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .pause-btn {
+      width: 36px;
+      height: 36px;
+      font-size: 16px;
+    }
+
+    .section-tab {
+      padding: 10px 16px;
+      font-size: 13px;
+    }
+
+    .test-layout {
+      height: calc(100vh - 100px);
+    }
+
+    .question-header {
+      padding: 10px 15px;
+    }
+
+    .question-number {
+      font-size: 14px;
+    }
+
+    .question-content {
+      padding: 15px 20px 15px 20px;
+    }
+
+    .question-text {
+      font-size: 1rem;
+    }
+
+    .bottom-actions {
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 12px 15px;
+    }
+
+    .bottom-actions button {
+      min-width: 0;
+      flex: 1 1 calc(50% - 0.25rem);
+      font-size: 13px;
+      padding: 8px 12px;
+    }
+
+    #btn-clear {
+      order: 1;
+    }
+
+    #btn-prev {
+      order: 2;
+    }
+
+    #btn-mark-review {
+      order: 3;
+    }
+
+    #btn-next {
+      order: 4;
+    }
+
+    .option {
+      padding: 0.6rem 0.8rem;
+      font-size: 0.95rem;
+    }
+
+  }
+
+  @media (max-width: 480px) {
+    .timer-section {
+      gap: 10px;
+    }
+
+    .timer-display {
+      font-size: 1.1rem;
+      min-width: 70px;
+    }
+
+    .pause-btn {
+      width: 36px;
+      height: 36px;
+      font-size: 16px;
+    }
+
+    .pause-title {
+      font-size: 2rem;
+    }
+
+    .pause-subtitle {
+      font-size: 1rem;
+    }
+
+    .resume-btn {
+      padding: 0.8rem 2rem;
+      font-size: 1rem;
+    }
+
+    .user-name {
+      display: none;
+    }
+
+    .section-tab {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
+    .question-image {
+      max-height: 188px;
+    }
+
+    .bottom-actions button {
+      font-size: 12px;
+      padding: 7px 10px;
+    }
+
+    .palette-grid {
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+    }
+
+    .legend-items {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Top Navigation Bar -->
+<div class="top-navbar">
+  <!-- Sections Bar -->
+  <div class="sections-bar" id="sectionsBar">
+    <!-- Sections will be dynamically loaded here -->
+  </div>
+  
+  <!-- User Info Bar -->
+  <div class="user-info-bar">
+    <div class="user-profile">
+      <img src="/static/examPattern.png" alt="User" class="user-photo">
+      <span class="user-name" id="userName">{{ user.get_full_name|default:user.username }}</span>
+    </div>
+    <div class="timer-section">
+      <div class="timer-content">
+        <div class="text-muted-small">Time Remaining</div>
+        <div id="timer" class="timer-display">00:00</div>
+      </div>
+      <button class="pause-btn" id="pauseBtn" title="Pause Test">
+        <i class="fas fa-pause" id="pauseIcon"></i>
+      </button>
+      <button class="fullscreen-btn" id="fullscreenBtn" title="Toggle Fullscreen">
+        <svg fill="currentColor" viewBox="0 0 16 16">
+          <path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1h-4zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5zM.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5zm15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5z"/>
+        </svg>
+      </button>
+      <button class="palette-toggle" id="paletteToggle" aria-label="Toggle Question Palette">
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Test Layout -->
+<div class="test-layout">
+  <!-- Main Content Area -->
+  <div class="main-content">
+    <!-- Question Header -->
+    <div class="question-header">
+      <div class="question-info">
+        <span class="question-number" id="questionNumber">Question 1</span>
+      </div>
+    </div>
+
+    <!-- Question Content -->
+    <div class="question-content">
+      <div id="question-container">
+        <p class="text-muted">Loading question...</p>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation Actions -->
+    <div class="bottom-actions">
+      <button id="btn-prev" class="btn btn-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Previous
+      </button>
+      
+      <button id="btn-clear" class="btn btn-outline-secondary">
+        <i class="fas fa-eraser me-2"></i>Clear Response
+      </button>
+      
+      <button id="btn-mark-review" class="btn btn-warning">
+        <i class="fas fa-bookmark me-2"></i>Mark for Review
+      </button>
+      
+      <button id="btn-next" class="btn btn-primary">
+        Next<i class="fas fa-arrow-right ms-2"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Right Sidebar -->
+  <div class="right-sidebar">
+    <!-- Legend Section -->
+    <div class="legend-section">
+      <div class="legend-title">Status Indicators</div>
+      <div class="legend-items">
+        <div class="legend-item">
+          <div class="legend-box not-visited"></div>
+          <span>Not Visited</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-box visited"></div>
+          <span>Not Answered</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-box answered"></div>
+          <span>Answered</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-box marked-for-review"></div>
+          <span>Marked</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-box answered-and-marked"></div>
+          <span>Ans + Marked</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Palette Section -->
+    <div class="palette-section">
+      <div class="palette-header" id="paletteHeader">SECTION: Loading...</div>
+      <div class="palette-grid" id="palette">
+        <!-- Question numbers will be dynamically loaded here -->
+      </div>
+    </div>
+
+    <!-- Submit Button -->
+    <div class="submit-section">
+      <button id="btn-submit" class="btn btn-danger">
+        <i class="fas fa-check-circle me-2"></i>Submit Test
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Leave Test Confirmation Modal -->
+<div class="modal fade" id="leaveTestModal" tabindex="-1" aria-labelledby="leaveTestModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title" id="leaveTestModalLabel">
+          <i class="fas fa-exclamation-circle me-2"></i>Are you sure?
+        </h5>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2"><strong>You are about to leave the test.</strong></p>
+        <p class="text-muted small mb-3">
+          <i class="fas fa-info-circle me-1"></i>
+          Any unsaved answers will be lost. Your last saved answers will be submitted.
+        </p>
+        <p class="text-danger small mb-0">
+          <i class="fas fa-exclamation-triangle me-1"></i>
+          <strong>Warning:</strong> Leaving the test may be recorded as suspicious activity.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancelLeaveBtn" data-bs-dismiss="modal">
+          <i class="fas fa-times me-2"></i>No, go back
+        </button>
+        <button type="button" class="btn btn-danger" id="confirmLeaveBtn">
+          <i class="fas fa-sign-out-alt me-2"></i>Yes, leave test
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section Switch Confirmation Modal -->
+<div class="modal fade" id="sectionSwitchModal" tabindex="-1" aria-labelledby="sectionSwitchModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h6 class="modal-title" id="sectionSwitchModalLabel">
+          <i class="fas fa-random me-2"></i>Switch Section?
+        </h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2"><strong>Are you sure you want to switch sections?</strong></p>
+        <p class="text-muted small mb-0">
+          <i class="fas fa-lock me-1"></i>
+          Once you move to the next section, you cannot return to this section.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" id="cancelSectionSwitchBtn" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-info" id="confirmSectionSwitchBtn">Yes, switch</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Submit Confirmation Modal -->
+<div class="modal fade" id="submitConfirmModal" tabindex="-1" aria-labelledby="submitConfirmModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="submitConfirmModalLabel">
+          <i class="fas fa-exclamation-triangle me-2"></i>Submit Test
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2"><strong>Are you sure you want to submit the test?</strong></p>
+        <p class="text-muted small mb-0">
+          <i class="fas fa-info-circle me-1"></i>
+          You will not be able to change your answers after submission.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmSubmitBtn">
+          <i class="fas fa-check me-2"></i>I'm sure
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Pause Confirmation Modal -->
+<div class="modal fade" id="pauseConfirmModal" tabindex="-1" aria-labelledby="pauseConfirmModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title" id="pauseConfirmModalLabel">
+          <i class="fas fa-pause-circle me-2"></i>Pause Test
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2"><strong>Are you sure you want to pause the test?</strong></p>
+        <p class="text-muted small mb-0">
+          <i class="fas fa-info-circle me-1"></i>
+          The timer will stop and questions will be hidden until you resume.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning" id="confirmPauseBtn">
+          <i class="fas fa-pause me-2"></i>Yes, Pause
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Pause Overlay -->
+<div class="pause-overlay" id="pauseOverlay">
+  <div class="pause-message">
+    <div class="pause-icon">
+      <i class="fas fa-pause-circle"></i>
+    </div>
+    <h2 class="pause-title">Test Paused</h2>
+    <p class="pause-subtitle">Timer is paused. Click resume to continue.</p>
+    <button class="resume-btn" id="resumeBtn">
+      <i class="fas fa-play me-2"></i>Resume Test
+    </button>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Pass attempt and test data from backend to frontend
+  const ATTEMPT_ID = {{ attempt_id|default:"null" }};
+  const TEST_ID = {{ test_id|default:"null" }};
+  const API_BASE = '/api/v1';
+  const CSRF_TOKEN = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+  // Disable right-click during test
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    return false;
+  });
+
+  // Mobile palette toggle
+  const paletteToggle = document.getElementById('paletteToggle');
+  const rightSidebar = document.querySelector('.right-sidebar');
+  
+  if (paletteToggle && rightSidebar) {
+    // Initially hide on mobile
+    if (window.innerWidth <= 768) {
+      rightSidebar.classList.add('mobile-hidden');
+    }
+
+    paletteToggle.addEventListener('click', function() {
+      rightSidebar.classList.toggle('mobile-hidden');
+      paletteToggle.classList.toggle('active');
+    });
+
+    // Close palette when clicking outside on mobile
+    document.addEventListener('click', function(e) {
+      if (window.innerWidth <= 768) {
+        if (!rightSidebar.contains(e.target) && !paletteToggle.contains(e.target)) {
+          rightSidebar.classList.add('mobile-hidden');
+          paletteToggle.classList.remove('active');
+        }
+      }
+    });
+
+    // Handle resize
+    window.addEventListener('resize', function() {
+      if (window.innerWidth > 768) {
+        rightSidebar.classList.remove('mobile-hidden');
+        paletteToggle.classList.remove('active');
+      } else {
+        rightSidebar.classList.add('mobile-hidden');
+      }
+    });
+  }
+
+  // Fullscreen functionality
+  document.getElementById('fullscreenBtn').addEventListener('click', function() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error('Error attempting to enable fullscreen:', err);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  });
+
+  // Update fullscreen icon when fullscreen state changes
+  document.addEventListener('fullscreenchange', function() {
+    const btn = document.getElementById('fullscreenBtn');
+    if (document.fullscreenElement) {
+      btn.innerHTML = `<svg fill="currentColor" viewBox="0 0 16 16">
+        <path d="M5.5 0a.5.5 0 0 1 .5.5v4A1.5 1.5 0 0 1 4.5 6h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5zm5 0a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 10 4.5v-4a.5.5 0 0 1 .5-.5zM0 10.5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 6 11.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5zm10 1a1.5 1.5 0 0 1 1.5-1.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4z"/>
+      </svg>`;
+      btn.title = 'Exit Fullscreen';
+    } else {
+      btn.innerHTML = `<svg fill="currentColor" viewBox="0 0 16 16">
+        <path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1h-4zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5zM.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5zm15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5z"/>
+      </svg>`;
+      btn.title = 'Toggle Fullscreen';
+    }
+  });
+
+  // Pause/Resume Test functionality
+  const pauseBtn = document.getElementById('pauseBtn');
+  const pauseIcon = document.getElementById('pauseIcon');
+  const pauseOverlay = document.getElementById('pauseOverlay');
+  const resumeBtn = document.getElementById('resumeBtn');
+  const pauseConfirmModal = document.getElementById('pauseConfirmModal');
+  const confirmPauseBtn = document.getElementById('confirmPauseBtn');
+
+  let testPaused = false;
+  let pauseModalInstance = null;
+
+  // Initialize pause modal
+  if (pauseConfirmModal) {
+    pauseModalInstance = new bootstrap.Modal(pauseConfirmModal);
+  }
+
+  // Pause button click handler
+  if (pauseBtn) {
+    pauseBtn.addEventListener('click', () => {
+      if (testPaused) {
+        resumeTest();
+      } else {
+        // Show confirmation modal first
+        if (pauseModalInstance) {
+          pauseModalInstance.show();
+        }
+      }
+    });
+  }
+
+  // Confirm pause button handler
+  if (confirmPauseBtn) {
+    confirmPauseBtn.addEventListener('click', () => {
+      // Hide modal
+      if (pauseModalInstance) {
+        pauseModalInstance.hide();
+      }
+      // Actually pause the test
+      pauseTest();
+    });
+  }
+
+  // Resume button click handler
+  if (resumeBtn) {
+    resumeBtn.addEventListener('click', () => {
+      resumeTest();
+    });
+  }
+
+  function pauseTest() {
+    testPaused = true;
+    
+    // Pause the timer
+    if (window.Timer) {
+      Timer.pause();
+    }
+    
+    // Show pause overlay
+    if (pauseOverlay) {
+      pauseOverlay.classList.add('active');
+    }
+    
+    // Update button appearance
+    if (pauseBtn) {
+      pauseBtn.classList.add('paused');
+      pauseBtn.title = 'Resume Test';
+    }
+    if (pauseIcon) {
+      pauseIcon.className = 'fas fa-play';
+    }
+  }
+
+  function resumeTest() {
+    testPaused = false;
+    
+    // Resume the timer
+    if (window.Timer) {
+      Timer.resume();
+    }
+    
+    // Hide pause overlay
+    if (pauseOverlay) {
+      pauseOverlay.classList.remove('active');
+    }
+    
+    // Update button appearance
+    if (pauseBtn) {
+      pauseBtn.classList.remove('paused');
+      pauseBtn.title = 'Pause Test';
+    }
+    if (pauseIcon) {
+      pauseIcon.className = 'fas fa-pause';
+    }
+  }
+</script>
+
+<!-- API Module -->
+<script src="/static/js/api.js?v=1.0"></script>
+
+<!-- Timer Module -->
+<script src="/static/js/timer.js?v=1.0"></script>
+
+<!-- Palette Module -->
+<script src="/static/js/palette.js?v=1.0"></script>
+
+<!-- Navigation Module -->
+<script src="/static/js/navigation.js?v=1.0"></script>
+
+<!-- UI Module -->
+<script src="/static/js/ui.js?v=1.0"></script>
+
+<!-- Time Tracker Module -->
+<script src="/static/js/time-tracker.js?v=1.0"></script>
+
+<!-- Main App -->
+<script src="/static/js/test-interface.js?v=1.0"></script>
+{% endblock %}

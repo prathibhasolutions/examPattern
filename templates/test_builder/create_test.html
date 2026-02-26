@@ -1,0 +1,512 @@
+{% extends "base.html" %}
+
+{% block title %}Create New Test{% endblock %}
+
+{% block header %}
+<!-- Custom navbar -->
+{% endblock %}
+
+{% block content %}
+<style>
+    main.container-fluid {
+        padding: 0 !important;
+        margin-top: 0 !important;
+    }
+    body {
+        margin: 0;
+        padding: 0;
+    }
+    .navbar-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        margin: 0 !important;
+        width: 100vw !important;
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw !important;
+        margin-right: -50vw !important;
+    }
+    .navbar-custom .navbar-brand {
+        font-weight: 700;
+        font-size: 18px;
+        color: white !important;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .navbar-custom .navbar-brand img {
+        height: 45px;
+        width: auto;
+    }
+    .navbar-profile {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .profile-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .profile-avatar:hover {
+        transform: scale(1.1);
+        border-color: white;
+    }
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .navbar-custom .nav-link {
+        color: rgba(255,255,255,0.9) !important;
+        font-weight: 500;
+        font-size: 14px;
+        padding: 8px 16px !important;
+        border-radius: 20px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .nav-link:hover {
+        background: rgba(255,255,255,0.15);
+        color: white !important;
+    }
+    .navbar-custom .btn-logout {
+        background: rgba(220, 53, 69, 0.9);
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .btn-logout:hover {
+        background: #dc3545;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    }
+    .footer-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        padding: 40px 0 20px;
+        margin-top: 60px;
+    }
+    .footer-content {
+        display: grid;
+        grid-template-columns: 1fr 2fr 1fr;
+        gap: 30px;
+        margin-bottom: 30px;
+    }
+    .footer-logo-section {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    .footer-logo-section img {
+        width: 180px;
+        max-width: 25vw;
+        height: auto;
+        object-fit: contain;
+    }
+    .footer-logo-section p {
+        color: rgba(255,255,255,0.85);
+        font-size: 14px;
+        margin: 0;
+    }
+    .footer-links {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .footer-links h6 {
+        font-weight: 700;
+        font-size: 16px;
+        margin-bottom: 10px;
+        color: white;
+    }
+    .footer-links a {
+        color: rgba(255,255,255,0.8);
+        text-decoration: none;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    .footer-links a:hover {
+        color: white;
+        padding-left: 5px;
+    }
+    .footer-contact {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .footer-contact h6 {
+        font-weight: 700;
+        font-size: 16px;
+        margin-bottom: 10px;
+        color: white;
+    }
+    .footer-contact p {
+        color: rgba(255,255,255,0.8);
+        font-size: 14px;
+        margin: 0;
+    }
+    .footer-bottom {
+        border-top: 1px solid rgba(255,255,255,0.2);
+        padding-top: 20px;
+        text-align: center;
+    }
+    .footer-bottom p {
+        margin: 5px 0;
+        font-size: 13px;
+        color: rgba(255,255,255,0.75);
+    }
+    .footer-credit {
+        font-size: 12px;
+        color: rgba(255,255,255,0.6);
+        margin-top: 10px;
+    }
+    .footer-credit a {
+        color: #ffc107;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    .footer-credit a:hover {
+        color: #ffdd57;
+        text-decoration: underline;
+    }
+    @media (max-width: 768px) {
+        .footer-content {
+            grid-template-columns: 1fr;
+            gap: 25px;
+            text-align: center;
+        }
+        .footer-logo-section img {
+            margin: 0 auto;
+        }
+        .footer-custom .container-fluid {
+            padding-left: 20px !important;
+            padding-right: 20px !important;
+        }
+    }
+    .form-section {
+        border-radius: 6px;
+    }
+    .btn-block {
+        display: block;
+        width: 100%;
+    }
+</style>
+
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <div class="container-fluid" style="padding-left: 20px; padding-right: 20px;">
+        <a class="navbar-brand" href="{% url 'tests_list' %}">
+            <img src="/static/examPattern.png" alt="examPattern">
+        </a>
+
+        <div class="navbar-profile ms-auto">
+            {% if user.is_authenticated %}
+                <a href="{% url 'profile' %}" class="text-decoration-none">
+                    <div class="profile-avatar" title="{{ user.get_full_name|default:user.username }}">
+                        {% if user.photo %}
+                            <img src="{{ user.photo.url }}" alt="{{ user.username }}">
+                        {% else %}
+                            {{ user.username|first|upper }}
+                        {% endif %}
+                    </div>
+                </a>
+                <a href="{% url 'profile' %}" class="nav-link">{{ user.username }}</a>
+                {% if user.is_staff and user.is_superuser %}
+                    <a href="/builder/" class="nav-link" style="color: #ffc107 !important;">
+                        <i class="fas fa-tools"></i> Builder
+                    </a>
+                {% endif %}
+                <a href="{% url 'logout' %}" class="btn btn-logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-login">Login</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-5" style="max-width: 900px; padding: 40px 20px;">
+    <div class="text-center mb-5">
+        <h1 class="mb-2">📝 Create New Test</h1>
+        <p class="text-muted lead">Follow 3 simple steps to create your test</p>
+    </div>
+    
+    <!-- Progress Steps -->
+    <div class="row mb-5">
+        <div class="col-md-4 text-center">
+            <div class="badge bg-success rounded-circle p-3 mb-2" style="font-size: 20px; width: 50px; height: 50px; line-height: 44px;">1</div>
+            <p><strong>Fill Test Info</strong></p>
+            <small class="text-muted">Test name, duration,<br>marks, series</small>
+        </div>
+        <div class="col-md-4 text-center">
+            <div class="badge bg-secondary rounded-circle p-3 mb-2" style="font-size: 20px; width: 50px; height: 50px; line-height: 44px;">2</div>
+            <p><strong>Name Sections</strong></p>
+            <small class="text-muted">Physics, Chemistry,<br>Maths, etc.</small>
+        </div>
+        <div class="col-md-4 text-center">
+            <div class="badge bg-secondary rounded-circle p-3 mb-2" style="font-size: 20px; width: 50px; height: 50px; line-height: 44px;">3</div>
+            <p><strong>Add Questions</strong></p>
+            <small class="text-muted">With options &<br>solutions</small>
+        </div>
+    </div>
+
+    <!-- Error/Success Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                <strong>
+                    {% if message.tags == 'error' %}
+                        ❌ Error:
+                    {% elif message.tags == 'success' %}
+                        ✅ Success:
+                    {% elif message.tags == 'warning' %}
+                        ⚠️ Warning:
+                    {% else %}
+                        ℹ️ Info:
+                    {% endif %}
+                </strong> {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card">
+        <div class="card-body p-4">
+            <form method="post" class="needs-validation" novalidate>
+                {% csrf_token %}
+                
+                <!-- Test Series -->
+                <div class="form-section mb-4 p-3" style="background: #e7f3ff; border-left: 4px solid #0066cc; border-radius: 4px;">
+                    <h6 class="mb-3"><strong>📚 Select Test Series</strong></h6>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Which series does this test belong to? *</strong></label>
+                        <select name="series" class="form-select form-select-lg" required>
+                            <option value="">-- Choose a series --</option>
+                            {% for series in series_list %}
+                                <option value="{{ series.id }}" {% if form_data.selected_series|stringformat:"s" == series.id|stringformat:"s" %}selected{% endif %}>{{ series.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted d-block mt-2">📌 If series doesn't exist, create it in the Builder portal first</small>
+                        <small class="text-muted d-block">Manage series here: <a href="{% url 'builder_manage_series' %}">Create/Organize Test Series</a></small>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>Series Section (Optional)</strong></label>
+                            <select name="series_section" class="form-select">
+                                <option value="">-- Default: All Tests --</option>
+                                {% for section in series_sections %}
+                                    <option value="{{ section.id }}" data-series-id="{{ section.series.id }}" {% if form_data.selected_series_section|stringformat:"s" == section.id|stringformat:"s" %}selected{% endif %}>{{ section.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">If not selected, tests go under <strong>All Tests</strong>.</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>Series Subsection (Optional)</strong></label>
+                            <select name="series_subsection" class="form-select">
+                                <option value="">-- None --</option>
+                                {% for subsection in series_subsections %}
+                                    <option value="{{ subsection.id }}" data-section-id="{{ subsection.section.id }}" {% if form_data.selected_series_subsection|stringformat:"s" == subsection.id|stringformat:"s" %}selected{% endif %}>{{ subsection.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Use subsections like <em>Quantitative Aptitude</em>, <em>Logical Reasoning</em>.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test Name -->
+                <div class="form-section mb-4 p-3" style="background: #fff4e6; border-left: 4px solid #ff9800; border-radius: 4px;">
+                    <h6 class="mb-3"><strong>ℹ️ Test Information</strong></h6>
+                    
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Test Name *</strong></label>
+                        <input type="text" name="name" class="form-control form-control-lg" required placeholder="e.g., JEE Main 2024 Mock Test 1" value="{{ form_data.name|default:'' }}">
+                        <small class="text-muted">Use a clear, descriptive name</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Test Description (Optional)</strong></label>
+                        <textarea name="description" class="form-control" rows="2" placeholder="e.g., Full length mock test, Covers all chapters, Similar to actual exam">{{ form_data.description|default:'' }}</textarea>
+                        <small class="text-muted">Help students understand what this test covers</small>
+                    </div>
+                </div>
+
+                <!-- Test Settings -->
+                <div class="form-section mb-4 p-3" style="background: #f0f8ff; border-left: 4px solid #0099ff; border-radius: 4px;">
+                    <h6 class="mb-3"><strong>⏱️ Test Duration & Marks</strong></h6>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>Duration (Minutes) *</strong></label>
+                            <input type="number" name="duration_minutes" class="form-control form-control-lg" required placeholder="180" min="1" value="{{ form_data.duration_minutes|default:'' }}">
+                            <small class="text-muted">Total time allowed to complete test</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>Marks per Correct Answer *</strong></label>
+                            <input type="number" name="marks_per_question" class="form-control form-control-lg" required placeholder="4" step="0.5" min="0" value="{{ form_data.marks_per_question|default:'' }}">
+                            <small class="text-muted">Points for each correct answer</small>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>Negative Marking *</strong></label>
+                            <input type="number" name="negative_marks" class="form-control form-control-lg" required placeholder="1" step="0.25" min="0" value="{{ form_data.negative_marks|default:'' }}">
+                            <small class="text-muted">Penalty for each wrong answer</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>Sectional Timing</strong></label>
+                            <div class="form-check form-switch" style="padding-top: 8px;">
+                                <input class="form-check-input" type="checkbox" name="use_sectional_timing" id="sectionalTimingToggle" value="true" {% if form_data.use_sectional_timing %}checked{% endif %}>
+                                <label class="form-check-label" for="sectionalTimingToggle">
+                                    Use different time limits for each section
+                                </label>
+                            </div>
+                            <small class="text-muted d-block mt-2">When enabled, each section will have its own time limit and auto-advance to next section when time ends</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sections -->
+                <div class="form-section mb-4 p-3" style="background: #f0fff4; border-left: 4px solid #28a745; border-radius: 4px;">
+                    <h6 class="mb-3"><strong>📑 Number of Sections *</strong></h6>
+                    <p class="text-muted small mb-3">Sections are topics (Physics, Chemistry, Maths) or parts of your test</p>
+                    
+                    <input type="number" name="num_sections" class="form-control form-control-lg" required placeholder="3" min="1" max="10" value="{{ form_data.num_sections|default:'1' }}">
+                    <small class="text-muted d-block mt-2">💡 Example: Create 3 sections for Physics, Chemistry, Maths</small>
+                </div>
+
+                <!-- Submit -->
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg btn-block">
+                        ✓ Create Test & Add Sections →
+                    </button>
+                    <a href="{% url 'builder_dashboard' %}" class="btn btn-light btn-lg">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="alert alert-info mt-4">
+        <h6 class="alert-heading">📋 What happens next?</h6>
+        <ol class="mb-0">
+            <li>You'll name your sections (Physics, Chemistry, etc.)</li>
+            <li>Then add questions to each section</li>
+            <li>Finally, publish the test for students</li>
+        </ol>
+    </div>
+</div>
+
+<script>
+// Form validation
+(function() {
+    'use strict';
+    var forms = document.querySelectorAll('.needs-validation');
+    Array.prototype.slice.call(forms).forEach(function(form) {
+        form.addEventListener('submit', function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+})();
+
+// Filter section/subsection options based on selections
+(function() {
+    const seriesSelect = document.querySelector('select[name="series"]');
+    const sectionSelect = document.querySelector('select[name="series_section"]');
+    const subsectionSelect = document.querySelector('select[name="series_subsection"]');
+
+    if (!seriesSelect || !sectionSelect || !subsectionSelect) {
+        return;
+    }
+
+    const sectionOptions = Array.from(sectionSelect.options).slice(1);
+    const subsectionOptions = Array.from(subsectionSelect.options).slice(1);
+
+    function filterSections() {
+        const seriesId = seriesSelect.value;
+        sectionOptions.forEach(opt => {
+            const match = !seriesId || opt.dataset.seriesId === seriesId;
+            opt.hidden = !match;
+        });
+        if (sectionSelect.selectedOptions.length && sectionSelect.selectedOptions[0].hidden) {
+            sectionSelect.value = '';
+        }
+        filterSubsections();
+    }
+
+    function filterSubsections() {
+        const sectionId = sectionSelect.value;
+        subsectionOptions.forEach(opt => {
+            const match = !sectionId || opt.dataset.sectionId === sectionId;
+            opt.hidden = !match;
+        });
+        if (subsectionSelect.selectedOptions.length && subsectionSelect.selectedOptions[0].hidden) {
+            subsectionSelect.value = '';
+        }
+    }
+
+    seriesSelect.addEventListener('change', filterSections);
+    sectionSelect.addEventListener('change', filterSubsections);
+
+    // Initial filter on page load
+    filterSections();
+})();
+</script>
+
+<footer class="footer-custom">
+    <div class="container-fluid" style="padding-left: 60px; padding-right: 60px;">
+        <div class="footer-content">
+            <div class="footer-logo-section">
+                <img src="/static/examPattern.png" alt="examPattern">
+                <p>Learn. Thrive. Succeed.</p>
+            </div>
+            
+            <div class="footer-links">
+                <h6>Quick Links</h6>
+                <a href="{% url 'tests_list' %}"><i class="fas fa-home"></i> Home</a>
+                <a href="{% url 'profile' %}"><i class="fas fa-user"></i> Profile</a>
+                <a href="/builder/"><i class="fas fa-tools"></i> Test Builder</a>
+            </div>
+            
+            <div class="footer-contact">
+                <h6>Contact Us</h6>
+                <p><i class="fas fa-envelope"></i> prathbhainstitutions@gmail.com</p>
+                <p><i class="fas fa-phone"></i> +91 9030941099</p>
+                <p><i class="fas fa-map-marker-alt"></i> Beside Bank of Maharashtra, Namdevwada, Nizamabad</p>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <p>&copy; 2026 examPattern. All rights reserved.</p>
+            <p class="footer-credit">Made by <a href="https://www.prathibhasolutions.com" target="_blank" rel="noopener noreferrer">Prathibha Solutions</a></p>
+        </div>
+    </div>
+</footer>
+{% endblock %}

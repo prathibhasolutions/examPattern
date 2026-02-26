@@ -1,0 +1,497 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Sections - {{ draft.name }}{% endblock %}
+
+{% block header %}
+<!-- Custom navbar -->
+{% endblock %}
+
+{% block content %}
+<style>
+    main.container-fluid {
+        padding: 0 !important;
+        margin-top: 0 !important;
+    }
+    body {
+        margin: 0;
+        padding: 0;
+    }
+    .navbar-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        margin: 0 !important;
+        width: 100vw !important;
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw !important;
+        margin-right: -50vw !important;
+    }
+    .navbar-custom .navbar-brand {
+        font-weight: 700;
+        font-size: 18px;
+        color: white !important;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .navbar-custom .navbar-brand img {
+        height: 45px;
+        width: auto;
+    }
+    .navbar-profile {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .profile-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .profile-avatar:hover {
+        transform: scale(1.1);
+        border-color: white;
+    }
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .navbar-custom .nav-link {
+        color: rgba(255,255,255,0.9) !important;
+        font-weight: 500;
+        font-size: 14px;
+        padding: 8px 16px !important;
+        border-radius: 20px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .nav-link:hover {
+        background: rgba(255,255,255,0.15);
+        color: white !important;
+    }
+    .navbar-custom .btn-logout {
+        background: rgba(220, 53, 69, 0.9);
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .btn-logout:hover {
+        background: #dc3545;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    }
+    .footer-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        padding: 40px 0 20px;
+        margin-top: 60px;
+    }
+    .footer-content {
+        display: grid;
+        grid-template-columns: 1fr 2fr 1fr;
+        gap: 30px;
+        margin-bottom: 30px;
+    }
+    .footer-logo-section {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    .footer-logo-section img {
+        width: 180px;
+        max-width: 25vw;
+        height: auto;
+        object-fit: contain;
+    }
+    .footer-logo-section p {
+        color: rgba(255,255,255,0.85);
+        font-size: 14px;
+        margin: 0;
+    }
+    .footer-links {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .footer-links h6 {
+        font-weight: 700;
+        font-size: 16px;
+        margin-bottom: 10px;
+        color: white;
+    }
+    .footer-links a {
+        color: rgba(255,255,255,0.8);
+        text-decoration: none;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    .footer-links a:hover {
+        color: white;
+        padding-left: 5px;
+    }
+    .footer-contact {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .footer-contact h6 {
+        font-weight: 700;
+        font-size: 16px;
+        margin-bottom: 10px;
+        color: white;
+    }
+    .footer-contact p {
+        color: rgba(255,255,255,0.8);
+        font-size: 14px;
+        margin: 0;
+    }
+    .footer-bottom {
+        border-top: 1px solid rgba(255,255,255,0.2);
+        padding-top: 20px;
+        text-align: center;
+    }
+    .footer-bottom p {
+        margin: 5px 0;
+        font-size: 13px;
+        color: rgba(255,255,255,0.75);
+    }
+    .footer-credit {
+        font-size: 12px;
+        color: rgba(255,255,255,0.6);
+        margin-top: 10px;
+    }
+    .footer-credit a {
+        color: #ffc107;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    .footer-credit a:hover {
+        color: #ffdd57;
+        text-decoration: underline;
+    }
+    @media (max-width: 768px) {
+        .footer-content {
+            grid-template-columns: 1fr;
+            gap: 25px;
+            text-align: center;
+        }
+        .footer-logo-section img {
+            margin: 0 auto;
+        }
+        .footer-custom .container-fluid {
+            padding-left: 20px !important;
+            padding-right: 20px !important;
+        }
+    }
+</style>
+
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <div class="container-fluid" style="padding-left: 20px; padding-right: 20px;">
+        <a class="navbar-brand" href="{% url 'tests_list' %}">
+            <img src="/static/examPattern.png" alt="examPattern">
+        </a>
+
+        <div class="navbar-profile ms-auto">
+            {% if user.is_authenticated %}
+                <a href="{% url 'profile' %}" class="text-decoration-none">
+                    <div class="profile-avatar" title="{{ user.get_full_name|default:user.username }}">
+                        {% if user.photo %}
+                            <img src="{{ user.photo.url }}" alt="{{ user.username }}">
+                        {% else %}
+                            {{ user.username|first|upper }}
+                        {% endif %}
+                    </div>
+                </a>
+                <a href="{% url 'profile' %}" class="nav-link">{{ user.username }}</a>
+                {% if user.is_staff and user.is_superuser %}
+                    <a href="/builder/" class="nav-link" style="color: #ffc107 !important;">
+                        <i class="fas fa-tools"></i> Builder
+                    </a>
+                {% endif %}
+                <a href="{% url 'logout' %}" class="btn btn-logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-login">Login</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-5">
+    <h1 class="mb-2">📋 Manage Sections</h1>
+    <p class="text-muted mb-4">Test: <strong>{{ draft.name }}</strong></p>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Test Summary Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">ℹ️ Test Summary</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <p class="mb-0"><strong>Series:</strong></p>
+                    <p class="text-muted">{{ draft.series.name }}</p>
+                </div>
+                <div class="col-md-3">
+                    <p class="mb-0"><strong>Duration:</strong></p>
+                    <p class="text-muted">{{ draft.duration_minutes }} minutes</p>
+                </div>
+                <div class="col-md-3">
+                    <p class="mb-0"><strong>Marks:</strong></p>
+                    <p class="text-muted">+{{ draft.marks_per_question }} / -{{ draft.negative_marks }}</p>
+                </div>
+                <div class="col-md-3">
+                    <p class="mb-0"><strong>Sections:</strong></p>
+                    <p class="text-muted">{{ sections.count }} section{{ sections.count|pluralize }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section Names Form -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">📝 Step 1: Name Your Sections</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-4">Sections are different topics or parts of your test. E.g., Physics, Chemistry, Maths, or Part A, Part B, Part C</p>
+            
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="row">
+                    {% for section in sections %}
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>Section {{ section.order }}</strong></label>
+                            <input type="text" name="section_{{ section.id }}_name" value="{{ section.name }}" class="form-control form-control-lg" required>
+                            <small class="text-muted">E.g., Physics, Chemistry, Mathematics</small>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Sectional Timing Form -->
+                {% if draft.use_sectional_timing %}
+                    <div class="alert alert-info mt-4 mb-4">
+                        <h6 class="alert-heading mb-3">⏱️ Sectional Time Limits</h6>
+                        <p class="text-muted mb-3">This test uses sectional timing. Set the time limit for each section below. When time runs out, the section will auto-advance to the next section.</p>
+                        <p class="text-muted mb-3"><strong>Total Test Time: {{ draft.duration_minutes }} minutes</strong></p>
+                        
+                        <div class="row">
+                            {% for section in sections %}
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label"><strong>{{ section.name }} - Time Limit (Minutes)</strong></label>
+                                    <input type="number" name="section_{{ section.id }}_time" class="form-control form-control-lg section-time-input" min="1" placeholder="30" value="{{ section.time_limit_minutes|default:'' }}" data-section-id="{{ section.id }}">
+                                    <small class="text-muted">Time allowed for this section</small>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="alert alert-warning" id="timeWarning" style="display: none;">
+                            <strong>⚠️ Warning:</strong> Total sectional time (<span id="totalTime">0</span> min) exceeds test duration ({{ draft.duration_minutes }} min)!
+                        </div>
+                    </div>
+                {% endif %}
+
+                <button type="submit" class="btn btn-warning btn-lg" id="submitBtn">💾 Save Section Names{% if draft.use_sectional_timing %} & Time Limits{% endif %}</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        {% if draft.use_sectional_timing %}
+        // Validate sectional timing doesn't exceed total test time
+        const totalTestMinutes = {{ draft.duration_minutes }};
+        const sectionTimeInputs = document.querySelectorAll('.section-time-input');
+        const timeWarning = document.getElementById('timeWarning');
+        const totalTimeSpan = document.getElementById('totalTime');
+        const submitBtn = document.getElementById('submitBtn');
+
+        function validateSectionalTime() {
+            let totalSectionTime = 0;
+            sectionTimeInputs.forEach(input => {
+                const value = parseInt(input.value) || 0;
+                totalSectionTime += value;
+            });
+
+            totalTimeSpan.textContent = totalSectionTime;
+
+            if (totalSectionTime > totalTestMinutes) {
+                timeWarning.style.display = 'block';
+                submitBtn.disabled = true;
+                submitBtn.classList.add('btn-secondary');
+                submitBtn.classList.remove('btn-warning');
+            } else {
+                timeWarning.style.display = 'none';
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('btn-secondary');
+                submitBtn.classList.add('btn-warning');
+            }
+        }
+
+        sectionTimeInputs.forEach(input => {
+            input.addEventListener('input', validateSectionalTime);
+        });
+
+        // Initial validation
+        validateSectionalTime();
+        {% endif %}
+    </script>
+
+    <!-- Add Questions Section -->
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">🚀 Step 2: Add Questions to Sections</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-4">Click on each section below to add questions with options and solutions.</p>
+            
+            <div class="row">
+                {% for section in sections %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100" style="border-left: 5px solid #28a745;">
+                            <div class="card-body">
+                                <h6 class="card-title">📚 {{ section.name }}</h6>
+                                <p class="card-text text-muted mb-3">
+                                    <strong>Questions added:</strong> <span class="badge bg-info">{{ section.questions.count }}</span>
+                                </p>
+                                
+                                {% if section.questions.count > 0 %}
+                                    <div class="mb-3" style="background: #f8f9fa; padding: 10px; border-radius: 4px;">
+                                        <small class="text-muted d-block mb-2"><strong>Recent questions:</strong></small>
+                                        {% for q in section.questions.all|slice:":2" %}
+                                            <small class="d-block">✓ {{ q.question_text|truncatewords:8 }}</small>
+                                        {% endfor %}
+                                        {% if section.questions.count > 2 %}
+                                            <small class="d-block text-muted">...and {{ section.questions.count|add:"-2" }} more</small>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                                
+                                <a href="{% url 'manage_questions' draft.id section.id %}" class="btn btn-success btn-sm w-100">
+                                    {% if section.questions.count > 0 %}
+                                        ✏️ Edit Questions ({{ section.questions.count }})
+                                    {% else %}
+                                        ➕ Add Questions
+                                    {% endif %}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Next Steps -->
+    <div class="mt-4 mb-4">
+        <div class="alert alert-success">
+            <h6 class="alert-heading">✅ Progress Checklist</h6>
+            <ul class="mb-0">
+                <li class="mb-1">
+                    <input type="checkbox" checked disabled>
+                    <strong>✓ Test created</strong> with duration, marks, and sections
+                </li>
+                <li class="mb-1">
+                    {% if sections.0.name != "Section 1" %}
+                        <input type="checkbox" checked disabled>
+                    {% else %}
+                        <input type="checkbox" disabled>
+                    {% endif %}
+                    <strong>Section names assigned</strong>
+                </li>
+                <li class="mb-1">
+                    {% if sections.0.questions.count > 0 %}
+                        <input type="checkbox" checked disabled>
+                    {% else %}
+                        <input type="checkbox" disabled>
+                    {% endif %}
+                    <strong>Questions added to all sections</strong>
+                </li>
+                <li>
+                    <input type="checkbox" disabled>
+                    <strong>Test published</strong> for students to take
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="d-flex gap-2 mb-4 sticky-bottom" style="background: white; padding: 15px 0; border-top: 1px solid #ddd;">
+        <a href="{% url 'builder_publish_test' draft.id %}" class="btn btn-primary btn-lg">
+            ✓ Publish Test (Make it Live)
+        </a>
+        <a href="{% url 'builder_dashboard' %}" class="btn btn-secondary btn-lg">
+            ← Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<style>
+    .sticky-bottom {
+        position: sticky;
+        bottom: 0;
+        z-index: 100;
+    }
+</style>
+
+<footer class="footer-custom">
+    <div class="container-fluid" style="padding-left: 60px; padding-right: 60px;">
+        <div class="footer-content">
+            <div class="footer-logo-section">
+                <img src="/static/examPattern.png" alt="examPattern">
+                <p>Learn. Thrive. Succeed.</p>
+            </div>
+            
+            <div class="footer-links">
+                <h6>Quick Links</h6>
+                <a href="{% url 'tests_list' %}"><i class="fas fa-home"></i> Home</a>
+                <a href="{% url 'profile' %}"><i class="fas fa-user"></i> Profile</a>
+                <a href="/builder/"><i class="fas fa-tools"></i> Test Builder</a>
+            </div>
+            
+            <div class="footer-contact">
+                <h6>Contact Us</h6>
+                <p><i class="fas fa-envelope"></i> prathbhainstitutions@gmail.com</p>
+                <p><i class="fas fa-phone"></i> +91 9030941099</p>
+                <p><i class="fas fa-map-marker-alt"></i> Beside Bank of Maharashtra, Namdevwada, Nizamabad</p>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <p>&copy; 2026 examPattern. All rights reserved.</p>
+            <p class="footer-credit">Made by <a href="https://www.prathibhasolutions.com" target="_blank" rel="noopener noreferrer">Prathibha Solutions</a></p>
+        </div>
+    </div>
+</footer>
+{% endblock %}

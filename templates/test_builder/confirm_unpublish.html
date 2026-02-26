@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}Unpublish Test{% endblock %}
+
+{% block header %}
+<!-- Custom navbar -->
+{% endblock %}
+
+{% block content %}
+<style>
+    main.container-fluid {
+        padding: 0 !important;
+        margin-top: 0 !important;
+    }
+    body {
+        margin: 0;
+        padding: 0;
+    }
+    .navbar-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        margin: 0 !important;
+        width: 100vw !important;
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw !important;
+        margin-right: -50vw !important;
+    }
+    .navbar-custom .navbar-brand {
+        font-weight: 700;
+        font-size: 18px;
+        color: white !important;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .navbar-custom .navbar-brand img {
+        height: 45px;
+        width: auto;
+    }
+    .navbar-profile {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .profile-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .profile-avatar:hover {
+        transform: scale(1.1);
+        border-color: white;
+    }
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .navbar-custom .nav-link {
+        color: rgba(255,255,255,0.9) !important;
+        font-weight: 500;
+        font-size: 14px;
+        padding: 8px 16px !important;
+        border-radius: 20px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .nav-link:hover {
+        background: rgba(255,255,255,0.15);
+        color: white !important;
+    }
+    .navbar-custom .btn-logout {
+        background: rgba(220, 53, 69, 0.9);
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .btn-logout:hover {
+        background: #dc3545;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    }
+    .card {
+        border-radius: 15px;
+        overflow: hidden;
+    }
+    .card-header {
+        border-bottom: none;
+        padding: 20px;
+    }
+    .card-body {
+        padding: 30px;
+    }
+    .alert {
+        border-radius: 10px;
+    }
+    .footer-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        padding: 40px 0 20px;
+        margin-top: 60px;
+    }
+    .footer-content {
+        display: grid;
+        grid-template-columns: 1fr 2fr 1fr;
+        gap: 30px;
+        margin-bottom: 30px;
+    }
+    .footer-logo-section {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    .footer-logo-section img {
+        width: 180px;
+        max-width: 25vw;
+        height: auto;
+        object-fit: contain;
+    }
+    .footer-logo-section p {
+        color: rgba(255,255,255,0.85);
+        font-size: 14px;
+        margin: 0;
+    }
+    .footer-links {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .footer-links h6 {
+        font-weight: 700;
+        font-size: 16px;
+        margin-bottom: 10px;
+        color: white;
+    }
+    .footer-links a {
+        color: rgba(255,255,255,0.8);
+        text-decoration: none;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    .footer-links a:hover {
+        color: white;
+        padding-left: 5px;
+    }
+    .footer-contact {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .footer-contact h6 {
+        font-weight: 700;
+        font-size: 16px;
+        margin-bottom: 10px;
+        color: white;
+    }
+    .footer-contact p {
+        color: rgba(255,255,255,0.8);
+        font-size: 14px;
+        margin: 0;
+    }
+    .footer-bottom {
+        border-top: 1px solid rgba(255,255,255,0.2);
+        padding-top: 20px;
+        text-align: center;
+    }
+    .footer-bottom p {
+        margin: 5px 0;
+        font-size: 13px;
+        color: rgba(255,255,255,0.75);
+    }
+    .footer-credit {
+        font-size: 12px;
+        color: rgba(255,255,255,0.6);
+        margin-top: 10px;
+    }
+    .footer-credit a {
+        color: #ffc107;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    .footer-credit a:hover {
+        color: #ffdd57;
+        text-decoration: underline;
+    }
+    @media (max-width: 768px) {
+        .footer-content {
+            grid-template-columns: 1fr;
+            gap: 25px;
+            text-align: center;
+        }
+        .footer-logo-section img {
+            margin: 0 auto;
+        }
+        .footer-custom .container-fluid {
+            padding-left: 20px !important;
+            padding-right: 20px !important;
+        }
+    }
+</style>
+
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <div class="container-fluid" style="padding-left: 20px; padding-right: 20px;">
+        <a class="navbar-brand" href="{% url 'tests_list' %}">
+            <img src="/static/examPattern.png" alt="examPattern">
+        </a>
+
+        <div class="navbar-profile ms-auto">
+            {% if user.is_authenticated %}
+                <a href="{% url 'profile' %}" class="text-decoration-none">
+                    <div class="profile-avatar" title="{{ user.get_full_name|default:user.username }}">
+                        {% if user.photo %}
+                            <img src="{{ user.photo.url }}" alt="{{ user.username }}">
+                        {% else %}
+                            {{ user.username|first|upper }}
+                        {% endif %}
+                    </div>
+                </a>
+                <a href="{% url 'profile' %}" class="nav-link">{{ user.username }}</a>
+                {% if user.is_staff and user.is_superuser %}
+                    <a href="/builder/" class="nav-link" style="color: #ffc107 !important;">
+                        <i class="fas fa-tools"></i> Builder
+                    </a>
+                {% endif %}
+                <a href="{% url 'logout' %}" class="btn btn-logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-login">Login</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg" style="border-top: 5px solid #ff9800;">
+                <div class="card-header text-white" style="background: #ff9800;">
+                    <h4 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Unpublish Test
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle"></i> <strong>Important:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>This test will be <strong>deactivated</strong> and hidden from students</li>
+                            <li>Students will <strong>NOT</strong> be able to attempt this test</li>
+                            <li>Existing attempts and results will remain intact</li>
+                            <li>You can make changes and republish the test</li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-4">
+                        <h5>Test Details:</h5>
+                        <p class="mb-2"><strong>Name:</strong> {{ draft.name }}</p>
+                        <p class="mb-2"><strong>Series:</strong> {{ draft.series.name }}</p>
+                        <p class="mb-2"><strong>Sections:</strong> {{ draft.sections.count }}</p>
+                        <p class="mb-2"><strong>Duration:</strong> {{ draft.duration_minutes }} minutes</p>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-warning btn-lg">
+                                <i class="fas fa-edit"></i> Yes, Unpublish & Edit
+                            </button>
+                            <a href="{% url 'builder_dashboard' %}" class="btn btn-secondary btn-lg">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="footer-custom">
+    <div class="container-fluid" style="padding-left: 60px; padding-right: 60px;">
+        <div class="footer-content">
+            <div class="footer-logo-section">
+                <img src="/static/examPattern.png" alt="examPattern">
+                <p>Learn. Thrive. Succeed.</p>
+            </div>
+            
+            <div class="footer-links">
+                <h6>Quick Links</h6>
+                <a href="{% url 'tests_list' %}"><i class="fas fa-home"></i> Home</a>
+                <a href="{% url 'profile' %}"><i class="fas fa-user"></i> Profile</a>
+                <a href="/builder/"><i class="fas fa-tools"></i> Test Builder</a>
+            </div>
+            
+            <div class="footer-contact">
+                <h6>Contact Us</h6>
+                <p><i class="fas fa-envelope"></i> prathbhainstitutions@gmail.com</p>
+                <p><i class="fas fa-phone"></i> +91 9030941099</p>
+                <p><i class="fas fa-map-marker-alt"></i> Beside Bank of Maharashtra, Namdevwada, Nizamabad</p>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <p>&copy; 2026 examPattern. All rights reserved.</p>
+            <p class="footer-credit">Made by <a href="https://www.prathibhasolutions.com" target="_blank" rel="noopener noreferrer">Prathibha Solutions</a></p>
+        </div>
+    </div>
+</footer>
+{% endblock %}

@@ -1,0 +1,652 @@
+{% extends "base.html" %}
+{% load math_filters %}
+
+{% block title %}{{ series.name }} — MockTest Platform{% endblock %}
+
+{% block header %}
+<!-- Custom navbar for series tests page -->
+{% endblock %}
+
+{% block content %}
+<style>
+    main.container-fluid {
+        padding: 0 !important;
+        margin-top: 0 !important;
+    }
+    body {
+        margin: 0;
+        padding: 0;
+    }
+    .navbar-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        margin: 0 !important;
+        width: 100vw !important;
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw !important;
+        margin-right: -50vw !important;
+    }
+    .navbar-custom .navbar-brand {
+        font-weight: 700;
+        font-size: 18px;
+        color: white !important;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .navbar-custom .navbar-brand img {
+        height: 45px;
+        width: auto;
+    }
+
+    .navbar-search {
+        flex: 1;
+        max-width: 500px;
+        margin: 0 30px;
+    }
+
+    .navbar-search .form-control {
+        border-radius: 25px;
+        border: 2px solid rgba(255,255,255,0.3);
+        background: rgba(255,255,255,0.95);
+        padding: 10px 20px;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+
+    .navbar-search .form-control:focus {
+        border-color: #fff;
+        box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
+        background: white;
+    }
+
+    .navbar-profile {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .profile-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .profile-avatar:hover {
+        transform: scale(1.1);
+        border-color: white;
+    }
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .navbar-custom .nav-link {
+        color: rgba(255,255,255,0.9) !important;
+        font-weight: 500;
+        font-size: 14px;
+        padding: 8px 16px !important;
+        border-radius: 20px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .nav-link:hover {
+        background: rgba(255,255,255,0.15);
+        color: white !important;
+    }
+    .navbar-custom .btn-logout {
+        background: rgba(220, 53, 69, 0.9);
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .btn-logout:hover {
+        background: #dc3545;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    }
+    .navbar-custom .btn-login {
+        background: rgba(40, 167, 69, 0.9);
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+        margin-left: 10px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .btn-login:hover {
+        background: #28a745;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+    }
+    .series-container {
+        padding: 30px 20px 60px;
+        background: #f6f8fb;
+        min-height: 100vh;
+    }
+    .series-header {
+        background: white;
+        border-radius: 14px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+        padding: 20px 24px;
+        margin-bottom: 24px;
+    }
+    .series-header h1 {
+        font-size: 28px;
+        font-weight: 800;
+        color: #1e3c72;
+        margin-bottom: 6px;
+    }
+    .series-header p {
+        color: #666;
+        margin-bottom: 0;
+    }
+    .section-card {
+        background: white;
+        border-radius: 14px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+        padding: 18px 22px;
+        margin-bottom: 22px;
+    }
+    .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e3c72;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .test-card {
+        border: 1px solid #eef1f5;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    /* Nav Pills Styling */
+    .nav-pills-container {
+        max-width: 1200px;
+        margin: 0 auto 30px;
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .custom-nav-pills {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        border: none;
+    }
+
+    .custom-nav-pills .nav-link {
+        background: #f0f2f5;
+        color: #495057;
+        border: 2px solid transparent;
+        border-radius: 25px;
+        padding: 12px 30px;
+        font-weight: 600;
+        font-size: 15px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .custom-nav-pills .nav-link:hover {
+        background: #e3e7f0;
+        transform: translateY(-2px);
+    }
+
+    .custom-nav-pills .nav-link.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-color: transparent;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .sub-nav-pills {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 2px solid #f0f2f5;
+    }
+
+    .sub-nav-pills .nav-link {
+        background: #f8f9fa;
+        color: #6c757d;
+        border: 2px solid #e9ecef;
+        border-radius: 20px;
+        padding: 8px 20px;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+
+    .sub-nav-pills .nav-link:hover {
+        background: #e9ecef;
+        color: #495057;
+        border-color: #dee2e6;
+    }
+
+    .sub-nav-pills .nav-link.active {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        border-color: transparent;
+        box-shadow: 0 3px 10px rgba(30, 60, 114, 0.3);
+    }
+
+    .tab-pane {
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        display: none;
+    }
+
+    .tab-pane.active {
+        opacity: 1;
+        display: block;
+    }
+
+    .subsection-group {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 25px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .subsection-header h2 {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1e3c72;
+        margin: 0 0 20px;
+        padding-bottom: 15px;
+        border-bottom: 3px solid #667eea;
+    }
+
+    .tests-list {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .test-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px;
+        background: linear-gradient(135deg, #f5f7fa 0%, #e3e7f0 100%);
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+
+    .test-item:hover {
+        transform: translateX(5px);
+        border-color: #667eea;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+    }
+
+    .test-info {
+        flex: 1;
+    }
+
+    .test-name {
+        font-size: 17px;
+        font-weight: 700;
+        color: #1e3c72;
+        margin-bottom: 8px;
+    }
+
+    .test-meta {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #666;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .meta-icon {
+        font-size: 16px;
+    }
+
+    .test-action {
+        flex-shrink: 0;
+        margin-left: 20px;
+    }
+
+    .attempt-btn {
+        background: #667eea !important;
+        color: white !important;
+        border: none;
+        padding: 12px 28px;
+        border-radius: 25px;
+        font-weight: 600;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+
+    .attempt-btn:hover {
+        background: #5568d3 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.5);
+        color: white !important;
+    }
+
+    .card-footer {
+        margin-top: 10px;
+    }
+
+    .card-footer .btn {
+        font-size: 14px;
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+
+
+
+    @media (max-width: 768px) {
+        .test-item {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .test-action {
+            width: 100%;
+            margin-left: 0;
+            margin-top: 15px;
+        }
+
+        .custom-nav-pills .nav-link {
+            flex: 1;
+            min-width: 140px;
+            text-align: center;
+        }
+    }
+</style>
+
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <div class="container-fluid" style="padding-left: 20px; padding-right: 20px;">
+        <a class="navbar-brand" href="{% url 'tests_list' %}" style="flex: 0 0 25%;">
+            <img src="/static/examPattern.png" alt="examPattern">
+        </a>
+        </a>
+
+        <!-- Search Bar -->
+        <div class="navbar-search">
+            <input type="text" class="form-control" placeholder="🔍 Search tests..." id="navbarSearch">
+        </div>
+
+        <div class="navbar-profile ms-auto">
+            {% if user.is_authenticated %}
+                <a href="{% url 'profile' %}" class="text-decoration-none">
+                    <div class="profile-avatar" title="{{ user.get_full_name|default:user.username }}">
+                        {% if user.photo %}
+                            <img src="{{ user.photo.url }}" alt="{{ user.username }}">
+                        {% else %}
+                            {{ user.username|first|upper }}
+                        {% endif %}
+                    </div>
+                </a>
+                <a href="{% url 'profile' %}" class="nav-link">{{ user.username }}</a>
+                {% if user.is_staff and user.is_superuser %}
+                    <a href="/builder/" class="nav-link" style="color: #ffc107 !important;">
+                        <i class="fas fa-tools"></i> Builder
+                    </a>
+                {% endif %}
+                <a href="{% url 'logout' %}" class="btn btn-logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-login">Login</a>
+                <a href="{% url 'register' %}" class="btn btn-login" style="background: rgba(23, 162, 184, 0.9);">Register</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+
+    <div class="series-container">
+        <div class="series-header">
+            <h1>{{ series.name }}</h1>
+            <p>{{ series.description|default:"No description available." }}</p>
+        </div>
+
+        <div class="nav-pills-container">
+            <ul class="nav custom-nav-pills" id="sectionTabs">
+                {% for data in sectional_data %}
+                    <li class="nav-item">
+                        <button class="nav-link {% if forloop.first %}active{% endif %}" id="section-{{ data.section.id }}-tab" type="button" role="tab" onclick="handleSectionClick({{ data.section.id }}, {{ data.subsections|length }})">{{ data.section.name }}</button>
+                    </li>
+                {% endfor %}
+            </ul>
+            <ul class="nav sub-nav-pills" id="subNavContainer" style="display: none;"></ul>
+        </div>
+
+        <div id="sectionContent">
+            {% for data in sectional_data %}
+            <div class="section-card section-content" id="section-{{ data.section.id }}-content" style="{% if not forloop.first %}display: none;{% endif %}">
+                {% if data.subsections %}
+                    <div class="subsections-container" id="subsections-{{ data.section.id }}">
+                        {% for subsection_data in data.subsections %}
+                        <div class="subsection-content" id="subsection-{{ subsection_data.subsection.id }}" style="{% if not forloop.first %}display: none;{% endif %}">
+                            {% if subsection_data.tests %}
+                            <div class="subsection-group">
+                                <div class="subsection-header">
+                                    <h2>{{ subsection_data.subsection.name }} ({{ subsection_data.tests.count }})</h2>
+                                </div>
+                                <div class="tests-list">
+                                    {% for test in subsection_data.tests %}
+                                    <div class="test-item" data-test-id="{{ test.id }}">
+                                        <div class="test-info">
+                                            <div class="test-name"><span class="test-number">{{ forloop.counter }}.</span> {{ test.name }}</div>
+                                            <div class="test-meta">
+                                                {% if test.duration_seconds > 0 %}
+                                                <div class="meta-item">
+                                                    <span class="meta-icon">⏱️</span>
+                                                    {{ test.duration_seconds|divide:60|floatformat:0 }} mins
+                                                </div>
+                                                {% endif %}
+                                                <div class="meta-item">
+                                                    <span class="meta-icon">📝</span>
+                                                    {{ test.question_count }} questions
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="card-footer test-action" data-test-id="{{ test.id }}">
+                                            {% if user.is_authenticated %}
+                                            <button class="btn btn-primary attempt-btn" onclick="startTest({{ test.id }})">
+                                                <i class="fas fa-play-circle"></i> Start Test
+                                            </button>
+                                            {% else %}
+                                            <button class="btn btn-secondary" onclick="requireLogin()" title="Login required">
+                                                <i class="fas fa-lock"></i> Login to Attempt
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% else %}
+                            <p class="text-muted">No tests available in this subsection.</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    {% if data.tests %}
+                    <div class="subsection-group">
+                        <div class="subsection-header">
+                            <h2>{{ data.section.name }} ({{ data.tests.count }})</h2>
+                        </div>
+                        <div class="tests-list">
+                            {% for test in data.tests %}
+                            <div class="test-item" data-test-id="{{ test.id }}">
+                                <div class="test-info">
+                                    <div class="test-name"><span class="test-number">{{ forloop.counter }}.</span> {{ test.name }}</div>
+                                    <div class="test-meta">
+                                        {% if test.duration_seconds > 0 %}
+                                        <div class="meta-item">
+                                            <span class="meta-icon">⏱️</span>
+                                            {{ test.duration_seconds|divide:60|floatformat:0 }} mins
+                                        </div>
+                                        {% endif %}
+                                        <div class="meta-item">
+                                            <span class="meta-icon">📝</span>
+                                            {{ test.question_count }} questions
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer test-action" data-test-id="{{ test.id }}">
+                                    {% if user.is_authenticated %}
+                                    <button class="btn btn-primary attempt-btn" onclick="startTest({{ test.id }})">
+                                        <i class="fas fa-play-circle"></i> Start Test
+                                    </button>
+                                    {% else %}
+                                    <button class="btn btn-secondary" onclick="requireLogin()" title="Login required">
+                                        <i class="fas fa-lock"></i> Login to Attempt
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No tests available in this section.</p>
+                    {% endif %}
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+
+
+<!-- Place all JavaScript inside a script block at the end -->
+<script>
+// Store subsection data for each section
+const subsectionsData = {
+    {% for data in sectional_data %}
+    {{ data.section.id }}: [
+        {% for subsection_data in data.subsections %}
+        {
+            id: {{ subsection_data.subsection.id }},
+            name: "{{ subsection_data.subsection.name|escapejs }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ]{% if not forloop.last %},{% endif %}
+    {% endfor %}
+};
+
+function handleSectionClick(sectionId, hasSubsections) {
+    const subNavContainer = document.getElementById('subNavContainer');
+    const sectionTabs = document.getElementById('sectionTabs');
+    // Show/hide sub-nav pills
+    if (hasSubsections > 0) {
+        subNavContainer.style.display = 'flex';
+        // Populate sub-nav pills
+        const subsections = subsectionsData[sectionId] || [];
+        let pillsHTML = '';
+        subsections.forEach((subsection, index) => {
+            pillsHTML += `
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link ${index === 0 ? 'active' : ''}" 
+                            id="subsection-${subsection.id}-tab" 
+                            type="button" role="tab"
+                            onclick="showSubsection(${sectionId}, ${subsection.id})">
+                        ${subsection.name}
+                    </button>
+                </li>
+            `;
+        });
+        subNavContainer.innerHTML = pillsHTML;
+        // Show first subsection by default
+        if (subsections.length > 0) {
+            showSubsection(sectionId, subsections[0].id);
+        }
+    } else {
+        subNavContainer.style.display = 'none';
+        subNavContainer.innerHTML = '';
+    }
+    // Show only the selected section
+    document.querySelectorAll('.section-content').forEach(el => el.style.display = 'none');
+    const sectionContent = document.getElementById(`section-${sectionId}-content`);
+    if (sectionContent) sectionContent.style.display = '';
+}
+
+function showSubsection(sectionId, subsectionId) {
+    // Update active state on sub-nav pills
+    const subNavPills = document.querySelectorAll('#subNavContainer .nav-link');
+    subNavPills.forEach(pill => pill.classList.remove('active'));
+    const activeTab = document.getElementById(`subsection-${subsectionId}-tab`);
+    if (activeTab) activeTab.classList.add('active');
+    // Hide all subsection contents in this section
+    const container = document.getElementById(`subsections-${sectionId}`);
+    if (container) {
+        const allSubsections = container.querySelectorAll('.subsection-content');
+        allSubsections.forEach(el => el.style.display = 'none');
+        // Show selected subsection
+        const selectedSubsection = document.getElementById(`subsection-${subsectionId}`);
+        if (selectedSubsection) selectedSubsection.style.display = 'block';
+    }
+}
+
+function startTest(testId) {
+    window.location.href = `/test/${testId}/instructions/`;
+}
+window.startTest = startTest;
+
+function requireLogin() {
+    alert('Please login to attempt this test');
+    window.location.href = "{% url 'login' %}";
+}
+window.requireLogin = requireLogin;
+
+// Responsive: Initialize first section and subsection on page load
+document.addEventListener('DOMContentLoaded', function() {
+    {% if sectional_data %}
+    const firstSection = {{ sectional_data.0.section.id }};
+    const firstSectionHasSubsections = {{ sectional_data.0.subsections|length }};
+    handleSectionClick(firstSection, firstSectionHasSubsections);
+    {% endif %}
+});
+</script>
+{% endblock %}
