@@ -833,8 +833,8 @@
 <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
   <div class="container-fluid" style="padding-left: 20px; padding-right: 20px;">
     <a class="navbar-brand" href="{% url 'tests_list' %}" style="flex: 0 0 25%;">
-      <img src="/static/prathibha-logo.png" alt="Prathibha Institute">
-      <span>Prathibha Institute</span>
+      <img src="{% static 'examPattern.png' %}" alt="examPattern" height="40" style="background: transparent;">
+      
     </a>
 
     <div class="navbar-search d-none d-lg-block">
@@ -1126,7 +1126,7 @@
     <div class="container-fluid" style="padding-left: 60px; padding-right: 60px;">
         <div class="footer-content">
             <div class="footer-logo-section">
-                <img src="/static/prathibha-logo.png" alt="Prathibha Institute">
+                <img src="{% static 'examPattern.png' %}" alt="examPattern" height="40" style="background: transparent;">
                 <p>Learn. Thrive. Succeed.</p>
             </div>
             
@@ -1154,7 +1154,8 @@
     </div>
 </footer>
 
-<script src="/static/js/utils.js?v=1.0"></script>
+{% load static %}
+<script src="{% static 'js/utils.js' %}"></script>
 
 <script>
 // Prevent going back to test interface

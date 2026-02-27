@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-
+{% load static %}
 {% block title %}Review Solutions - {{ attempt.test.name }}{% endblock %}
 
 {% block header %}<!-- Navbar removed for review interface -->{% endblock %}
@@ -577,7 +577,7 @@
         <div class="sections-bar" id="sectionsBar"></div>
         <div class="user-info-bar">
             <div class="user-profile">
-                <img src="/static/examPattern.png" alt="User" class="user-photo">
+                <img src="{% static 'examPattern.png' %}" alt="User" class="user-photo">
                 <div>
                     <div class="user-name">{{ request.user.username }}</div>
                     <div class="user-meta">
@@ -647,7 +647,8 @@
 
 {{ review_payload|json_script:"review-data" }}
 
-<script src="/static/js/utils.js?v=1.0"></script>
+{% load static %}
+<script src="{% static 'js/utils.js' %}"></script>
 
 <script>
     const reviewData = JSON.parse(document.getElementById('review-data').textContent || '{}');

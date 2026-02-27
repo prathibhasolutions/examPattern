@@ -8,7 +8,10 @@ import os
 import logging
 from pathlib import Path
 from PIL import Image
-import pytesseract
+try:
+    import pytesseract
+except ImportError:
+    pytesseract = None
 
 logger = logging.getLogger(__name__)
 

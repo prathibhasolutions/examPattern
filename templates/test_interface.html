@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Test — MockTest Platform{% endblock %}
 
@@ -799,7 +800,7 @@
   <!-- User Info Bar -->
   <div class="user-info-bar">
     <div class="user-profile">
-      <img src="/static/examPattern.png" alt="User" class="user-photo">
+      <img src="{% static 'examPattern.png' %}" alt="User" class="user-photo">
       <span class="user-name" id="userName">{{ user.get_full_name|default:user.username }}</span>
     </div>
     <div class="timer-section">
@@ -1211,23 +1212,23 @@
 </script>
 
 <!-- API Module -->
-<script src="/static/js/api.js?v=1.0"></script>
+<script src="{% static 'js/api.js' %}"></script>
 
 <!-- Timer Module -->
-<script src="/static/js/timer.js?v=1.0"></script>
+<script src="{% static 'js/timer.js' %}"></script>
 
 <!-- Palette Module -->
-<script src="/static/js/palette.js?v=1.0"></script>
+<script src="{% static 'js/palette.js' %}"></script>
 
 <!-- Navigation Module -->
-<script src="/static/js/navigation.js?v=1.0"></script>
+<script src="{% static 'js/navigation.js' %}"></script>
 
 <!-- UI Module -->
-<script src="/static/js/ui.js?v=1.0"></script>
+<script src="{% static 'js/ui.js' %}"></script>
 
 <!-- Time Tracker Module -->
-<script src="/static/js/time-tracker.js?v=1.0"></script>
+<script src="{% static 'js/time-tracker.js' %}"></script>
 
 <!-- Main App -->
-<script src="/static/js/test-interface.js?v=1.0"></script>
+<script src="{% static 'js/test-interface.js' %}"></script>
 {% endblock %}
