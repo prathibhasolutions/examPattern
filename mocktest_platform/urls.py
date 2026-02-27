@@ -27,7 +27,7 @@ def health_check(request):
     return HttpResponse("OK")
 
 urlpatterns = [
-    path('', RedirectView.as_view(url='tests/', permanent=False), name='home'),
+    path('', tests_list, name='home'),
     path('admin/', admin.site.urls),
     path("health/", health_check),
     path('accounts/', include('accounts.urls')),
