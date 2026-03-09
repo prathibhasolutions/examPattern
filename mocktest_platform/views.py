@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.conf import settings
@@ -21,6 +21,17 @@ from django.db.models import Count, Q, Prefetch, Avg
 from attempts.models import TestAttempt, Answer
 from evaluation.models import EvaluationResult
 from testseries.models import TestSeriesExamSection, TestSeriesHighlight
+
+@require_http_methods(["GET"])
+def series_suggest(request):
+    """Return JSON list of active test series names matching query (for autocomplete)."""
+    q = request.GET.get('q', '').strip()
+    qs = TestSeries.objects.filter(is_active=True)
+    if q:
+        qs = qs.filter(name__icontains=q)
+    results = list(qs.values('name', 'slug')[:10])
+    return JsonResponse(results, safe=False)
+
 
 @require_http_methods(["GET"])
 def tests_list(request):

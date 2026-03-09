@@ -78,6 +78,233 @@ header.navbar-brand {
   color: #FFFFFF !important;
 }
 
+/* Logo sizing — responsive scaling for all screen sizes */
+.navbar-brand img,
+.navbar-custom .navbar-brand img {
+  width: clamp(60px, 14vw, 130px) !important;
+  height: auto !important;
+}
+
+/* ── Mobile navbar: show only logo + profile avatar ── */
+@media (max-width: 767.98px) {
+  /* Hide everything except the avatar in the profile section */
+  .navbar-custom .nav-link,
+  .navbar-custom .btn-logout,
+  .navbar-custom .btn-login {
+    display: none !important;
+  }
+  /* Keep avatar visible and clickable */
+  .navbar-custom .profile-avatar {
+    display: flex !important;
+  }
+  /* Remove the fixed 25% brand width so logo doesn't over-allocate */
+  .navbar-custom .navbar-brand {
+    flex: 0 0 auto !important;
+  }
+  /* Hide desktop search bar inside navbar */
+  .navbar-custom .navbar-search {
+    display: none !important;
+  }
+}
+
+/* ── Mobile bottom navigation bar ── */
+.bottom-nav {
+  display: none;
+}
+
+@media (max-width: 767.98px) {
+  /* Show bottom nav on mobile */
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999 !important;
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.10);
+    height: 60px;
+    align-items: stretch;
+    pointer-events: auto !important;
+  }
+  .bottom-nav a {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 500;
+    gap: 3px;
+    transition: color 0.2s;
+    touch-action: manipulation;
+    cursor: pointer;
+    pointer-events: auto !important;
+    -webkit-tap-highlight-color: rgba(37, 99, 235, 0.15);
+  }
+  .bottom-nav a i {
+    font-size: 20px;
+    pointer-events: none;
+  }
+  .bottom-nav a span {
+    pointer-events: none;
+  }
+  .bottom-nav a.active,
+  .bottom-nav a:hover {
+    color: #2563eb;
+  }
+  /* Push page content above the bottom bar */
+  body {
+    padding-bottom: 60px !important;
+  }
+}
+
+/* ── Global search overlay ── */
+/* Always display:flex so it composes correctly;
+   hide/show via visibility+opacity to avoid position:fixed bugs
+   caused by backdrop-filter on some browsers */
+.search-overlay {
+  display: flex;
+  flex-direction: column;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 31, 58, 0.82);
+  z-index: 10001;
+  padding: 20px 16px;
+  align-items: flex-start;
+  transition: opacity 0.18s ease, visibility 0.18s ease;
+}
+.search-overlay.active {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+.search-overlay-inner {
+  background: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 540px;
+  margin: 0 auto;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.25);
+  overflow: hidden;
+}
+.search-overlay-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.search-overlay-input-wrap .fa-search {
+  color: #2563eb;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+.search-overlay-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  background: transparent;
+  color: #0f172a;
+}
+.search-overlay-close {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.search-suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  color: #1e293b !important;
+  text-decoration: none !important;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.12s, color 0.12s;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+}
+.search-suggestion-item:last-child {
+  border-bottom: none;
+}
+.search-suggestion-item:hover,
+.search-suggestion-item:focus {
+  background: #eff6ff;
+  color: #2563eb !important;
+}
+.search-suggestion-item:hover i,
+.search-suggestion-item:focus i {
+  color: #2563eb;
+}
+.search-suggestion-item i {
+  color: #94a3b8;
+  font-size: 13px;
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+}
+.search-no-results {
+  padding: 18px 16px;
+  color: #94a3b8;
+  text-align: center;
+  font-size: 13px;
+}
+/* bottom-nav search button — full reset to match anchor tabs */
+.bottom-nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-appearance: none;
+  appearance: none;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  height: 100%;
+  gap: 3px;
+  transition: color 0.2s;
+  touch-action: manipulation;
+  cursor: pointer;
+  -webkit-tap-highlight-color: rgba(37, 99, 235, 0.15);
+  padding: 0;
+  margin: 0;
+}
+.bottom-nav-btn i {
+  font-size: 20px;
+  pointer-events: none;
+  display: block;
+}
+.bottom-nav-btn span {
+  pointer-events: none;
+  display: block;
+}
+.bottom-nav-btn:hover,
+.bottom-nav-btn:active,
+.bottom-nav-btn:focus {
+  color: #2563eb;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 .navbar .btn-login {
   background-color: var(--accent-green);
   color: #FFFFFF;

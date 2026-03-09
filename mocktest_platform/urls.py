@@ -20,7 +20,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.http import HttpResponse
 
-from .views import tests_list, tests_series_detail, tests_series_about, test_instructions, test_interface, results_page, download_result_pdf, review_solutions, test_results_analysis
+from .views import tests_list, tests_series_detail, tests_series_about, test_instructions, test_interface, results_page, download_result_pdf, review_solutions, test_results_analysis, series_suggest
 from django.views.generic import RedirectView
 
 def health_check(request):
@@ -28,6 +28,7 @@ def health_check(request):
 
 urlpatterns = [
     path('', tests_list, name='home'),
+    path('api/v1/series-suggest/', series_suggest, name='series_suggest'),
     path('admin/', admin.site.urls),
     path("health/", health_check),
     path('accounts/', include('accounts.urls')),

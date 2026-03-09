@@ -24,7 +24,7 @@
     
     {% block extra_css %}{% endblock %}
   </head>
-  <body style="margin: 0; padding: 0;">
+  <body style="margin: 0;">
     {% block header %}
     <header class="navbar navbar-expand-lg navbar-light" style="background: #f8fafc; box-shadow: 0 2px 8px rgba(0,0,0,0.07);">
       <div class="container-fluid">
@@ -46,5 +46,100 @@
     <script src="{% static 'js/app.js' %}"></script>
     
     {% block extra_js %}{% endblock %}
+
+    <!-- Global search overlay (works from any page) -->
+    <div id="searchOverlay" class="search-overlay" role="dialog" aria-modal="true">
+      <div class="search-overlay-inner">
+        <div class="search-overlay-input-wrap">
+          <i class="fas fa-search"></i>
+          <input type="text" id="globalSearchInput" class="search-overlay-input"
+                 placeholder="Search test series..." autocomplete="off">
+          <button class="search-overlay-close" onclick="closeGlobalSearch()" aria-label="Close">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div id="globalSuggestBox"></div>
+      </div>
+    </div>
+
+    <!-- Mobile bottom navigation (visible on mobile only via CSS) -->
+    <nav class="bottom-nav">
+      <a href="/"
+         class="{% if request.resolver_match.url_name == 'home' or request.resolver_match.url_name == 'tests_list' %}active{% endif %}">
+        <i class="fas fa-home"></i>
+        <span>Home</span>
+      </a>
+      <button type="button" class="bottom-nav-btn" id="globalSearchBtn">
+        <i class="fas fa-search"></i>
+        <span>Search</span>
+      </button>
+      {% if user.is_authenticated %}
+      <a href="{% url 'profile' %}"
+         class="{% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
+        <i class="fas fa-user"></i>
+        <span>Profile</span>
+      </a>
+      {% else %}
+      <a href="{% url 'login' %}">
+        <i class="fas fa-sign-in-alt"></i>
+        <span>Login</span>
+      </a>
+      {% endif %}
+    </nav>
+
+    <script>
+    function openGlobalSearch() {
+      document.getElementById('searchOverlay').classList.add('active');
+      setTimeout(function() {
+        document.getElementById('globalSearchInput').focus({ preventScroll: true });
+      }, 80);
+    }
+    function closeGlobalSearch() {
+      document.getElementById('searchOverlay').classList.remove('active');
+      document.getElementById('globalSearchInput').value = '';
+      document.getElementById('globalSuggestBox').innerHTML = '';
+    }
+    // Search button — both click and touchstart for reliability
+    (function() {
+      var btn = document.getElementById('globalSearchBtn');
+      if (!btn) return;
+      btn.addEventListener('click', openGlobalSearch);
+      btn.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        openGlobalSearch();
+      }, { passive: false });
+    })();
+    // Close overlay when clicking the backdrop
+    document.getElementById('searchOverlay').addEventListener('click', function(e) {
+      if (e.target === this) closeGlobalSearch();
+    });
+    // Suggestion fetch
+    (function() {
+      var input = document.getElementById('globalSearchInput');
+      var box   = document.getElementById('globalSuggestBox');
+      if (!input || !box) return;
+      var timer;
+      input.addEventListener('input', function() {
+        clearTimeout(timer);
+        var q = this.value.trim();
+        if (!q) { box.innerHTML = ''; return; }
+        timer = setTimeout(function() {
+          fetch('/api/v1/series-suggest/?q=' + encodeURIComponent(q))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+              if (!data.length) {
+                box.innerHTML = '<div class="search-no-results">No matching series found</div>';
+              } else {
+                box.innerHTML = data.map(function(s) {
+                  return '<a href="/tests/series/' + s.slug + '/" class="search-suggestion-item">'
+                       + '<i class="fas fa-search"></i>' + s.name + '</a>';
+                }).join('');
+              }
+            })
+            .catch(function() { box.innerHTML = ''; });
+        }, 180);
+      });
+    })();
+    </script>
   </body>
 </html>
