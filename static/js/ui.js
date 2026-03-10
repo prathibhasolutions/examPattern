@@ -92,7 +92,7 @@ const UI = {
 
     // Question image
     if (question.image) {
-      html += `<img src="${question.image}" alt="Question" class="question-image">`;
+      html += `<img src="${question.image}" alt="Question" class="question-image" loading="lazy">`;
     }
 
     // Options or text area based on question type
@@ -136,7 +136,7 @@ const UI = {
       }
 
       if (option.image) {
-        html += `<div style="margin-top: 0.75rem; margin-left: 2rem;"><img src="${option.image}" alt="Option image" class="option-image" style="max-width: 200px; border-radius: 0.25rem; box-shadow: 0 1px 4px rgba(0,0,0,0.1);"></div>`;
+        html += `<div style="margin-top: 0.75rem; margin-left: 2rem;"><img src="${option.image}" alt="Option image" class="option-image" loading="lazy" style="max-width: 200px; border-radius: 0.25rem; box-shadow: 0 1px 4px rgba(0,0,0,0.1);"></div>`;
       }
 
       html += '</label>';

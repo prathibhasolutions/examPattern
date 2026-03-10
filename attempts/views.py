@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
+from django.db.models import Prefetch
 
 from .models import TestAttempt, Answer
 from .serializers import TestAttemptSerializer, AnswerSerializer
@@ -18,7 +19,20 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Return only attempts belonging to the current user."""
-        return TestAttempt.objects.filter(user=self.request.user)
+        from questions.models import Option
+        return (
+            TestAttempt.objects
+            .filter(user=self.request.user)
+            .select_related('test')
+            .prefetch_related(
+                Prefetch(
+                    'answers',
+                    queryset=Answer.objects.prefetch_related(
+                        Prefetch('selected_options', queryset=Option.objects.only('id'))
+                    ),
+                )
+            )
+        )
 
     def retrieve(self, request, *args, **kwargs):
         """

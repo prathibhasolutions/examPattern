@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Count, Prefetch, Q
 
-from .models import Test, TestSeries, SeriesSection, SeriesSubsection
+from .models import Test, TestSeries, Section, SeriesSection, SeriesSubsection
 from .serializers import TestDetailSerializer, TestListSerializer, TestSeriesSerializer
 
 
@@ -20,13 +20,39 @@ class TestSeriesViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class TestViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Test.objects.filter(is_active=True)
     permission_classes = [AllowAny]
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
             return TestDetailSerializer
         return TestListSerializer
+
+    def get_queryset(self):
+        if self.action == 'retrieve':
+            # Deep prefetch: Test → Sections → Questions → Options
+            # Eliminates ~100 DB queries for a 100-question test
+            from questions.models import Question, Option
+            return (
+                Test.objects
+                .filter(is_active=True)
+                .prefetch_related(
+                    Prefetch(
+                        'sections',
+                        queryset=Section.objects.filter(is_active=True).order_by('order').prefetch_related(
+                            Prefetch(
+                                'questions',
+                                queryset=Question.objects.filter(is_active=True).prefetch_related(
+                                    Prefetch(
+                                        'options',
+                                        queryset=Option.objects.order_by('order'),
+                                    )
+                                ).order_by('id'),
+                            )
+                        ),
+                    )
+                )
+            )
+        return Test.objects.filter(is_active=True)
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def attempt_count(self, request, pk=None):

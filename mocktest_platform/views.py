@@ -156,47 +156,47 @@ def tests_series_about(request, slug):
 def test_instructions(request, test_id):
     """Display test instructions before starting the test."""
     test = get_object_or_404(Test, id=test_id, is_active=True)
-    
-    # Get sections for this test
-    sections = test.sections.all().order_by('order')
-    
-    # Calculate total questions and marks
+
+    # Single query: fetch all sections with annotated question counts
+    sections = (
+        test.sections
+        .filter(is_active=True)
+        .annotate(active_question_count=Count('questions', filter=Q(questions__is_active=True)))
+        .order_by('order')
+    )
+
     total_questions = 0
     total_marks = 0
-    
     sections_data = []
+
     for section in sections:
-        question_count = section.questions.filter(is_active=True).count()
+        question_count = section.active_question_count
         total_questions += question_count
-        
-        # Calculate marks for this section
+
         if section.marks_per_question is not None:
             section_marks = question_count * section.marks_per_question
         else:
             section_marks = question_count * test.marks_per_question
         total_marks += section_marks
-        
-        # Get duration in minutes
+
         if test.use_sectional_timing and section.time_limit_seconds:
             duration_minutes = section.time_limit_seconds // 60
         elif section.time_limit_seconds:
             duration_minutes = section.time_limit_seconds // 60
         else:
             duration_minutes = "No limit"
-        
+
         sections_data.append({
             'name': section.name,
             'question_count': question_count,
             'marks': section_marks,
             'duration_minutes': duration_minutes,
         })
-    
-    # If no sections, count all questions
-    if not sections:
+
+    if not sections_data:
         total_questions = test.questions.filter(is_active=True).count()
         total_marks = total_questions * test.marks_per_question
-    
-    # Test duration in minutes
+
     test_duration_minutes = test.duration_seconds // 60 if test.duration_seconds else 0
     
     return render(request, 'test_instructions.html', {
@@ -324,22 +324,25 @@ def attempt_results(request, attempt_id):
         
         # Calculate score percentage
         if evaluation.total_score is not None and attempt.test:
+            from django.db.models import Sum, Case, When, F
             from questions.models import Question
 
-            total_possible_marks = Decimal('0')
-            questions = (
+            # Single aggregation query instead of a Python loop over all questions
+            agg = (
                 Question.objects
-                .filter(section__test=attempt.test)
+                .filter(section__test=attempt.test, is_active=True)
                 .select_related('section')
+                .aggregate(
+                    total=Sum(
+                        Case(
+                            When(marks_override__isnull=False, then=F('marks_override')),
+                            When(section__marks_per_question__isnull=False, then=F('section__marks_per_question')),
+                            default=attempt.test.marks_per_question,
+                        )
+                    )
+                )
             )
-
-            for question in questions:
-                if question.marks_override:
-                    total_possible_marks += question.marks_override
-                elif question.section.marks_per_question:
-                    total_possible_marks += question.section.marks_per_question
-                else:
-                    total_possible_marks += attempt.test.marks_per_question
+            total_possible_marks = Decimal(str(agg['total'] or 0))
 
             evaluation.max_marks = float(total_possible_marks)
             evaluation.percentage = (
