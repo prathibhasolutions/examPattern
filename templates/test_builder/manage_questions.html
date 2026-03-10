@@ -487,6 +487,8 @@
                 {% if user.is_staff and user.is_superuser %}
                     <a href="/builder/"><i class="fas fa-tools"></i> Test Builder</a>
                 {% endif %}
+                <a href="{% url 'privacy_policy' %}"><i class="fas fa-shield-alt"></i> Privacy Policy</a>
+                <a href="{% url 'terms_of_service' %}"><i class="fas fa-file-contract"></i> Terms of Service</a>
             </div>
             
             <div class="footer-contact">
@@ -646,4 +648,5 @@ window.addEventListener('beforeunload', function(e) {
 });
 </script>
 {% endblock %}
+{% block footer %}{% endblock %}
 

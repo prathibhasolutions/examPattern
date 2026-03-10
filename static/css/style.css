@@ -403,6 +403,30 @@ header.navbar-brand {
   font-weight: 600;
 }
 
+/* Site-wide slim footer (policy links) */
+.site-footer {
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.82rem;
+  color: var(--muted-text);
+  /* keep above mobile bottom-nav on small screens */
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.site-footer-brand {
+  font-weight: 600;
+  color: #0f172a;
+}
+.site-footer-link {
+  color: #4f46e5;
+  text-decoration: none;
+}
+.site-footer-link:hover {
+  text-decoration: underline;
+}
+.site-footer-sep {
+  color: var(--muted-text);
+}
+
 /* Global Improvements */
 .card, .series-card, .button-primary, .view-series-btn, .btn-login, .btn-register, .search-input {
   border-radius: 30px;

@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Privacy Policy — examPattern{% endblock %}
+
+{% block header %}
+<!-- Custom navbar -->
+{% endblock %}
+
+{% block content %}
+<style>
+    main.container-fluid { padding: 0 !important; margin-top: 0 !important; }
+    body { margin: 0; padding: 0; }
+    .navbar-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        margin: 0 !important;
+        width: 100vw !important;
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw !important;
+        margin-right: -50vw !important;
+    }
+    .navbar-custom .navbar-brand {
+        font-weight: 700;
+        font-size: 18px;
+        color: white !important;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .navbar-custom .navbar-brand img {
+        height: 45px;
+        width: auto;
+    }
+    .navbar-profile {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .profile-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .profile-avatar:hover { transform: scale(1.1); border-color: white; }
+    .profile-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+    .navbar-custom .nav-link {
+        color: rgba(255,255,255,0.9) !important;
+        font-weight: 500;
+        font-size: 14px;
+        padding: 8px 16px !important;
+        border-radius: 20px;
+        transition: all 0.3s;
+    }
+    .navbar-custom .nav-link:hover { background: rgba(255,255,255,0.15); color: white !important; }
+    .navbar-custom .btn-logout {
+        background: rgba(220, 53, 69, 0.9);
+        color: white; border: none;
+        padding: 8px 20px; border-radius: 20px;
+        font-weight: 600; font-size: 14px; transition: all 0.3s;
+    }
+    .navbar-custom .btn-logout:hover { background: #dc3545; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(220,53,69,0.4); }
+    .navbar-custom .btn-login {
+        background: rgba(40, 167, 69, 0.9);
+        color: white; border: none;
+        padding: 8px 20px; border-radius: 20px;
+        font-weight: 600; font-size: 14px; margin-left: 10px; transition: all 0.3s;
+    }
+    .navbar-custom .btn-login:hover { background: #28a745; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(40,167,69,0.4); }
+    .footer-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white; padding: 40px 0 20px;
+    }
+    .footer-content { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 30px; margin-bottom: 30px; }
+    .footer-logo-section { display: flex; flex-direction: column; gap: 15px; }
+    .footer-logo-section img { width: 180px; max-width: 25vw; height: auto; object-fit: contain; }
+    .footer-logo-section p { color: rgba(255,255,255,0.85); font-size: 14px; margin: 0; }
+    .footer-links { display: flex; flex-direction: column; gap: 10px; }
+    .footer-links h6 { font-weight: 700; font-size: 16px; margin-bottom: 10px; color: white; }
+    .footer-links a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 14px; transition: all 0.3s; }
+    .footer-links a:hover { color: white; padding-left: 5px; }
+    .footer-contact { display: flex; flex-direction: column; gap: 10px; }
+    .footer-contact h6 { font-weight: 700; font-size: 16px; margin-bottom: 10px; color: white; }
+    .footer-contact p { color: rgba(255,255,255,0.8); font-size: 14px; margin: 0; }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px; text-align: center; }
+    .footer-bottom p { margin: 5px 0; font-size: 13px; color: rgba(255,255,255,0.75); }
+    .footer-credit { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 10px; }
+    .footer-credit a { color: #ffc107; text-decoration: none; font-weight: 600; transition: all 0.3s; }
+    .footer-credit a:hover { color: #ffdd57; text-decoration: underline; }
+    @media (max-width: 768px) {
+        .footer-content { grid-template-columns: 1fr; gap: 25px; text-align: center; }
+        .footer-logo-section img { margin: 0 auto; }
+        .footer-custom .container-fluid { padding-left: 20px !important; padding-right: 20px !important; }
+    }
+    .policy-section-title {
+        font-size: 1.15rem; font-weight: 700; color: #1a1a2e;
+        border-left: 4px solid #4f46e5; padding-left: 0.75rem; margin-bottom: 0.75rem;
+    }
+    .policy-list { padding-left: 1.5rem; line-height: 1.9; }
+    .policy-body p, .policy-body li { color: #374151; line-height: 1.8; }
+    .policy-page-content { background: #f6f8fb; min-height: 100vh; padding: 40px 20px 60px; }
+</style>
+
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <div class="container-fluid" style="padding-left: 20px; padding-right: 20px;">
+        <a class="navbar-brand" href="{% url 'tests_list' %}">
+            <img src="{% static 'examPattern.png' %}" alt="examPattern">
+        </a>
+        <div class="navbar-profile ms-auto">
+            {% if user.is_authenticated %}
+                <a href="{% url 'profile' %}" class="text-decoration-none">
+                    <div class="profile-avatar" title="{{ user.get_full_name|default:user.username }}">
+                        {% if user.photo %}
+                            <img src="{{ user.photo.url }}" alt="{{ user.username }}">
+                        {% else %}
+                            {{ user.username|first|upper }}
+                        {% endif %}
+                    </div>
+                </a>
+                <a href="{% url 'profile' %}" class="nav-link">{{ user.username }}</a>
+                {% if user.is_staff and user.is_superuser %}
+                    <a href="/builder/" class="nav-link" style="color: #ffc107 !important;">
+                        <i class="fas fa-tools"></i> Builder
+                    </a>
+                {% endif %}
+                <a href="{% url 'logout' %}" class="btn btn-logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-login">Login</a>
+                <a href="{% url 'register' %}" class="btn btn-login" style="background: rgba(23, 162, 184, 0.9);">Register</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<div class="policy-page-content">
+<div class="container" style="max-width: 860px;">
+  <h1 class="fw-bold mb-1" style="color: #1a1a2e;">Privacy Policy</h1>
+  <!-- <p class="text-muted mb-5"><small>Last updated: March 10, 2026</small></p> -->
+
+  <div class="policy-body">
+
+    <section class="mb-5">
+      <h2 class="policy-section-title">1. Introduction</h2>
+      <p>
+        examPattern ("we", "our", or "us") is committed to protecting your personal information. This
+        Privacy Policy explains what data we collect, why we collect it, how we use it, and your rights
+        in relation to it. By creating an account or using our platform, you agree to the practices
+        described in this policy.
+      </p>
+    </section>
+
+    <section class="mb-5">
+      <h2 class="policy-section-title">2. Information We Collect</h2>
+      <h5 class="fw-semibold mt-3">2.1 Account Information</h5>
+      <p>When you register, we collect your name, email address, and a hashed password.</p>
+
+      <h5 class="fw-semibold mt-3">2.2 Profile Information</h5>
+      <p>You may optionally upload a profile photo and provide additional details such as your institution
+        or course of study.</p>
+
+      <h5 class="fw-semibold mt-3">2.3 Test &amp; Attempt Data</h5>
+      <p>We store every test attempt including your selected answers, open-text responses, time spent per
+        question, scores, and evaluation results (including OCR-processed answer images you upload).</p>
+
+      <h5 class="fw-semibold mt-3">2.4 Usage Data</h5>
+      <p>We automatically collect browser type, IP address, device information, pages visited, and
+        interaction timestamps to improve platform performance and detect abuse.</p>
+
+      <h5 class="fw-semibold mt-3">2.5 Session Data</h5>
+      <p>We use server-side sessions to maintain your login state. Session keys are stored securely and
+        invalidated on logout.</p>
+    </section>
+
+    <section class="mb-5">
+      <h2 class="policy-section-title">3. How We Use Your Information</h2>
+      <ul class="policy-list">
+        <li>To create and manage your account.</li>
+        <li>To deliver, score, and evaluate your test attempts.</li>
+        <li>To generate result reports and allow PDF downloads.</li>
+        <li>To send transactional emails (e.g., password reset).</li>
+        <li>To analyse aggregate usage patterns and improve the platform.</li>
+        <li>To prevent fraud, cheating, and unauthorised access.</li>
+        <li>To comply with legal obligations.</li>
+      </ul>
+      <p>We do <strong>not</strong> sell or rent your personal data to third parties for marketing purposes.</p>
+    </section>
+
+    <section class="mb-5">
+      <h2 class="policy-section-title">4. Data Storage &amp; Security</h2>
+      <p>Your data is stored on secured cloud servers. We implement industry-standard measures including:</p>
+      <ul class="policy-list">
+        <li>Hashed and salted passwords (never stored in plaintext).</li>
+        <li>HTTPS encryption for all data in transit.</li>
+        <li>Restricted database access with role-based permissions.</li>
+        <li>Regular security reviews and dependency updates.</li>
+      </ul>
+      <p>No system is 100% secure. In the event of a data breach that affects your personal information,
+        we will notify you in accordance with applicable law.</p>
+    </section>
+
+    <section class="mb-5">
+      <h2 class="policy-section-title">5. Cookies &amp; Local Storage</h2>
+      <p>
+        We use essential cookies to maintain your login session. We do not currently use third-party
+        advertising cookies. You may disable cookies in your browser, but this will prevent you from
+        logging in to the platform.
+      </p>
+    </section>
+
+    <section class="mb-5">
+      <h2 class="policy-section-title">6. Sharing of Information</h2>
+      <p>We may share your information with:</p>
+      <ul class="policy-list">
+        <li><strong>Service providers</strong> — cloud hosting and infrastructure providers who process
+          data solely on our behalf and are bound by data-processing agreements.</li>
+        <li><strong>Educational institutions</strong> — if you access examPattern through an institution's
+          subscription, your results may be shared with authorised staff of that institution.</li>
+        <li><strong>Legal authorities</strong> — when required by applicable law, court order, or
+          government authority.</li>
+      </ul>
+    </section>
+
+    <section class="mb-5">
+      <h2 class="policy-section-title">7. Data Retention</h2>
+      <p>
+        We retain your account data for as long as your account is active. Test attempts and results are
+        retained for a minimum of two years to support performance analysis. You may request deletion of
+        your account at any time; upon deletion all personal data is removed within 30 days, except where
+        retention is required by law.
+      </p>
+    </section>
+
+    <section class="mb-5">
+      <h2 class="policy-section-title">8. Your Rights</h2>
+      <p>Depending on your jurisdiction you may have the right to:</p>
+      <ul class="policy-list">
+        <li><strong>Access</strong> the personal data we hold about you.</li>
+        <li><strong>Rectify</strong> inaccurate personal data.</li>
+        <li><strong>Erase</strong> your data ("right to be forgotten").</li>
+        <li><strong>Restrict</strong> or <strong>object</strong> to certain processing.</li>
+        <li><strong>Data portability</strong> — receive your data in a structured, machine-readable format.</li>
+        <li><strong>Withdraw consent</strong> at any time where processing is based on consent.</li>
+      </ul>
+     
+    </section>
+
+    <section class="mb-5">
+      <h2 class="policy-section-title">9. Children's Privacy</h2>
+      <p>
+        examPattern is not directed at children under the age of 13. We do not knowingly collect personal
+        information from children under 13. If you believe a child under 13 has provided us with personal
+        data, please contact us immediately.
+      </p>
+    </section>
+
+    <section class="mb-5">
+      <h2 class="policy-section-title">10. Changes to This Policy</h2>
+      <p>
+        We may update this Privacy Policy periodically. We will notify registered users of material
+        changes by email or a prominent notice on the platform at least 14 days before the change takes
+        effect. Continued use of the platform after that date constitutes acceptance of the revised policy.
+      </p>
+    </section>
+
+    <!-- <section class="mb-5">
+      <h2 class="policy-section-title">11. Contact Us</h2>
+      <p>
+        If you have questions or concerns about this Privacy Policy, please reach out:<br>
+        <strong>Email:</strong> <a href="mailto:privacy@exampattern.in">privacy@exampattern.in</a><br>
+        <strong>Website:</strong> <a href="/">examPattern</a>
+      </p>
+    </section> -->
+
+  </div><!-- /.policy-body -->
+</div>
+</div><!-- /policy-page-content -->
+
+<footer class="footer-custom">
+    <div class="container-fluid" style="padding-left: 60px; padding-right: 60px;">
+        <div class="footer-content">
+            <div class="footer-logo-section">
+                <img src="{% static 'examPattern.png' %}" alt="examPattern">
+                <p>Learn. Thrive. Succeed.</p>
+            </div>
+            <div class="footer-links">
+                <h6>Quick Links</h6>
+                <a href="{% url 'tests_list' %}"><i class="fas fa-home"></i> Home</a>
+                <a href="{% url 'profile' %}"><i class="fas fa-user"></i> Profile</a>
+                {% if user.is_staff and user.is_superuser %}
+                    <a href="/builder/"><i class="fas fa-tools"></i> Test Builder</a>
+                {% endif %}
+                <a href="{% url 'privacy_policy' %}"><i class="fas fa-shield-alt"></i> Privacy Policy</a>
+                <a href="{% url 'terms_of_service' %}"><i class="fas fa-file-contract"></i> Terms of Service</a>
+            </div>
+            <div class="footer-contact">
+                <h6>Contact Us</h6>
+                <p><i class="fas fa-envelope"></i> prathbhainstitutions@gmail.com</p>
+                <p><i class="fas fa-phone"></i> +91 9030941099</p>
+                <p><i class="fas fa-map-marker-alt"></i> Beside Bank of Maharashtra, Namdevwada, Nizamabad</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 examPattern. All rights reserved.</p>
+            <p class="footer-credit">Made by <a href="https://www.prathibhasolutions.com" target="_blank" rel="noopener noreferrer">Prathibha Solutions</a></p>
+        </div>
+    </div>
+</footer>
+{% endblock %}
+{% block footer %}{% endblock %}

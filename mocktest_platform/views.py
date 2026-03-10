@@ -650,3 +650,11 @@ def review_solutions(request, attempt_id):
         'all_attempts': all_attempts,
         'max_marks': max_marks,
     })
+
+
+def privacy_policy(request):
+    return render(request, 'privacy_policy.html')
+
+
+def terms_of_service(request):
+    return render(request, 'terms_of_service.html')
