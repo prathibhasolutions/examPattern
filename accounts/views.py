@@ -27,6 +27,8 @@ def register(request):
             user = form.save()
             # Auto-login after registration
             login(request, user)
+            user.active_session_key = request.session.session_key
+            user.save(update_fields=['active_session_key'])
             messages.success(request, f"Welcome {user.username}! Your account has been created successfully.")
             return redirect('tests_list')
         else:
@@ -42,19 +44,47 @@ def register(request):
 @require_http_methods(["GET", "POST"])
 def login_view(request):
     """User login view"""
+    from django.contrib.sessions.models import Session
+    from attempts.models import TestAttempt
+
     if request.user.is_authenticated:
         return redirect('tests_list')
-    
+
+    # --- Handle confirmed force-login (user clicked "Yes, log me in here") ---
+    if request.method == 'POST' and request.POST.get('confirm_force_login') == '1':
+        pending_user_id = request.session.get('pending_force_login_user_id')
+        if pending_user_id:
+            try:
+                user = CustomUser.objects.get(pk=pending_user_id)
+                # Delete the old session
+                if user.active_session_key:
+                    Session.objects.filter(session_key=user.active_session_key).delete()
+                remember_me = request.session.get('pending_remember_me', False)
+                login(request, user)
+                user.active_session_key = request.session.session_key
+                user.save(update_fields=['active_session_key'])
+                if not remember_me:
+                    request.session.set_expiry(0)
+                # Clean up pending keys
+                request.session.pop('pending_force_login_user_id', None)
+                request.session.pop('pending_remember_me', None)
+                messages.success(request, f"Welcome back, {user.username}!")
+                next_page = request.GET.get('next', 'tests_list')
+                return redirect(next_page)
+            except CustomUser.DoesNotExist:
+                pass
+        return redirect('login')
+
     if request.method == 'POST':
         form = LoginForm(request.POST)
         if form.is_valid():
             username_or_email = form.cleaned_data['username']
             password = form.cleaned_data['password']
             remember_me = form.cleaned_data.get('remember_me', False)
-            
+
             # Try to authenticate with username first
             user = authenticate(request, username=username_or_email, password=password)
-            
+
             # If not found, try with email
             if not user:
                 try:
@@ -62,22 +92,45 @@ def login_view(request):
                     user = authenticate(request, username=user_obj.username, password=password)
                 except CustomUser.DoesNotExist:
                     user = None
-            
+
             if user:
+                # Check if there is an existing active session for this user
+                if user.active_session_key:
+                    old_session_exists = Session.objects.filter(
+                        session_key=user.active_session_key
+                    ).exists()
+                    if old_session_exists:
+                        # Hard block: user is mid-test on another device
+                        is_in_test = TestAttempt.objects.filter(
+                            user=user, status=TestAttempt.STATUS_IN_PROGRESS
+                        ).exists()
+                        if is_in_test:
+                            return render(request, 'accounts/login.html', {
+                                'form': form,
+                                'test_block': True,
+                            })
+                        # Soft warning: logged in elsewhere, ask for confirmation
+                        request.session['pending_force_login_user_id'] = user.pk
+                        request.session['pending_remember_me'] = remember_me
+                        return render(request, 'accounts/login.html', {
+                            'form': form,
+                            'show_relogin_warning': True,
+                        })
+
+                # Normal login
                 login(request, user)
-                # Set session expiry if "Remember me" is unchecked
+                user.active_session_key = request.session.session_key
+                user.save(update_fields=['active_session_key'])
                 if not remember_me:
-                    request.session.set_expiry(0)  # Session expires when browser closes
+                    request.session.set_expiry(0)
                 messages.success(request, f"Welcome back, {user.username}!")
-                
-                # Redirect to next page if provided
                 next_page = request.GET.get('next', 'tests_list')
                 return redirect(next_page)
             else:
                 messages.error(request, "Invalid username/email or password.")
     else:
         form = LoginForm()
-    
+
     return render(request, 'accounts/login.html', {'form': form})
 
 
@@ -112,6 +165,9 @@ def profile(request):
 @require_http_methods(["GET"])
 def logout_view(request):
     """User logout view"""
+    if request.user.is_authenticated:
+        request.user.active_session_key = None
+        request.user.save(update_fields=['active_session_key'])
     logout(request)
     messages.success(request, "You have been logged out successfully.")
     return redirect('tests_list')

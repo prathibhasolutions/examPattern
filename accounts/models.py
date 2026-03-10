@@ -16,6 +16,7 @@ class CustomUser(AbstractUser):
         help_text="JPG or PNG, max 100KB"
     )
     is_verified = models.BooleanField(default=False, help_text="Email verified status")
+    active_session_key = models.CharField(max_length=40, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
