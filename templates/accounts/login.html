@@ -1,152 +1,163 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Mock Test App</title>
+    <title>Login - examPattern</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        *, *::before, *::after { box-sizing: border-box; }
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: radial-gradient(circle at top left, rgba(242,164,59,0.18), transparent 40%),
+                        radial-gradient(circle at 80% 20%, rgba(31,122,122,0.22), transparent 45%),
+                        linear-gradient(135deg, #0d1a32 0%, #1a2e52 60%, #13324a 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Space Grotesk', sans-serif;
+            padding: 24px 16px;
         }
         .login-container {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            padding: 40px;
-            max-width: 450px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 18px;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.45);
+            padding: 40px 36px;
+            max-width: 440px;
             width: 100%;
+        }
+        .login-logo {
+            display: block;
+            margin: 0 auto 8px;
+            width: clamp(110px, 40%, 160px);
+            height: auto;
         }
         .login-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 28px;
         }
         .login-header h2 {
-            color: #333;
+            color: #ffffff;
             font-weight: 700;
-            margin-bottom: 10px;
+            font-size: 22px;
+            margin-bottom: 6px;
         }
         .login-header p {
-            color: #666;
+            color: rgba(255,255,255,0.55);
             font-size: 14px;
+            margin: 0;
         }
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 18px;
         }
         .form-label {
-            color: #333;
+            color: rgba(255,255,255,0.8);
             font-weight: 600;
-            margin-bottom: 8px;
+            margin-bottom: 7px;
             display: block;
-            font-size: 14px;
+            font-size: 13px;
+            letter-spacing: 0.02em;
         }
         .form-control {
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 12px 15px;
+            background: rgba(255,255,255,0.07);
+            border: 1.5px solid rgba(255,255,255,0.15);
+            border-radius: 9px;
+            padding: 11px 14px;
             font-size: 14px;
-            transition: all 0.3s ease;
+            color: #ffffff;
+            font-family: 'Space Grotesk', sans-serif;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
+        .form-control::placeholder { color: rgba(255,255,255,0.35); }
         .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            background: rgba(255,255,255,0.1);
+            border-color: #f2a43b;
+            box-shadow: 0 0 0 3px rgba(242,164,59,0.18);
+            color: #ffffff;
+            outline: none;
         }
-        .form-check {
-            margin-bottom: 20px;
-        }
+        .form-check { margin-bottom: 18px; }
         .form-check-input {
-            border: 2px solid #e0e0e0;
+            border: 1.5px solid rgba(255,255,255,0.25);
+            background: rgba(255,255,255,0.07);
             border-radius: 4px;
             cursor: pointer;
         }
         .form-check-input:checked {
-            background-color: #667eea;
-            border-color: #667eea;
+            background-color: #f2a43b;
+            border-color: #f2a43b;
         }
         .form-check-label {
             margin-left: 8px;
             cursor: pointer;
-            color: #666;
-            font-size: 14px;
+            color: rgba(255,255,255,0.6);
+            font-size: 13px;
         }
         .btn-login {
             width: 100%;
             padding: 12px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #f2a43b 0%, #e08c20 100%);
             border: none;
-            color: white;
-            font-weight: 600;
-            border-radius: 8px;
-            font-size: 16px;
+            color: #1b1b1b;
+            font-weight: 700;
+            border-radius: 999px;
+            font-size: 15px;
+            font-family: 'Space Grotesk', sans-serif;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
+            letter-spacing: 0.01em;
         }
         .btn-login:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-            color: white;
+            box-shadow: 0 10px 28px rgba(242,164,59,0.38);
+            color: #1b1b1b;
         }
-        .btn-login:active {
-            transform: translateY(0);
-        }
+        .btn-login:active { transform: translateY(0); }
         .register-link {
             text-align: center;
             margin-top: 20px;
-            color: #666;
+            color: rgba(255,255,255,0.5);
             font-size: 14px;
         }
         .register-link a {
-            color: #667eea;
+            color: #f2a43b;
             text-decoration: none;
             font-weight: 600;
         }
-        .register-link a:hover {
-            text-decoration: underline;
-        }
+        .register-link a:hover { text-decoration: underline; }
         .alert {
             border-radius: 8px;
             border: none;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
+            font-size: 13px;
         }
-        .alert-danger {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .spinner-border {
-            width: 20px;
-            height: 20px;
-            border-width: 2px;
-        }
-        .field-error {
-            border-color: #dc3545 !important;
-        }
-        .forgot-password {
-            text-align: right;
-            margin-bottom: 20px;
-        }
-        .forgot-password a {
-            color: #667eea;
+        .alert-danger { background: rgba(220,53,69,0.18); color: #f8a0aa; border: 1px solid rgba(220,53,69,0.3); }
+        .alert-success { background: rgba(25,135,84,0.18); color: #75d19a; border: 1px solid rgba(25,135,84,0.3); }
+        .spinner-border { width: 18px; height: 18px; border-width: 2px; }
+        .field-error { border-color: #dc3545 !important; }
+        .forgot-link {
+            color: rgba(255,255,255,0.45);
             text-decoration: none;
             font-size: 13px;
             font-weight: 500;
+            transition: color 0.2s;
         }
-        .forgot-password a:hover {
-            text-decoration: underline;
+        .forgot-link:hover { color: #f2a43b; }
+        .divider {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            margin: 24px 0;
         }
     </style>
 </head>
 <body>
     <div class="login-container">
         <div class="login-header">
+            <img src="{% static 'examPattern.png' %}" alt="examPattern" class="login-logo">
             <h2>Welcome Back</h2>
             <p>Login to your account and continue learning</p>
         </div>
@@ -218,8 +229,8 @@
 
             <!-- Forgot Password Link -->
             <div style="text-align: right; margin: 10px 0;">
-                <a href="{% url 'forgot_password' %}" style="color: #667eea; text-decoration: none; font-size: 14px;">
-                    🔐 Forgot Password?
+                <a href="{% url 'forgot_password' %}" class="forgot-link">
+                    Forgot Password?
                 </a>
             </div>
 
