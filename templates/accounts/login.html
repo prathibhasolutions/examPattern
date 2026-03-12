@@ -147,6 +147,27 @@
             transition: color 0.2s;
         }
         .forgot-link:hover { color: #f2a43b; }
+        .password-wrapper {
+            position: relative;
+        }
+        .password-wrapper .form-control {
+            padding-right: 44px;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            color: rgba(255,255,255,0.4);
+            font-size: 15px;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+        .toggle-password:hover { color: #f2a43b; }
         .divider {
             border: none;
             border-top: 1px solid rgba(255,255,255,0.1);
@@ -282,14 +303,19 @@
             <!-- Password Field -->
             <div class="form-group">
                 <label for="password" class="form-label">Password *</label>
-                <input 
-                    type="password" 
-                    class="form-control {% if form.password.errors %}field-error{% endif %}" 
-                    id="password"
-                    name="password" 
-                    placeholder="Enter your password"
-                    required
-                >
+                <div class="password-wrapper">
+                    <input 
+                        type="password" 
+                        class="form-control {% if form.password.errors %}field-error{% endif %}" 
+                        id="password"
+                        name="password" 
+                        placeholder="Enter your password"
+                        required
+                    >
+                    <button type="button" class="toggle-password" id="togglePassword" aria-label="Show password">
+                        <i class="fa fa-eye" id="togglePasswordIcon"></i>
+                    </button>
+                </div>
                 {% if form.password.errors %}
                     <div class="alert alert-danger" style="margin-top: 8px;">
                         {{ form.password.errors.0 }}
@@ -339,6 +365,21 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Show/hide password toggle
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const icon = document.getElementById('togglePasswordIcon');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+                this.setAttribute('aria-label', 'Hide password');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+                this.setAttribute('aria-label', 'Show password');
+            }
+        });
+
         // Form submission
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             const submitBtn = document.getElementById('submitBtn');
