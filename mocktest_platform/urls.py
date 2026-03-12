@@ -32,6 +32,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path("health/", health_check),
     path('accounts/', include('accounts.urls')),
+    path('oauth/', include('allauth.urls')),  # Google OAuth at /oauth/google/login/callback/
     path('tests/', tests_list, name='tests_list'),
     path('tests/series/<slug:slug>/', tests_series_detail, name='tests_series_detail'),
     path('tests/series/<slug:slug>/about/', tests_series_about, name='tests_series_about'),

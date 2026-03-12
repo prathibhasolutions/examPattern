@@ -7,7 +7,7 @@ import secrets
 class CustomUser(AbstractUser):
     """Custom user model with email, mobile, and photo"""
     email = models.EmailField(unique=True)
-    mobile = models.CharField(max_length=15, blank=False, help_text="Enter 10 digit mobile number")
+    mobile = models.CharField(max_length=15, blank=True, help_text="Enter 10 digit mobile number")
     photo = models.ImageField(
         upload_to='user_photos/',
         null=True,
