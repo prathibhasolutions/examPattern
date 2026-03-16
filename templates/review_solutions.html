@@ -574,10 +574,13 @@
 {% block content %}
 <div class="review-page">
     <div class="top-navbar">
-        <div class="sections-bar" id="sectionsBar"></div>
         <div class="user-info-bar">
             <div class="user-profile">
-                <img src="{% static 'examPattern.png' %}" alt="User" class="user-photo">
+                {% if request.user.profile.photo %}
+                    <img src="{{ request.user.profile.photo.url }}" alt="{{ request.user.username }}" class="user-photo">
+                {% else %}
+                    <div class="user-photo" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; color:white;">{{ request.user.username|first|upper }}</div>
+                {% endif %}
                 <div>
                     <div class="user-name">{{ request.user.username }}</div>
                     <div class="user-meta">
@@ -603,6 +606,7 @@
                 <a href="{% url 'results_page' attempt.id %}" class="back-btn">Back to Results</a>
             </div>
         </div>
+        <div class="sections-bar" id="sectionsBar"></div>
     </div>
 
     <div class="test-layout">

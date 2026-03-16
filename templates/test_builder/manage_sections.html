@@ -375,7 +375,23 @@
             <h5 class="mb-0">🚀 Step 2: Add Questions to Sections</h5>
         </div>
         <div class="card-body">
-            <p class="text-muted mb-4">Click on each section below to add questions with options and solutions.</p>
+
+            <!-- Live Editor CTA -->
+            <div class="d-flex align-items-center gap-3 p-4 mb-4 rounded-3"
+                 style="background:linear-gradient(135deg,#1e3c72 0%,#2a5298 100%);color:white;">
+                <div class="flex-grow-1">
+                    <h5 class="mb-1 fw-bold">✨ Use the Live Editor</h5>
+                    <p class="mb-0 opacity-75" style="font-size:14px;">
+                        Edit all sections and questions in one full-screen view — exactly as students will see the test.
+                    </p>
+                </div>
+                <a href="{% url 'live_editor' draft.id %}"
+                   class="btn btn-warning fw-bold px-4 py-2 flex-shrink-0" style="white-space:nowrap;">
+                    Open Live Editor →
+                </a>
+            </div>
+
+            <p class="text-muted mb-4">Or use the per-section editors below:</p>
             
             <div class="row">
                 {% for section in sections %}

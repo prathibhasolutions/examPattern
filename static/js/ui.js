@@ -64,11 +64,13 @@ const UI = {
         marks_obtained: null,
       };
       Palette.updateStatus(questionId, 'visited');
+      UI.saveAnswer(questionId);
     } else {
       UI.answers[questionId].status = UI.answers[questionId].status || 'not_visited';
       if (UI.answers[questionId].status === 'not_visited') {
         UI.answers[questionId].status = 'visited';
         Palette.updateStatus(questionId, 'visited');
+        UI.saveAnswer(questionId);
       }
     }
 
@@ -278,6 +280,37 @@ const UI = {
     } catch (error) {
       console.error('Failed to save answer:', error);
     }
+  },
+
+  // Clear current question's response
+  clearResponse: () => {
+    if (!UI.currentQuestion) return;
+
+    const questionId = UI.currentQuestion.id;
+    const answer = UI.answers[questionId] || {};
+
+    // Uncheck all inputs and remove selected class from labels
+    document.querySelectorAll(`input[name="options"][data-question-id="${questionId}"]`).forEach(input => {
+      input.checked = false;
+      const label = input.closest('.option');
+      if (label) label.classList.remove('selected');
+    });
+
+    // Clear text area if present
+    const textArea = document.getElementById(`response-${questionId}`);
+    if (textArea) textArea.value = '';
+
+    // Update answer state — preserve marked status but remove answered
+    answer.selected_option_ids = [];
+    answer.response_text = '';
+    const wasMarked = answer.status === 'marked_for_review' || answer.status === 'answered_and_marked';
+    answer.status = wasMarked ? 'marked_for_review' : 'visited';
+
+    UI.answers[questionId] = answer;
+    Palette.updateStatus(questionId, answer.status);
+
+    // Save cleared state to backend immediately
+    UI.saveAnswer(questionId);
   },
 
   // Escape HTML to prevent XSS

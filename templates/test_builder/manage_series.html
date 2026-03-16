@@ -143,7 +143,7 @@
     .builder-container {
         max-width: 1400px;
         margin: 0 auto;
-        padding: 2rem 1rem;
+        padding: 0 1rem 2rem 1rem;
         background: #f6f8fb;
         min-height: calc(100vh - 70px);
     }
@@ -315,7 +315,7 @@
     .highlight-row {
         display: grid;
         gap: 10px;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr;
     }
 
     .highlight-row .form-control {
@@ -669,11 +669,14 @@
     <nav class="navbar navbar-custom navbar-expand-lg">
         <div class="container">
             <a class="navbar-brand" href="{% url 'tests_list' %}">
-                🎓 Mock Test Platform
+                <img src="{% static 'examPattern.png' %}" alt="examPattern">
             </a>
         
             <div class="navbar-search">
-                <input type="text" class="form-control" placeholder="🔍 Search tests, series..." id="navbarSearch">
+                <input type="text" class="form-control" placeholder="🔍 Search tests, series..." id="navbarSearch" autocomplete="off">
+                <div id="navbarSuggestBox" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0;
+                     background:#fff; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.15);
+                     z-index:2000; max-height:300px; overflow-y:auto;"></div>
             </div>
         
             <div class="navbar-profile">
@@ -749,8 +752,7 @@
                     <div class="exam-sections" id="createHighlightList">
                         <div class="exam-section-row" data-index="0">
                             <div class="highlight-row">
-                                <input type="text" class="form-control" placeholder="Title (e.g., Vacancies)" data-field="title" name="highlight_title_0">
-                                <input type="text" class="form-control" placeholder="Value (e.g., 20,000+)" data-field="value" name="highlight_value_0">
+                                <input type="text" class="form-control" placeholder="Highlight text (e.g., Application Deadline: April 4, 2026)" data-field="title" name="highlight_title_0">
                                 <input type="hidden" data-field="id" name="highlight_id_0" value="">
                             </div>
                             <div class="exam-section-actions">
@@ -910,8 +912,7 @@
                                             {% for highlight in series.highlights.all %}
                                                 <div class="exam-section-row" data-index="{{ forloop.counter0 }}">
                                                     <div class="highlight-row">
-                                                        <input type="text" class="form-control" placeholder="Title" data-field="title" name="highlight_title_{{ forloop.counter0 }}" value="{{ highlight.title }}">
-                                                        <input type="text" class="form-control" placeholder="Value" data-field="value" name="highlight_value_{{ forloop.counter0 }}" value="{{ highlight.value }}">
+                                                        <input type="text" class="form-control" placeholder="Highlight text" data-field="title" name="highlight_title_{{ forloop.counter0 }}" value="{{ highlight.title }}">
                                                         <input type="hidden" data-field="id" name="highlight_id_{{ forloop.counter0 }}" value="{{ highlight.id }}">
                                                     </div>
                                                     <div class="exam-section-actions">
@@ -922,8 +923,7 @@
                                         {% else %}
                                             <div class="exam-section-row" data-index="0">
                                                 <div class="highlight-row">
-                                                    <input type="text" class="form-control" placeholder="Title" data-field="title" name="highlight_title_0">
-                                                    <input type="text" class="form-control" placeholder="Value" data-field="value" name="highlight_value_0">
+                                                    <input type="text" class="form-control" placeholder="Highlight text" data-field="title" name="highlight_title_0">
                                                     <input type="hidden" data-field="id" name="highlight_id_0" value="">
                                                 </div>
                                                 <div class="exam-section-actions">
@@ -1095,8 +1095,7 @@ function addHighlight(containerId, countInputId) {
     row.dataset.index = index.toString();
     row.innerHTML = `
         <div class="highlight-row">
-            <input type="text" class="form-control" placeholder="Title" data-field="title" name="highlight_title_${index}">
-            <input type="text" class="form-control" placeholder="Value" data-field="value" name="highlight_value_${index}">
+            <input type="text" class="form-control" placeholder="Highlight text" data-field="title" name="highlight_title_${index}">
             <input type="hidden" data-field="id" name="highlight_id_${index}" value="">
         </div>
         <div class="exam-section-actions">
@@ -1129,14 +1128,10 @@ function renumberHighlights(container, countInput) {
     rows.forEach((row, index) => {
         row.dataset.index = index.toString();
         const titleInput = row.querySelector('[data-field="title"]');
-        const valueInput = row.querySelector('[data-field="value"]');
         const idInput = row.querySelector('[data-field="id"]');
 
         if (titleInput) {
             titleInput.name = `highlight_title_${index}`;
-        }
-        if (valueInput) {
-            valueInput.name = `highlight_value_${index}`;
         }
         if (idInput) {
             idInput.name = `highlight_id_${index}`;
@@ -1239,5 +1234,37 @@ if (searchInput) {
         });
     });
 }
+
+// Wire navbar search to global search overlay
+(function() {
+  var inp = document.getElementById('navbarSearch');
+  var box = document.getElementById('navbarSuggestBox');
+  if (!inp || !box) return;
+  var timer;
+  inp.addEventListener('input', function() {
+    clearTimeout(timer);
+    var q = this.value.trim();
+    if (!q) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    timer = setTimeout(function() {
+      fetch('/api/v1/series-suggest/?q=' + encodeURIComponent(q))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.length) {
+            box.innerHTML = '<div class="search-no-results">No matching series found</div>';
+          } else {
+            box.innerHTML = data.map(function(s) {
+              return '<a href="/tests/series/' + s.slug + '/about/" class="search-suggestion-item">'
+                   + '<i class="fas fa-search"></i>' + s.name + '</a>';
+            }).join('');
+          }
+          box.style.display = 'block';
+        })
+        .catch(function() { box.style.display = 'none'; });
+    }, 180);
+  });
+  document.addEventListener('click', function(e) {
+    if (!inp.contains(e.target) && !box.contains(e.target)) box.style.display = 'none';
+  });
+})();
 </script>
 {% endblock %}

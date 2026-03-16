@@ -982,3 +982,243 @@ def toggle_test_active(request, draft_id):
         'status_text': status_text,
         'message': f"Test '{published_test.name}' has been {action}."
     })
+
+
+# ──────────────────────────────────────────────
+# LIVE EDITOR — immersive question editor
+# ──────────────────────────────────────────────
+
+@admin_required
+@login_required
+def live_editor(request, draft_id):
+    """Full-screen live editor: mirrors student test UI with editing controls."""
+    import json
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+
+    if not draft.can_edit(request.user):
+        messages.error(
+            request,
+            f"❌ This test is currently being edited by {draft.locked_by.username}. "
+            f"Lock auto-expires after 30 minutes of inactivity."
+        )
+        return redirect('builder_dashboard')
+
+    draft.acquire_lock(request.user)
+
+    sections_data = []
+    for section in draft.sections.all():
+        questions_data = []
+        for question in section.questions.all():
+            options_data = [
+                {
+                    'id': opt.id,
+                    'text': opt.option_text,
+                    'image_url': opt.option_image.url if opt.option_image else None,
+                    'is_correct': opt.is_correct,
+                    'order': opt.order,
+                }
+                for opt in question.options.all()
+            ]
+            questions_data.append({
+                'id': question.id,
+                'order': question.order,
+                'question_text': question.question_text,
+                'image_url': question.question_image.url if question.question_image else None,
+                'solution_text': question.solution_text,
+                'solution_image_url': question.solution_image.url if question.solution_image else None,
+                'options': options_data,
+            })
+        sections_data.append({
+            'id': section.id,
+            'name': section.name,
+            'order': section.order,
+            'questions': questions_data,
+        })
+
+    return render(request, 'test_builder/live_editor.html', {
+        'draft': draft,
+        'sections_json': json.dumps(sections_data),
+    })
+
+
+@admin_required
+@login_required
+@require_http_methods(["POST"])
+def api_add_section(request, draft_id):
+    from django.http import JsonResponse
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+    draft.refresh_lock(request.user)
+    name = request.POST.get('name', '').strip() or 'New Section'
+    order = draft.sections.count() + 1
+    section = SectionDraft.objects.create(test_draft=draft, name=name, order=order)
+    return JsonResponse({'success': True, 'section': {'id': section.id, 'name': section.name, 'order': section.order}})
+
+
+@admin_required
+@login_required
+@require_http_methods(["POST"])
+def api_rename_section(request, draft_id, section_id):
+    from django.http import JsonResponse
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+    section = get_object_or_404(SectionDraft, id=section_id, test_draft=draft)
+    draft.refresh_lock(request.user)
+    name = request.POST.get('name', '').strip()
+    if not name:
+        return JsonResponse({'success': False, 'error': 'Name cannot be empty.'}, status=400)
+    section.name = name
+    section.save()
+    return JsonResponse({'success': True, 'name': section.name})
+
+
+@admin_required
+@login_required
+@require_http_methods(["POST"])
+def api_delete_section(request, draft_id, section_id):
+    from django.http import JsonResponse
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+    section = get_object_or_404(SectionDraft, id=section_id, test_draft=draft)
+    draft.refresh_lock(request.user)
+    if draft.sections.count() <= 1:
+        return JsonResponse({'success': False, 'error': 'Cannot delete the only section.'}, status=400)
+    section.delete()
+    return JsonResponse({'success': True})
+
+
+@admin_required
+@login_required
+@require_http_methods(["POST"])
+def api_save_question(request, draft_id):
+    from django.http import JsonResponse
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+    draft.refresh_lock(request.user)
+
+    section_id = request.POST.get('section_id')
+    question_id = request.POST.get('question_id', '').strip() or None
+    section = get_object_or_404(SectionDraft, id=section_id, test_draft=draft)
+
+    question_text = request.POST.get('question_text', '').strip()
+    solution_text = request.POST.get('solution_text', '').strip()
+    question_image = request.FILES.get('question_image')
+    solution_image = request.FILES.get('solution_image')
+    clear_question_image = request.POST.get('clear_question_image') == '1'
+    clear_solution_image = request.POST.get('clear_solution_image') == '1'
+
+    # Collect options from request
+    option_count = int(request.POST.get('option_count', 0))
+    options_data = []
+    for i in range(option_count):
+        opt_id = request.POST.get(f'option_{i}_id', '').strip() or None
+        opt_text = request.POST.get(f'option_{i}_text', '').strip()
+        opt_image = request.FILES.get(f'option_{i}_image')
+        is_correct = request.POST.get(f'option_{i}_correct') == '1'
+        options_data.append({'id': opt_id, 'text': opt_text, 'image': opt_image, 'is_correct': is_correct, 'order': i + 1})
+
+    # Validate question content
+    if not question_text and not question_image:
+        if question_id:
+            existing_q = QuestionDraft.objects.filter(id=question_id, section=section).first()
+            if not existing_q or (not existing_q.question_image):
+                return JsonResponse({'success': False, 'error': 'Question must have text or an image.'}, status=400)
+        else:
+            return JsonResponse({'success': False, 'error': 'Question must have text or an image.'}, status=400)
+
+    if len(options_data) == 0:
+        return JsonResponse({'success': False, 'error': 'At least one option is required.'}, status=400)
+
+    correct_count = sum(1 for o in options_data if o['is_correct'])
+    if correct_count == 0:
+        return JsonResponse({'success': False, 'error': 'Please mark one option as the correct answer.'}, status=400)
+    if correct_count > 1:
+        return JsonResponse({'success': False, 'error': f'Only one correct answer allowed ({correct_count} selected).'}, status=400)
+
+    # Save / update question
+    if question_id:
+        question = get_object_or_404(QuestionDraft, id=question_id, section=section)
+        question.question_text = question_text
+        question.solution_text = solution_text
+        if question_image:
+            question.question_image = question_image
+        elif clear_question_image:
+            question.question_image = None
+        if solution_image:
+            question.solution_image = solution_image
+        elif clear_solution_image:
+            question.solution_image = None
+        question.save()
+    else:
+        order = section.questions.count() + 1
+        question = QuestionDraft.objects.create(
+            section=section,
+            question_text=question_text,
+            question_image=question_image,
+            solution_text=solution_text,
+            solution_image=solution_image,
+            order=order,
+        )
+
+    # Update options: update existing, create new, delete removed
+    submitted_ids = set()
+    for opt_data in options_data:
+        if opt_data['id']:
+            existing_opt = OptionDraft.objects.filter(id=opt_data['id'], question=question).first()
+            if existing_opt:
+                existing_opt.option_text = opt_data['text']
+                existing_opt.is_correct = opt_data['is_correct']
+                existing_opt.order = opt_data['order']
+                if opt_data['image']:
+                    existing_opt.option_image = opt_data['image']
+                existing_opt.save()
+                submitted_ids.add(existing_opt.id)
+                continue
+        new_opt = OptionDraft.objects.create(
+            question=question,
+            option_text=opt_data['text'],
+            option_image=opt_data['image'],
+            is_correct=opt_data['is_correct'],
+            order=opt_data['order'],
+        )
+        submitted_ids.add(new_opt.id)
+
+    # Remove options no longer present
+    question.options.exclude(id__in=submitted_ids).delete()
+
+    options_resp = [
+        {
+            'id': opt.id,
+            'text': opt.option_text,
+            'image_url': opt.option_image.url if opt.option_image else None,
+            'is_correct': opt.is_correct,
+            'order': opt.order,
+        }
+        for opt in question.options.all()
+    ]
+    return JsonResponse({
+        'success': True,
+        'question': {
+            'id': question.id,
+            'order': question.order,
+            'question_text': question.question_text,
+            'image_url': question.question_image.url if question.question_image else None,
+            'solution_text': question.solution_text,
+            'solution_image_url': question.solution_image.url if question.solution_image else None,
+            'options': options_resp,
+        }
+    })
+
+
+@admin_required
+@login_required
+@require_http_methods(["POST"])
+def api_delete_question(request, draft_id, question_id):
+    from django.http import JsonResponse
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+    question = get_object_or_404(QuestionDraft, id=question_id, section__test_draft=draft)
+    draft.refresh_lock(request.user)
+    section_id = question.section_id
+    question.delete()
+    # Reorder remaining questions in sequence
+    for i, q in enumerate(QuestionDraft.objects.filter(section_id=section_id).order_by('order'), start=1):
+        if q.order != i:
+            q.order = i
+            q.save(update_fields=['order'])
+    return JsonResponse({'success': True})

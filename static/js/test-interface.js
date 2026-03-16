@@ -16,6 +16,7 @@ const testApp = {
   pendingSectionSwitchQuestionId: null,
   allowSectionSwitch: false,
   forceSectionSwitch: false,
+  timerHeartbeatId: null,
 
   // Initialize app
   init: async () => {
@@ -90,7 +91,9 @@ const testApp = {
       if (testApp.useSectionalTiming) {
         testApp.sectionOrder.forEach(sectionId => {
           const meta = testApp.sectionMetaById[sectionId];
-          testApp.sectionRemainingSeconds[sectionId] = meta.timeLimitSeconds || 0;
+          // Subtract already-spent time so the timer resumes from where it stopped
+          const spentSeconds = (testApp.attempt.section_timings || {})[String(sectionId)] || 0;
+          testApp.sectionRemainingSeconds[sectionId] = Math.max(0, (meta.timeLimitSeconds || 0) - spentSeconds);
         });
       }
 
@@ -125,6 +128,14 @@ const testApp = {
         const initialSeconds = timingInfo.remaining_seconds ?? timingInfo.total_duration;
         if (initialSeconds && initialSeconds > 0) {
           Timer.init(initialSeconds);
+          // Save immediately so DB has a valid value from the very first second
+          API.saveTimer(ATTEMPT_ID, initialSeconds);
+          // Heartbeat: save remaining time every 10 s so resume starts from correct point
+          testApp.timerHeartbeatId = setInterval(() => {
+            if (Timer.isRunning && Timer.remainingSeconds > 0) {
+              API.saveTimer(ATTEMPT_ID, Timer.remainingSeconds);
+            }
+          }, 10000);
         } else {
           Timer.setDisplayText('No Limit');
         }
@@ -395,6 +406,11 @@ const testApp = {
       }
       
       Timer.stop();
+      // Clear heartbeat interval
+      if (testApp.timerHeartbeatId) {
+        clearInterval(testApp.timerHeartbeatId);
+        testApp.timerHeartbeatId = null;
+      }
       const result = await API.submitAttempt(ATTEMPT_ID);
       
       // Redirect to results page immediately with success parameter
@@ -483,6 +499,12 @@ const testApp = {
 
     // Replace default beforeunload with modal
     window.addEventListener('beforeunload', (e) => {
+      // Save timer FIRST — sendBeacon is fire-and-forget and must be called
+      // before any return/prevent-default that would block further execution
+      if (!testApp.isSubmitting && Timer.remainingSeconds > 0) {
+        API.saveTimerBeacon(ATTEMPT_ID, Timer.remainingSeconds);
+      }
+
       if (!testApp.isSubmitting && testApp.attempt && testApp.attempt.status === 'in_progress' && !leaveConfirmed) {
         e.preventDefault();
         e.returnValue = '';

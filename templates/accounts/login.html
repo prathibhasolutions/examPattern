@@ -276,8 +276,8 @@
     <div class="login-container">
         <div class="login-header">
             <img src="{% static 'examPattern.png' %}" alt="examPattern" class="login-logo">
-            <h2>Welcome Back</h2>
-            <p>Login to your account and continue learning</p>
+            <h2>Welcome to examPattern</h2>
+            <p>Sign in to continue learning</p>
         </div>
 
         {% if messages %}
@@ -291,151 +291,21 @@
         </div>
         {% endif %}
 
-        {% if test_block %}
-        <!-- Hard block: user is mid-test on another device -->
-        <div class="session-panel block-panel">
-            <span class="panel-icon">🚫</span>
-            <h3>Login Not Allowed</h3>
-            <p>This account is currently taking a test on another device. You cannot log in here while that test is in progress.</p>
-            <a href="{% url 'login' %}" class="btn-cancel-link">← Back to Login</a>
-        </div>
+        <a href="{% url 'google_login' %}" class="btn-google">
+            <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            Continue with Google
+        </a>
 
-        {% elif show_relogin_warning %}
-        <!-- Soft warning: already logged in elsewhere, ask for confirmation -->
-        <div class="session-panel warning-panel">
-            <span class="panel-icon">⚠️</span>
-            <h3>Already Logged In</h3>
-            <p>You are already logged in on another device. Logging in here will automatically log you out from that device.</p>
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="confirm_force_login" value="1">
-                <button type="submit" class="btn-confirm">Yes, Log In Here</button>
-            </form>
-            <a href="{% url 'login' %}" class="btn-cancel-link">No, Go Back</a>
-        </div>
-
-        {% else %}
-        <form method="post" id="loginForm">
-            {% csrf_token %}
-
-            <!-- Username/Email Field -->
-            <div class="form-group">
-                <label for="username" class="form-label">Username or Email *</label>
-                <input 
-                    type="text" 
-                    class="form-control {% if form.username.errors %}field-error{% endif %}" 
-                    id="username"
-                    name="username" 
-                    placeholder="Enter your username or email"
-                    value="{{ form.username.value|default:'' }}"
-                    autofocus
-                    required
-                >
-                {% if form.username.errors %}
-                    <div class="alert alert-danger" style="margin-top: 8px;">
-                        {{ form.username.errors.0 }}
-                    </div>
-                {% endif %}
-            </div>
-
-            <!-- Password Field -->
-            <div class="form-group">
-                <label for="password" class="form-label">Password *</label>
-                <div class="password-wrapper">
-                    <input 
-                        type="password" 
-                        class="form-control {% if form.password.errors %}field-error{% endif %}" 
-                        id="password"
-                        name="password" 
-                        placeholder="Enter your password"
-                        required
-                    >
-                    <button type="button" class="toggle-password" id="togglePassword" aria-label="Show password">
-                        <i class="fa fa-eye" id="togglePasswordIcon"></i>
-                    </button>
-                </div>
-                {% if form.password.errors %}
-                    <div class="alert alert-danger" style="margin-top: 8px;">
-                        {{ form.password.errors.0 }}
-                    </div>
-                {% endif %}
-            </div>
-
-            <!-- Remember Me -->
-            <div class="form-check">
-                <input 
-                    type="checkbox" 
-                    class="form-check-input" 
-                    id="remember_me"
-                    name="remember_me"
-                >
-                <label class="form-check-label" for="remember_me">
-                    Remember me on this device
-                </label>
-            </div>
-
-            <!-- Forgot Password Link -->
-            <div style="text-align: right; margin: 10px 0;">
-                <a href="{% url 'forgot_password' %}" class="forgot-link">
-                    Forgot Password?
-                </a>
-            </div>
-
-            <!-- Form Errors -->
-            {% if form.non_field_errors %}
-                <div class="alert alert-danger">
-                    {% for error in form.non_field_errors %}
-                        {{ error }}<br>
-                    {% endfor %}
-                </div>
-            {% endif %}
-
-            <!-- Submit Button -->
-            <button type="submit" class="btn-login" id="submitBtn">Login</button>
-
-            <!-- Google OAuth -->
-            <div class="or-divider">OR</div>
-            <a href="{% url 'google_login' %}" class="btn-google">
-                <svg width="18" height="18" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                </svg>
-                Continue with Google
-            </a>
-
-            <!-- Register Link -->
-            <div class="register-link">
-                Don't have an account? <a href="{% url 'register' %}">Register here</a>
-            </div>
-        </form>
-        {% endif %}
+        <p style="text-align:center; margin-top:24px; color:rgba(255,255,255,0.35); font-size:12px;">
+            Your data is secure. We only access your name and email.
+        </p>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Show/hide password toggle
-        document.getElementById('togglePassword').addEventListener('click', function() {
-            const passwordInput = document.getElementById('password');
-            const icon = document.getElementById('togglePasswordIcon');
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                icon.classList.replace('fa-eye', 'fa-eye-slash');
-                this.setAttribute('aria-label', 'Hide password');
-            } else {
-                passwordInput.type = 'password';
-                icon.classList.replace('fa-eye-slash', 'fa-eye');
-                this.setAttribute('aria-label', 'Show password');
-            }
-        });
-
-        // Form submission
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            const submitBtn = document.getElementById('submitBtn');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Logging in...';
-        });
-    </script>
 </body>
 </html>

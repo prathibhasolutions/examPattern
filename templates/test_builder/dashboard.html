@@ -32,6 +32,25 @@
         margin-left: -50vw !important;
         margin-right: -50vw !important;
     }
+    /* Navbar search suggestion dropdown */
+    #navbarSuggestBox a.search-suggestion-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        color: #333;
+        text-decoration: none;
+        font-size: 14px;
+        transition: background 0.15s;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    #navbarSuggestBox a.search-suggestion-item:last-child { border-bottom: none; }
+    #navbarSuggestBox a.search-suggestion-item:hover { background: #f5f8ff; color: #1e3c72; }
+    #navbarSuggestBox .search-no-results {
+        padding: 12px 16px;
+        color: #888;
+        font-size: 13px;
+    }
     .navbar-custom .navbar-brand {
         font-weight: 700;
         font-size: 18px;
@@ -149,7 +168,10 @@
         </a>
 
         <div class="navbar-search d-none d-lg-block">
-            <input id="builderSearchInput" class="form-control" type="text" placeholder="Search tests or series...">
+            <input id="builderSearchInput" class="form-control" type="text" placeholder="Search tests or series..." autocomplete="off">
+            <div id="navbarSuggestBox" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0;
+                 background:#fff; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.15);
+                 z-index:2000; max-height:300px; overflow-y:auto;"></div>
         </div>
 
         <div class="navbar-profile ms-auto">
@@ -757,6 +779,43 @@ document.querySelectorAll('.test-active-toggle').forEach(toggle => {
         
         document.getElementById('toggleConfirmModal').addEventListener('hidden.bs.modal', handleModalHide);
     });
+
 });
+</script>
+
+<script>
+(function() {
+  var inp = document.getElementById('builderSearchInput');
+  var box = document.getElementById('navbarSuggestBox');
+  if (!inp || !box) return;
+  var timer;
+  inp.addEventListener('input', function() {
+    clearTimeout(timer);
+    var q = this.value.trim();
+    if (!q) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    timer = setTimeout(function() {
+      fetch('/api/v1/series-suggest/?q=' + encodeURIComponent(q))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.length) {
+            box.innerHTML = '<div class="search-no-results">No matching series found</div>';
+          } else {
+            box.innerHTML = data.map(function(s) {
+              return '<a href="/tests/series/' + s.slug + '/about/" class="search-suggestion-item">'
+                   + '<i class="fas fa-search"></i>' + s.name + '</a>';
+            }).join('');
+          }
+          box.style.display = 'block';
+        })
+        .catch(function() { box.style.display = 'none'; });
+    }, 180);
+  });
+  document.addEventListener('click', function(e) {
+    if (!inp.contains(e.target) && !box.contains(e.target)) box.style.display = 'none';
+  });
+  inp.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { box.style.display = 'none'; box.innerHTML = ''; }
+  });
+})();
 </script>
 {% endblock %}

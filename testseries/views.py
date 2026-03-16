@@ -127,16 +127,28 @@ class TestViewSet(viewsets.ReadOnlyModelViewSet):
         from questions.models import Question
         from attempts.serializers import TestAttemptSerializer
 
-        # Check attempt limit (max 2 attempts per test)
-        existing_attempts = TestAttempt.objects.filter(user=user, test=test).count()
-        if existing_attempts >= 2:
+        # Check attempt limit (max 2 submitted attempts per test)
+        submitted_attempts = TestAttempt.objects.filter(
+            user=user, test=test, status=TestAttempt.STATUS_SUBMITTED
+        )
+        submitted_count = submitted_attempts.count()
+
+        # If an in-progress attempt already exists, return it instead of creating a duplicate
+        in_progress = TestAttempt.objects.filter(
+            user=user, test=test, status=TestAttempt.STATUS_IN_PROGRESS
+        ).first()
+        if in_progress:
+            serializer = TestAttemptSerializer(in_progress)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        if submitted_count >= 2:
             return Response(
                 {'error': 'Maximum attempt limit reached. You can only attempt this test twice.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         # Create a new attempt
-        attempt_number = existing_attempts + 1
+        attempt_number = submitted_count + 1
         is_reattempt = attempt_number > 1
 
         attempt = TestAttempt.objects.create(

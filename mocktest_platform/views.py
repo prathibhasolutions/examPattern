@@ -119,10 +119,34 @@ def tests_series_detail(request, slug):
                 'is_all_tests': False
             })
 
+    # Build per-test attempt info for authenticated users
+    attempt_map = {}
+    if request.user.is_authenticated:
+        from attempts.models import TestAttempt
+        all_test_ids = list(all_tests.values_list('id', flat=True))
+        user_attempts = TestAttempt.objects.filter(
+            user=request.user, test_id__in=all_test_ids
+        ).order_by('test_id', '-attempt_number')
+        for attempt in user_attempts:
+            tid = attempt.test_id
+            if tid not in attempt_map:
+                attempt_map[tid] = {
+                    'submitted_count': 0,
+                    'in_progress_id': None,
+                    'latest_submitted_id': None,
+                }
+            if attempt.status == TestAttempt.STATUS_IN_PROGRESS and attempt_map[tid]['in_progress_id'] is None:
+                attempt_map[tid]['in_progress_id'] = attempt.id
+            elif attempt.status == TestAttempt.STATUS_SUBMITTED:
+                attempt_map[tid]['submitted_count'] += 1
+                if attempt_map[tid]['latest_submitted_id'] is None:
+                    attempt_map[tid]['latest_submitted_id'] = attempt.id
+
     return render(request, 'testseries/series_tests.html', {
         'series': series,
         'sectional_data': sectional_data,
         'all_tests': all_tests,
+        'attempt_map': attempt_map,
     })
 
 

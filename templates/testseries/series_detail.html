@@ -448,7 +448,10 @@
 
         <!-- Search Bar -->
         <div class="navbar-search">
-            <input type="text" class="form-control" placeholder="🔍 Search tests..." id="navbarSearch">
+            <input type="text" class="form-control" placeholder="🔍 Search tests..." id="navbarSearch" autocomplete="off">
+            <div id="navbarSuggestBox" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0;
+                 background:#fff; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.15);
+                 z-index:2000; max-height:300px; overflow-y:auto;"></div>
         </div>
 
         <div class="navbar-profile ms-auto">
@@ -473,9 +476,6 @@
                 </a>
             {% else %}
                 <a href="{% url 'login' %}" class="btn btn-login">Login</a>
-                <a href="{% url 'register' %}" class="btn btn-login" style="background: rgba(23, 162, 184, 0.9);">
-                    Register
-                </a>
             {% endif %}
         </div>
     </div>
@@ -685,20 +685,37 @@
         document.getElementById('subNavContainer').style.display = 'block';
     }
 
-    // Search functionality
-    document.getElementById('navbarSearch').addEventListener('input', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        const testItems = document.querySelectorAll('.test-item');
-        
-        testItems.forEach(item => {
-            const testName = item.querySelector('.test-name').textContent.toLowerCase();
-            if (testName.includes(searchTerm)) {
-                item.style.display = 'flex';
-            } else {
-                item.style.display = 'none';
-            }
-        });
-    });
+    // Wire navbar search to global search overlay
+    (function() {
+      var inp = document.getElementById('navbarSearch');
+      var box = document.getElementById('navbarSuggestBox');
+      if (!inp || !box) return;
+      var timer;
+      inp.addEventListener('input', function() {
+        clearTimeout(timer);
+        var q = this.value.trim();
+        if (!q) { box.style.display = 'none'; box.innerHTML = ''; return; }
+        timer = setTimeout(function() {
+          fetch('/api/v1/series-suggest/?q=' + encodeURIComponent(q))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+              if (!data.length) {
+                box.innerHTML = '<div class="search-no-results">No matching series found</div>';
+              } else {
+                box.innerHTML = data.map(function(s) {
+                  return '<a href="/tests/series/' + s.slug + '/about/" class="search-suggestion-item">'
+                       + '<i class="fas fa-search"></i>' + s.name + '</a>';
+                }).join('');
+              }
+              box.style.display = 'block';
+            })
+            .catch(function() { box.style.display = 'none'; });
+        }, 180);
+      });
+      document.addEventListener('click', function(e) {
+        if (!inp.contains(e.target) && !box.contains(e.target)) box.style.display = 'none';
+      });
+    })();
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

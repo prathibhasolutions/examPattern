@@ -411,7 +411,10 @@
 
         <!-- Search Bar -->
         <div class="navbar-search">
-            <input type="text" class="form-control" placeholder="🔍 Search tests..." id="navbarSearch">
+            <input type="text" class="form-control" placeholder="🔍 Search tests..." id="navbarSearch" autocomplete="off">
+            <div id="navbarSuggestBox" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0;
+                 background:#fff; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.15);
+                 z-index:2000; max-height:300px; overflow-y:auto;"></div>
         </div>
 
         <div class="navbar-profile ms-auto">
@@ -436,7 +439,6 @@
                 </a>
             {% else %}
                 <a href="{% url 'login' %}" class="btn btn-login">Login</a>
-                <a href="{% url 'register' %}" class="btn btn-login" style="background: rgba(23, 162, 184, 0.9);">Register</a>
             {% endif %}
         </div>
     </div>
@@ -492,9 +494,33 @@
                                         </div>
                                         <div class="card-footer test-action" data-test-id="{{ test.id }}">
                                             {% if user.is_authenticated %}
-                                            <button class="btn btn-primary attempt-btn" onclick="startTest({{ test.id }})">
-                                                <i class="fas fa-play-circle"></i> Start Test
-                                            </button>
+                                            {% with info=attempt_map|get_item:test.id %}
+                                              {% if info.in_progress_id %}
+                                                <a href="/test/{{ test.id }}/?attempt_id={{ info.in_progress_id }}" class="btn btn-warning attempt-btn">
+                                                    <i class="fas fa-play"></i> Resume Test
+                                                </a>
+                                                {% if info.latest_submitted_id %}
+                                                <a href="{% url 'review_solutions' info.latest_submitted_id %}" class="btn btn-outline-secondary attempt-btn">
+                                                    <i class="fas fa-eye"></i> Review Solutions
+                                                </a>
+                                                {% endif %}
+                                              {% elif info.submitted_count >= 2 %}
+                                                <a href="{% url 'review_solutions' info.latest_submitted_id %}" class="btn btn-success attempt-btn">
+                                                    <i class="fas fa-eye"></i> Review Solutions
+                                                </a>
+                                              {% elif info.submitted_count == 1 %}
+                                                <a href="{% url 'review_solutions' info.latest_submitted_id %}" class="btn btn-success attempt-btn">
+                                                    <i class="fas fa-eye"></i> Review Solutions
+                                                </a>
+                                                <a href="{% url 'test_instructions' test.id %}" class="btn btn-primary attempt-btn">
+                                                    <i class="fas fa-redo"></i> Re-attempt
+                                                </a>
+                                              {% else %}
+                                                <a href="{% url 'test_instructions' test.id %}" class="btn btn-primary attempt-btn">
+                                                    <i class="fas fa-play-circle"></i> Start Test
+                                                </a>
+                                              {% endif %}
+                                            {% endwith %}
                                             {% else %}
                                             <button class="btn btn-secondary" onclick="requireLogin()" title="Login required">
                                                 <i class="fas fa-lock"></i> Login to Attempt
@@ -537,9 +563,33 @@
                                 </div>
                                 <div class="card-footer test-action" data-test-id="{{ test.id }}">
                                     {% if user.is_authenticated %}
-                                    <button class="btn btn-primary attempt-btn" onclick="startTest({{ test.id }})">
-                                        <i class="fas fa-play-circle"></i> Start Test
-                                    </button>
+                                    {% with info=attempt_map|get_item:test.id %}
+                                      {% if info.in_progress_id %}
+                                        <a href="/test/{{ test.id }}/?attempt_id={{ info.in_progress_id }}" class="btn btn-warning attempt-btn">
+                                            <i class="fas fa-play"></i> Resume Test
+                                        </a>
+                                        {% if info.latest_submitted_id %}
+                                        <a href="{% url 'review_solutions' info.latest_submitted_id %}" class="btn btn-outline-secondary attempt-btn">
+                                            <i class="fas fa-eye"></i> Review Solutions
+                                        </a>
+                                        {% endif %}
+                                      {% elif info.submitted_count >= 2 %}
+                                        <a href="{% url 'review_solutions' info.latest_submitted_id %}" class="btn btn-success attempt-btn">
+                                            <i class="fas fa-eye"></i> Review Solutions
+                                        </a>
+                                      {% elif info.submitted_count == 1 %}
+                                        <a href="{% url 'review_solutions' info.latest_submitted_id %}" class="btn btn-success attempt-btn">
+                                            <i class="fas fa-eye"></i> Review Solutions
+                                        </a>
+                                        <a href="{% url 'test_instructions' test.id %}" class="btn btn-primary attempt-btn">
+                                            <i class="fas fa-redo"></i> Re-attempt
+                                        </a>
+                                      {% else %}
+                                        <a href="{% url 'test_instructions' test.id %}" class="btn btn-primary attempt-btn">
+                                            <i class="fas fa-play-circle"></i> Start Test
+                                        </a>
+                                      {% endif %}
+                                    {% endwith %}
                                     {% else %}
                                     <button class="btn btn-secondary" onclick="requireLogin()" title="Login required">
                                         <i class="fas fa-lock"></i> Login to Attempt
@@ -648,6 +698,38 @@ document.addEventListener('DOMContentLoaded', function() {
     const firstSectionHasSubsections = {{ sectional_data.0.subsections|length }};
     handleSectionClick(firstSection, firstSectionHasSubsections);
     {% endif %}
+
+    // Wire navbar search to global search overlay
+    (function() {
+      var inp = document.getElementById('navbarSearch');
+      var box = document.getElementById('navbarSuggestBox');
+      if (!inp || !box) return;
+      var timer;
+      inp.addEventListener('input', function() {
+        clearTimeout(timer);
+        var q = this.value.trim();
+        if (!q) { box.style.display = 'none'; box.innerHTML = ''; return; }
+        timer = setTimeout(function() {
+          fetch('/api/v1/series-suggest/?q=' + encodeURIComponent(q))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+              if (!data.length) {
+                box.innerHTML = '<div class="search-no-results">No matching series found</div>';
+              } else {
+                box.innerHTML = data.map(function(s) {
+                  return '<a href="/tests/series/' + s.slug + '/about/" class="search-suggestion-item">'
+                       + '<i class="fas fa-search"></i>' + s.name + '</a>';
+                }).join('');
+              }
+              box.style.display = 'block';
+            })
+            .catch(function() { box.style.display = 'none'; });
+        }, 180);
+      });
+      document.addEventListener('click', function(e) {
+        if (!inp.contains(e.target) && !box.contains(e.target)) box.style.display = 'none';
+      });
+    })();
 });
 </script>
 {% endblock %}

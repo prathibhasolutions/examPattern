@@ -9,11 +9,26 @@ def set_active_session_key(sender, request, user, **kwargs):
     """
     After any login (password-based or Google OAuth), record the new
     session key so multi-device conflict detection keeps working.
+    Also ensures Google users are always marked as verified.
     """
+    update_fields = []
     new_key = request.session.session_key
     if new_key and user.active_session_key != new_key:
         user.active_session_key = new_key
-        user.save(update_fields=['active_session_key'])
+        update_fields.append('active_session_key')
+
+    # Mark verified if the user has a linked Google account
+    if not user.is_verified:
+        try:
+            from allauth.socialaccount.models import SocialAccount
+            if SocialAccount.objects.filter(user=user, provider='google').exists():
+                user.is_verified = True
+                update_fields.append('is_verified')
+        except Exception:
+            pass
+
+    if update_fields:
+        user.save(update_fields=update_fields)
 
 
 @receiver(post_migrate)

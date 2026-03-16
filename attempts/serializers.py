@@ -41,6 +41,7 @@ class TestAttemptSerializer(serializers.ModelSerializer):
             'submitted_at',
             'duration_seconds',
             'section_timings',
+            'time_remaining_seconds',
             'score',
             'elapsed_seconds',
             'answers',

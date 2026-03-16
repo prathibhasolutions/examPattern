@@ -112,20 +112,20 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Validate timing
-        elapsed = (timezone.now() - attempt.started_at).total_seconds()
-        test_duration = attempt.test.duration_seconds
-        
-        if test_duration > 0 and elapsed > test_duration:
-            return Response(
-                {"warning": "Time limit exceeded", "elapsed": elapsed},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        # Compute actual active elapsed time:
+        # If we have a saved timer value (set by heartbeat), use it for accuracy
+        # so resumed tests aren't penalised for the offline gap.
+        test_duration = attempt.test.duration_seconds or 0
+        if attempt.time_remaining_seconds is not None and test_duration > 0:
+            elapsed = test_duration - attempt.time_remaining_seconds
+        else:
+            elapsed = int((timezone.now() - attempt.started_at).total_seconds())
 
         # Mark as submitted
         attempt.status = TestAttempt.STATUS_SUBMITTED
         attempt.submitted_at = timezone.now()
-        attempt.duration_seconds = int(elapsed)
+        attempt.duration_seconds = max(0, int(elapsed))
+        attempt.time_remaining_seconds = None
         attempt.save()
 
         evaluation = evaluate_attempt(attempt)
@@ -143,6 +143,24 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK,
         )
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def save_timer(self, request, pk=None):
+        """
+        Save the current timer remaining seconds.
+        Called periodically by the client as a heartbeat so that on resume
+        the timer can restart from exactly where it stopped.
+        POST /api/attempts/{id}/save_timer/
+        Body: { "remaining_seconds": 1234 }
+        """
+        attempt = self.get_object()
+        if attempt.status != TestAttempt.STATUS_IN_PROGRESS:
+            return Response({'error': 'Attempt is not in progress'}, status=status.HTTP_400_BAD_REQUEST)
+        remaining = request.data.get('remaining_seconds')
+        if remaining is not None:
+            attempt.time_remaining_seconds = max(0, int(remaining))
+            attempt.save(update_fields=['time_remaining_seconds'])
+        return Response({'saved': True})
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def track_question_time(self, request, pk=None):
@@ -228,15 +246,22 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
                 }
             )
 
-        elapsed = int((timezone.now() - attempt.started_at).total_seconds())
         total_duration = attempt.test.duration_seconds or 0
-        remaining = max(0, total_duration - elapsed) if total_duration > 0 else None
+
+        # Use saved timer value if available — correct for resumed tests
+        # (wall-clock elapsed would include offline time between sessions)
+        if attempt.time_remaining_seconds is not None:
+            remaining = attempt.time_remaining_seconds
+            elapsed = (total_duration - remaining) if total_duration > 0 else None
+        else:
+            elapsed = int((timezone.now() - attempt.started_at).total_seconds())
+            remaining = max(0, total_duration - elapsed) if total_duration > 0 else None
 
         return Response(
             {
                 "elapsed_seconds": elapsed,
                 "remaining_seconds": remaining,
                 "total_duration": total_duration if total_duration > 0 else None,
-                "time_limit_exceeded": total_duration > 0 and elapsed > total_duration,
+                "time_limit_exceeded": total_duration > 0 and remaining is not None and remaining <= 0,
             }
         )

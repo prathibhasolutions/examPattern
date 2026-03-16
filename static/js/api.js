@@ -103,8 +103,7 @@ const API = {
   },
 
   // Track time spent on a question
-  trackQuestionTime: async (attemptId, questionId, timeSpentSeconds) => {
-    try {
+  trackQuestionTime: async (attemptId, questionId, timeSpentSeconds) => {    try {
       const response = await fetch(`${API_BASE}/attempts/${attemptId}/track_question_time/`, {
         method: 'POST',
         headers: {
@@ -124,5 +123,33 @@ const API = {
       console.error('Error tracking question time:', error);
       throw error;
     }
+  },
+
+  // Save current timer remaining seconds (heartbeat for resume support)
+  saveTimer: async (attemptId, remainingSeconds) => {
+    try {
+      await fetch(`${API_BASE}/attempts/${attemptId}/save_timer/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': CSRF_TOKEN,
+        },
+        body: JSON.stringify({ remaining_seconds: remainingSeconds }),
+        credentials: 'same-origin',
+        keepalive: true,
+      });
+    } catch (error) {
+      console.warn('Timer heartbeat failed:', error);
+    }
+  },
+
+  // Save timer via sendBeacon (guaranteed delivery on page unload)
+  saveTimerBeacon: (attemptId, remainingSeconds) => {
+    if (!navigator.sendBeacon) return;
+    const blob = new Blob(
+      [JSON.stringify({ remaining_seconds: remainingSeconds })],
+      { type: 'application/json' }
+    );
+    navigator.sendBeacon(`${API_BASE}/attempts/${attemptId}/save_timer/`, blob);
   },
 };

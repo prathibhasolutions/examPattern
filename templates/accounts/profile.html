@@ -238,6 +238,54 @@
             font-size: 12px;
             font-weight: 600;
         }
+        .inline-edit-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .inline-edit-btn {
+            background: none;
+            border: none;
+            padding: 3px 6px;
+            cursor: pointer;
+            color: #aaa;
+            font-size: 13px;
+            border-radius: 4px;
+            transition: color 0.2s, background 0.2s;
+            line-height: 1;
+        }
+        .inline-edit-btn:hover {
+            color: #667eea;
+            background: rgba(102,126,234,0.1);
+        }
+        .inline-edit-field {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .inline-input {
+            max-width: 280px;
+            padding: 6px 12px;
+            font-size: 15px;
+            border: 1.5px solid #667eea;
+            border-radius: 7px;
+        }
+        .inline-cancel-btn {
+            background: none;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-size: 13px;
+            color: #888;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .inline-cancel-btn:hover {
+            border-color: #dc3545;
+            color: #dc3545;
+        }
         .container {
             max-width: 900px;
         }
@@ -481,7 +529,6 @@
                     </a>
                 {% else %}
                     <a href="{% url 'login' %}" class="btn btn-login">Login</a>
-                    <a href="{% url 'register' %}" class="btn btn-login" style="background: rgba(23, 162, 184, 0.9);">Register</a>
                 {% endif %}
             </div>
         </div>
@@ -517,19 +564,57 @@
         </div>
 
         <!-- Profile Information -->
-        <div class="profile-info">
+        {% if messages %}
+        <div style="margin-bottom: 16px;">
+            {% for message in messages %}
+                <div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{% url 'profile' %}" class="profile-info" id="profileEditForm">
+            {% csrf_token %}
             <div class="info-item">
                 <span class="info-label"><i class="fas fa-envelope"></i> Email Address</span>
                 <span class="info-value">{{ user.email }}</span>
             </div>
-            <div class="info-item">
-                <span class="info-label"><i class="fas fa-phone"></i> Mobile Number</span>
-                <span class="info-value">{{ user.mobile }}</span>
-            </div>
+
+            <!-- Username inline edit -->
             <div class="info-item">
                 <span class="info-label"><i class="fas fa-user-circle"></i> Username</span>
-                <span class="info-value">{{ user.username }}</span>
+                <div class="inline-edit-row" id="usernameRow">
+                    <span class="info-value" id="usernameDisplay">{{ user.username }}</span>
+                    <button type="button" class="inline-edit-btn" onclick="startEdit('username')" title="Edit username">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                    <div class="inline-edit-field" id="usernameField" style="display:none;">
+                        <input type="text" id="usernameInput" name="username" value="{{ user.username }}"
+                               class="form-control inline-input" minlength="3" maxlength="150" autocomplete="off">
+                        <button type="button" class="inline-cancel-btn" onclick="cancelEdit('username', '{{ user.username }}')">Cancel</button>
+                    </div>
+                </div>
+                <small id="usernameHint" style="display:block; margin-top:4px; font-size:12px;"></small>
             </div>
+
+            <!-- Mobile inline edit -->
+            <div class="info-item">
+                <span class="info-label"><i class="fas fa-phone"></i> Mobile Number</span>
+                <div class="inline-edit-row" id="mobileRow">
+                    <span class="info-value" id="mobileDisplay">{% if user.mobile %}{{ user.mobile }}{% else %}<span style="color:#aaa;">Not set</span>{% endif %}</span>
+                    <button type="button" class="inline-edit-btn" onclick="startEdit('mobile')" title="Edit mobile">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                    <div class="inline-edit-field" id="mobileField" style="display:none;">
+                        <input type="text" id="mobileInput" name="mobile" value="{{ user.mobile }}"
+                               class="form-control inline-input" maxlength="10" placeholder="10-digit number">
+                        <button type="button" class="inline-cancel-btn" onclick="cancelEdit('mobile', '{{ user.mobile }}')">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="info-item">
                 <span class="info-label"><i class="fas fa-calendar"></i> Member Since</span>
                 <span class="info-value">{{ user.created_at|date:"M d, Y" }}</span>
@@ -544,7 +629,13 @@
                     {% endif %}
                 </span>
             </div>
-        </div>
+            <!-- Save button — only shown when editing -->
+            <div id="saveRow" style="display:none; margin-top: 20px; padding: 15px 0;">
+                <button type="submit" class="btn btn-primary" style="padding:10px 30px; font-weight:600;">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+        </form>
 
         <!-- Actions -->
         <div class="actions">
@@ -695,6 +786,51 @@
             }
         });
 
+        // Username availability check
+        (function() {
+            var input = document.getElementById('usernameInput');
+            var hint  = document.getElementById('usernameHint');
+            if (!input || !hint) return;
+            var original = input.value;
+            var timer;
+            input.addEventListener('input', function() {
+                clearTimeout(timer);
+                var val = this.value.trim();
+                if (!val || val === original) { hint.textContent = ''; hint.style.color = ''; return; }
+                if (val.length < 3) { hint.textContent = 'Too short (min 3 characters).'; hint.style.color = '#dc3545'; return; }
+                timer = setTimeout(function() {
+                    fetch('/accounts/check-username/?username=' + encodeURIComponent(val))
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            hint.textContent = data.message;
+                            hint.style.color = data.available ? '#28a745' : '#dc3545';
+                        });
+                }, 350);
+            });
+        })();
+
+        function startEdit(field) {
+            document.getElementById(field + 'Display').style.display = 'none';
+            document.querySelectorAll('#' + field + 'Row .inline-edit-btn').forEach(function(b){ b.style.display='none'; });
+            document.getElementById(field + 'Field').style.display = 'flex';
+            document.getElementById(field + 'Input').focus();
+            document.getElementById('saveRow').style.display = 'block';
+        }
+
+        function cancelEdit(field, original) {
+            document.getElementById(field + 'Input').value = original;
+            document.getElementById(field + 'Field').style.display = 'none';
+            document.getElementById(field + 'Display').style.display = '';
+            document.querySelectorAll('#' + field + 'Row .inline-edit-btn').forEach(function(b){ b.style.display=''; });
+            // Hide save button only if no other field is being edited
+            var anyOpen = document.querySelector('.inline-edit-field[style*="flex"]');
+            if (!anyOpen) document.getElementById('saveRow').style.display = 'none';
+            if (field === 'username') {
+                var hint = document.getElementById('usernameHint');
+                if (hint) { hint.textContent = ''; }
+            }
+        }
+
         // Search functionality for attempted tests
         document.getElementById('searchAttempts').addEventListener('keyup', function() {
             const searchTerm = this.value.toLowerCase();
@@ -833,7 +969,7 @@
                 box.innerHTML = '<div class="search-no-results">No matching series found</div>';
               } else {
                 box.innerHTML = data.map(function(s) {
-                  return '<a href="/tests/series/' + s.slug + '/" class="search-suggestion-item">'
+                  return '<a href="/tests/series/' + s.slug + '/about/" class="search-suggestion-item">'
                        + '<i class="fas fa-search"></i>' + s.name + '</a>';
                 }).join('');
               }
@@ -860,7 +996,7 @@
                 box.innerHTML = '<div class="search-no-results">No matching series found</div>';
               } else {
                 box.innerHTML = data.map(function(s) {
-                  return '<a href="/tests/series/' + s.slug + '/" class="search-suggestion-item">'
+                  return '<a href="/tests/series/' + s.slug + '/about/" class="search-suggestion-item">'
                        + '<i class="fas fa-search"></i>' + s.name + '</a>';
                 }).join('');
               }

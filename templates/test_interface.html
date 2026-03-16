@@ -792,15 +792,14 @@
 {% block content %}
 <!-- Top Navigation Bar -->
 <div class="top-navbar">
-  <!-- Sections Bar -->
-  <div class="sections-bar" id="sectionsBar">
-    <!-- Sections will be dynamically loaded here -->
-  </div>
-  
   <!-- User Info Bar -->
   <div class="user-info-bar">
     <div class="user-profile">
-      <img src="{% static 'examPattern.png' %}" alt="User" class="user-photo">
+      {% if user.profile.photo %}
+        <img src="{{ user.profile.photo.url }}" alt="{{ user.username }}" class="user-photo">
+      {% else %}
+        <div class="user-photo" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; color:white;">{{ user.username|first|upper }}</div>
+      {% endif %}
       <span class="user-name" id="userName">{{ user.get_full_name|default:user.username }}</span>
     </div>
     <div class="timer-section">
@@ -822,6 +821,11 @@
         <span class="hamburger-line"></span>
       </button>
     </div>
+  </div>
+
+  <!-- Sections Bar -->
+  <div class="sections-bar" id="sectionsBar">
+    <!-- Sections will be dynamically loaded here -->
   </div>
 </div>
 

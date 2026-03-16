@@ -9,3 +9,10 @@ def divide(value, arg):
         return int(value) / int(arg)
     except (ValueError, ZeroDivisionError):
         return 0
+
+@register.filter
+def get_item(dictionary, key):
+    """Return dictionary[key], defaulting to an empty dict if not found."""
+    if not isinstance(dictionary, dict):
+        return {}
+    return dictionary.get(key, {})

@@ -1,0 +1,1014 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Live Editor — {{ draft.name }}{% endblock %}
+{% block header %}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Reset ─────────────────────────────────── */
+body { margin: 0; padding: 0; overflow: hidden; height: 100vh; }
+main.container-fluid { padding: 0 !important; margin: 0 !important; background: none !important; min-height: unset !important; }
+
+/* ── Top bar ────────────────────────────────── */
+.le-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    padding: 0 16px; height: 52px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    gap: 12px; flex-shrink: 0;
+}
+.le-topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.le-logo { height: 36px; width: auto; }
+.le-test-name {
+    font-size: 15px; font-weight: 700; color: white;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px;
+}
+.le-edit-badge {
+    font-size: 10px; background: rgba(251,191,36,0.25); color: #fbbf24;
+    border: 1px solid rgba(251,191,36,0.4); border-radius: 10px;
+    padding: 2px 8px; white-space: nowrap; flex-shrink: 0;
+}
+.le-topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.le-topbar-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.2s; text-decoration: none;
+    white-space: nowrap;
+}
+.le-topbar-btn-back { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.9); }
+.le-topbar-btn-back:hover { background: rgba(255,255,255,0.25); color: white; }
+.le-topbar-btn-publish { background: #22c55e; color: white; }
+.le-topbar-btn-publish:hover { background: #16a34a; transform: translateY(-1px); }
+.le-topbar-btn-logout { background: rgba(220,53,69,0.8); color: white; }
+.le-topbar-btn-logout:hover { background: #dc3545; }
+.le-topbar-user { color: rgba(255,255,255,0.85); font-size: 13px; }
+
+/* ── Section tabs bar ───────────────────────── */
+.le-tabs-bar {
+    display: flex; align-items: stretch; background: #ffffff;
+    border-bottom: 2px solid #e2e8f0; min-height: 44px;
+    overflow-x: auto; flex-shrink: 0;
+}
+.le-tabs-bar::-webkit-scrollbar { height: 3px; }
+.le-tabs-bar::-webkit-scrollbar-thumb { background: #cbd5e1; }
+.le-tabs-scroll { display: flex; align-items: stretch; }
+.le-section-tab {
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 14px; border: none; background: none; cursor: pointer;
+    font-size: 13px; font-weight: 600; color: #64748b;
+    border-bottom: 3px solid transparent; white-space: nowrap;
+    transition: all 0.2s; position: relative; flex-shrink: 0;
+}
+.le-section-tab.active { color: #1e40af; border-bottom-color: #1e40af; background: #eff6ff; }
+.le-section-tab:hover:not(.active) { background: #f8fafc; color: #334155; }
+.le-tab-action-btn {
+    opacity: 0; width: 18px; height: 18px; border: none; border-radius: 3px;
+    cursor: pointer; font-size: 10px; display: flex; align-items: center;
+    justify-content: center; transition: opacity 0.15s; flex-shrink: 0;
+}
+.le-section-tab:hover .le-tab-action-btn,
+.le-section-tab.active .le-tab-action-btn { opacity: 1; }
+.le-tab-rename-btn { background: rgba(0,0,0,0.1); color: #555; }
+.le-tab-rename-btn:hover { background: #3b82f6; color: white; }
+.le-tab-delete-btn { background: rgba(220,53,69,0.15); color: #dc3545; }
+.le-tab-delete-btn:hover { background: #dc3545; color: white; }
+.le-add-section-btn {
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 16px; border: none; background: none; cursor: pointer;
+    font-size: 22px; font-weight: 300; color: #22c55e;
+    border-left: 1px solid #e2e8f0; transition: all 0.2s; flex-shrink: 0;
+}
+.le-add-section-btn:hover { background: #f0fdf4; color: #16a34a; }
+
+/* ── Main split layout ──────────────────────── */
+.le-main {
+    display: flex; height: calc(100vh - 96px); overflow: hidden;
+}
+
+/* ── Question editor panel (left) ───────────── */
+.le-question-panel { flex: 1; overflow-y: auto; background: #f8fafc; min-width: 0; }
+.le-question-panel::-webkit-scrollbar { width: 6px; }
+.le-question-panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+.le-empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; color: #94a3b8; text-align: center; padding: 40px; gap: 16px;
+}
+.le-empty-state i { font-size: 52px; opacity: 0.35; }
+.le-empty-state p { font-size: 15px; line-height: 1.7; margin: 0; }
+
+.le-question-editor { max-width: 820px; margin: 0 auto; padding: 20px 24px 60px; }
+.le-q-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;
+}
+.le-q-label { font-size: 17px; font-weight: 700; color: #1e40af; }
+
+/* Field groups */
+.le-field-group { margin-bottom: 18px; }
+.le-field-label {
+    display: block; font-size: 11px; font-weight: 700; color: #475569;
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;
+}
+.le-textarea {
+    width: 100%; border: 1.5px solid #d1d5db; border-radius: 8px;
+    padding: 10px 12px; font-size: 14px; line-height: 1.5; resize: vertical;
+    outline: none; font-family: inherit; transition: border-color 0.2s; background: #fff;
+}
+.le-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+
+/* Image upload */
+.le-img-outer { position: relative; }
+.le-img-upload-box {
+    border: 2px dashed #d1d5db; border-radius: 8px; background: #fff;
+    cursor: pointer; overflow: hidden; transition: border-color 0.2s;
+}
+.le-img-upload-box:hover { border-color: #3b82f6; }
+.le-img-placeholder {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; padding: 22px; color: #9ca3af; font-size: 13px;
+}
+.le-img-placeholder i { font-size: 28px; }
+.le-img-preview { max-width: 100%; max-height: 200px; display: block; object-fit: contain; }
+.le-img-clear-btn {
+    position: absolute; top: 6px; right: 6px;
+    background: rgba(0,0,0,0.6); color: white; border: none;
+    border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer; z-index: 2;
+}
+
+/* Options */
+.le-options-hint { font-size: 11px; color: #64748b; margin-bottom: 8px; }
+.le-option-row {
+    display: flex; align-items: center; gap: 10px;
+    background: #fff; border: 1.5px solid #e5e7eb; border-radius: 8px;
+    padding: 9px 12px; margin-bottom: 8px; transition: border-color 0.2s;
+}
+.le-option-row.is-correct { border-color: #22c55e; background: #f0fdf4; }
+.le-option-radio { width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; accent-color: #22c55e; }
+.le-option-text {
+    flex: 1; border: 1px solid #d1d5db; border-radius: 6px;
+    padding: 6px 10px; font-size: 14px; outline: none; font-family: inherit;
+    transition: border-color 0.2s;
+}
+.le-option-text:focus { border-color: #3b82f6; }
+.le-opt-img-thumb { width: 34px; height: 34px; border-radius: 4px; object-fit: cover; border: 1px solid #d1d5db; flex-shrink: 0; }
+.le-opt-img-btn {
+    width: 32px; height: 32px; flex-shrink: 0; border: 1px solid #d1d5db;
+    background: #f9fafb; border-radius: 6px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; color: #6b7280;
+    transition: all 0.15s;
+}
+.le-opt-img-btn:hover { background: #eff6ff; border-color: #3b82f6; color: #3b82f6; }
+.le-opt-del-btn {
+    width: 28px; height: 28px; flex-shrink: 0; border: none;
+    background: #fee2e2; border-radius: 6px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; color: #ef4444; font-size: 12px;
+    transition: all 0.15s;
+}
+.le-opt-del-btn:hover { background: #fecaca; }
+.le-add-option-btn {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    border: 2px dashed #d1d5db; background: none; color: #6b7280;
+    border-radius: 8px; padding: 8px 16px; width: 100%;
+    font-size: 13px; cursor: pointer; transition: all 0.2s;
+}
+.le-add-option-btn:hover { border-color: #3b82f6; color: #3b82f6; background: #eff6ff; }
+
+/* Solution block */
+.le-solution-block {
+    border: 1.5px solid #fbbf24; border-radius: 8px; overflow: hidden;
+    background: #fffbeb; margin-bottom: 20px;
+}
+.le-solution-toggle {
+    width: 100%; display: flex; align-items: center; gap: 10px; justify-content: space-between;
+    padding: 11px 14px; border: none; background: none; cursor: pointer;
+    font-size: 14px; font-weight: 600; color: #92400e; text-align: left;
+    transition: background 0.15s;
+}
+.le-solution-toggle:hover { background: #fef3c7; }
+.le-solution-content { padding: 14px 16px; border-top: 1px solid #fde68a; }
+
+/* Save bar */
+.le-save-bar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 0 4px; border-top: 1.5px solid #e5e7eb; margin-top: 20px;
+}
+.le-save-btn {
+    display: flex; align-items: center; gap: 8px;
+    background: #1d4ed8; color: white; border: none;
+    padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+}
+.le-save-btn:hover { background: #1e40af; transform: translateY(-1px); }
+.le-save-btn:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+.le-del-question-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: #fee2e2; color: #dc2626; border: 1px solid #fecaca;
+    padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+}
+.le-del-question-btn:hover { background: #fecaca; }
+.le-save-status { font-size: 13px; color: #475569; }
+
+/* ── Palette panel (right) ──────────────────── */
+.le-palette-panel {
+    width: 270px; min-width: 220px; flex-shrink: 0;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: white; overflow-y: auto; display: flex; flex-direction: column;
+    border-left: 1px solid rgba(255,255,255,0.1);
+}
+.le-palette-panel::-webkit-scrollbar { width: 4px; }
+.le-palette-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); }
+.le-palette-inner { padding: 14px; flex: 1; }
+
+.le-status-block {
+    background: rgba(0,0,0,0.2); border-radius: 6px; padding: 10px 12px; margin-bottom: 14px;
+}
+.le-status-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    color: rgba(255,255,255,0.55); margin-bottom: 8px;
+}
+.le-status-legends { display: flex; gap: 12px; flex-wrap: wrap; }
+.le-legend { display: flex; align-items: center; gap: 5px; font-size: 11px; color: rgba(255,255,255,0.8); }
+.le-legend-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); }
+.le-dot-saved { background: rgba(34,197,94,0.4); border-color: rgba(34,197,94,0.8); }
+.le-dot-editing { background: #ef4444; border-color: #dc2626; }
+.le-dot-new { background: #f59e0b; border-color: #d97706; }
+
+.le-palette-section-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: rgba(255,255,255,0.6); margin-bottom: 10px; padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+.le-palette-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.le-q-circle {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    background: rgba(255,255,255,0.12); color: white;
+    border: 2px solid rgba(255,255,255,0.25);
+    transition: all 0.2s; user-select: none;
+}
+.le-q-circle:hover { background: rgba(255,255,255,0.3); transform: scale(1.06); }
+.le-q-circle.active { background: #ef4444; border-color: #dc2626; }
+.le-q-circle.saved { background: rgba(34,197,94,0.35); border-color: rgba(34,197,94,0.8); }
+.le-q-circle.new-mode { background: #f59e0b; border-color: #d97706; }
+.le-q-circle-add {
+    background: rgba(34,197,94,0.15); border: 2px dashed rgba(34,197,94,0.6);
+    color: #86efac; font-size: 20px; font-weight: 300;
+}
+.le-q-circle-add:hover { background: rgba(34,197,94,0.35); }
+
+/* Toast */
+.le-toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+    background: #1e293b; color: white; padding: 12px 18px; border-radius: 8px;
+    font-size: 13px; font-weight: 500; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transform: translateY(16px); opacity: 0; transition: all 0.3s;
+    pointer-events: none; max-width: 280px; border-left: 4px solid #64748b;
+}
+.le-toast.show { transform: translateY(0); opacity: 1; }
+.le-toast.le-toast-success { border-left-color: #22c55e; }
+.le-toast.le-toast-danger { border-left-color: #ef4444; }
+.le-toast.le-toast-warning { border-left-color: #f59e0b; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- TOP BAR -->
+<div class="le-topbar">
+    <div class="le-topbar-left">
+        <a href="{% url 'tests_list' %}">
+            <img src="{% static 'examPattern.png' %}" alt="examPattern" class="le-logo">
+        </a>
+        <span class="le-test-name">{{ draft.name }}</span>
+        <span class="le-edit-badge">✏ EDIT MODE</span>
+    </div>
+    <div class="le-topbar-right">
+        <span class="le-topbar-user">{{ user.username }}</span>
+        <a href="{% url 'manage_sections' draft.id %}" class="le-topbar-btn le-topbar-btn-back">
+            ← Back
+        </a>
+        <a href="{% url 'builder_publish_test' draft.id %}" class="le-topbar-btn le-topbar-btn-publish">
+            <i class="fas fa-upload"></i> Publish
+        </a>
+        <a href="{% url 'logout' %}" class="le-topbar-btn le-topbar-btn-logout">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
+</div>
+
+<!-- SECTION TABS BAR -->
+<div class="le-tabs-bar">
+    <div class="le-tabs-scroll" id="sectionTabsContainer"></div>
+    <button class="le-add-section-btn" id="addSectionBtn" title="Add new section">+</button>
+</div>
+
+<!-- MAIN SPLIT LAYOUT -->
+<div class="le-main">
+
+    <!-- LEFT: Question editor -->
+    <div class="le-question-panel" id="questionPanel">
+
+        <!-- Empty state -->
+        <div class="le-empty-state" id="emptyState">
+            <i class="fas fa-mouse-pointer"></i>
+            <p>Select a question from the palette<br>or click <strong>+</strong> to add a new one.</p>
+        </div>
+
+        <!-- Question editor form -->
+        <div class="le-question-editor" id="questionEditor" style="display:none;">
+
+            <div class="le-q-header">
+                <span class="le-q-label" id="qHeaderLabel">Question 1</span>
+                <button class="le-del-question-btn" id="deleteQuestionBtn" style="display:none;">
+                    <i class="fas fa-trash"></i> Delete Question
+                </button>
+            </div>
+
+            <!-- Question text -->
+            <div class="le-field-group">
+                <label class="le-field-label">Question Text <span style="font-weight:400;text-transform:none;color:#94a3b8;">(required if no image)</span></label>
+                <textarea id="qText" class="le-textarea" rows="4" placeholder="Type the question here..."></textarea>
+            </div>
+
+            <!-- Question image -->
+            <div class="le-field-group">
+                <label class="le-field-label">Question Image <span style="font-weight:400;text-transform:none;color:#94a3b8;">(optional)</span></label>
+                <div class="le-img-outer">
+                    <div class="le-img-upload-box" id="qImgBox">
+                        <div class="le-img-placeholder" id="qImgPlaceholder">
+                            <i class="fas fa-image"></i>
+                            <span>Click to upload image</span>
+                        </div>
+                        <img id="qImgPreview" class="le-img-preview" style="display:none;">
+                    </div>
+                    <button class="le-img-clear-btn" id="qImgClearBtn" style="display:none;">✕ Remove</button>
+                    <input type="file" id="qImgInput" accept="image/*" style="display:none;">
+                </div>
+            </div>
+
+            <!-- Options -->
+            <div class="le-field-group">
+                <label class="le-field-label">Answer Options</label>
+                <p class="le-options-hint">Click the circle (○) to mark the correct answer.</p>
+                <div id="optionsContainer"></div>
+                <button class="le-add-option-btn" id="addOptionBtn" type="button">
+                    <i class="fas fa-plus"></i> Add Option
+                </button>
+            </div>
+
+            <!-- Solution (collapsible) -->
+            <div class="le-solution-block le-field-group">
+                <button class="le-solution-toggle" id="solutionToggle" type="button">
+                    <span><i class="fas fa-lightbulb" style="color:#f59e0b;"></i> Solution</span>
+                    <i class="fas fa-chevron-down" id="solutionChevron"></i>
+                </button>
+                <div id="solutionContent" style="display:none;">
+                    <div class="le-solution-content">
+                        <div class="le-field-group">
+                            <label class="le-field-label">Solution Explanation</label>
+                            <textarea id="solutionText" class="le-textarea" rows="4"
+                                placeholder="Step-by-step explanation for students..."></textarea>
+                        </div>
+                        <div class="le-field-group" style="margin-bottom:0;">
+                            <label class="le-field-label">Solution Image <span style="font-weight:400;text-transform:none;color:#94a3b8;">(optional)</span></label>
+                            <div class="le-img-outer">
+                                <div class="le-img-upload-box" id="solImgBox">
+                                    <div class="le-img-placeholder" id="solImgPlaceholder">
+                                        <i class="fas fa-image"></i>
+                                        <span>Click to upload solution image</span>
+                                    </div>
+                                    <img id="solImgPreview" class="le-img-preview" style="display:none;">
+                                </div>
+                                <button class="le-img-clear-btn" id="solImgClearBtn" style="display:none;">✕ Remove</button>
+                                <input type="file" id="solImgInput" accept="image/*" style="display:none;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save bar -->
+            <div class="le-save-bar">
+                <button class="le-save-btn" id="saveQuestionBtn" type="button">
+                    <i class="fas fa-check"></i> Save Question
+                </button>
+                <span id="saveStatus" class="le-save-status"></span>
+            </div>
+
+        </div><!-- end le-question-editor -->
+    </div><!-- end le-question-panel -->
+
+    <!-- RIGHT: Palette -->
+    <div class="le-palette-panel">
+        <div class="le-palette-inner">
+            <div class="le-status-block">
+                <div class="le-status-title">Status</div>
+                <div class="le-status-legends">
+                    <span class="le-legend"><span class="le-legend-dot le-dot-saved"></span> Saved</span>
+                    <span class="le-legend"><span class="le-legend-dot le-dot-editing"></span> Editing</span>
+                    <span class="le-legend"><span class="le-legend-dot le-dot-new"></span> New</span>
+                </div>
+            </div>
+            <div class="le-palette-section-title" id="paletteSectionTitle">SECTION: —</div>
+            <div class="le-palette-grid" id="paletteGrid"></div>
+        </div>
+    </div>
+
+</div><!-- end le-main -->
+
+<!-- ── Modals ──────────────────────────────────── -->
+
+<!-- Add Section Modal -->
+<div class="modal fade" id="addSectionModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:360px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus-circle text-success"></i> New Section</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label fw-semibold">Section Name</label>
+                <input type="text" id="newSectionName" class="form-control"
+                    placeholder="e.g. General Awareness, Physics…" maxlength="100">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success btn-sm" id="confirmAddSection">Add Section</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rename Section Modal -->
+<div class="modal fade" id="renameSectionModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:360px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-pencil-alt text-primary"></i> Rename Section</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label fw-semibold">Section Name</label>
+                <input type="text" id="renameSectionName" class="form-control" maxlength="100">
+                <input type="hidden" id="renameSectionId">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-sm" id="confirmRenameSection">Save Name</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Unsaved Changes Modal -->
+<div class="modal fade" id="unsavedModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:380px;">
+        <div class="modal-content border-warning">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Unsaved Changes</h5>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">You have unsaved changes on this question. What would you like to do?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger btn-sm" id="discardChangesBtn">Discard & Continue</button>
+                <button type="button" class="btn btn-success btn-sm" id="saveAndContinueBtn">Save & Continue</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ================================================================
+   LIVE EDITOR — JavaScript
+   ================================================================ */
+const DRAFT_ID = {{ draft.id }};
+const CSRF = '{{ csrf_token }}';
+let sections = {{ sections_json|safe }};
+
+// ── State ──────────────────────────────────────────────
+let activeSectionId = sections.length ? sections[0].id : null;
+let activeQuestionId = null;   // existing question id, or null
+let isNewQuestion = false;     // true while composing a new (unsaved) question
+let isDirty = false;           // editor has unsaved edits
+let pendingAction = null;      // { type, ... } deferred after save/discard
+
+// ── Helpers ────────────────────────────────────────────
+function activeSection() { return sections.find(s => s.id === activeSectionId); }
+function activeQuestion() {
+    const sec = activeSection();
+    if (!sec || activeQuestionId === null) return null;
+    return sec.questions.find(q => q.id === activeQuestionId) || null;
+}
+function csrfPost(url, formData) {
+    formData.append('csrfmiddlewaretoken', CSRF);
+    return fetch(url, { method: 'POST', body: formData });
+}
+function showToast(msg, type = 'success') {
+    const t = document.createElement('div');
+    t.className = `le-toast le-toast-${type}`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    requestAnimationFrame(() => t.classList.add('show'));
+    setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 350); }, 3000);
+}
+function setSaveStatus(html) { document.getElementById('saveStatus').innerHTML = html; }
+function getModal(id) { return bootstrap.Modal.getOrCreateInstance(document.getElementById(id)); }
+
+// ── Render: Section Tabs ───────────────────────────────
+function renderSectionTabs() {
+    const container = document.getElementById('sectionTabsContainer');
+    container.innerHTML = '';
+    sections.forEach(sec => {
+        const tab = document.createElement('button');
+        tab.className = 'le-section-tab' + (sec.id === activeSectionId ? ' active' : '');
+        tab.dataset.sectionId = sec.id;
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = sec.name;
+        nameSpan.style.cssText = 'pointer-events:none;';
+        tab.appendChild(nameSpan);
+
+        // Rename button
+        const rnBtn = document.createElement('button');
+        rnBtn.className = 'le-tab-action-btn le-tab-rename-btn';
+        rnBtn.title = 'Rename section';
+        rnBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+        rnBtn.addEventListener('click', e => { e.stopPropagation(); openRenameModal(sec.id, sec.name); });
+        tab.appendChild(rnBtn);
+
+        // Delete button
+        const dlBtn = document.createElement('button');
+        dlBtn.className = 'le-tab-action-btn le-tab-delete-btn';
+        dlBtn.title = 'Delete section';
+        dlBtn.innerHTML = '<i class="fas fa-times"></i>';
+        dlBtn.addEventListener('click', e => { e.stopPropagation(); handleDeleteSection(sec.id, sec.name); });
+        tab.appendChild(dlBtn);
+
+        tab.addEventListener('click', () => handleSelectSection(sec.id));
+        container.appendChild(tab);
+    });
+}
+
+// ── Render: Palette ────────────────────────────────────
+function renderPalette() {
+    const sec = activeSection();
+    document.getElementById('paletteSectionTitle').textContent =
+        'SECTION: ' + (sec ? sec.name.toUpperCase() : '—');
+
+    const grid = document.getElementById('paletteGrid');
+    grid.innerHTML = '';
+    if (!sec) return;
+
+    sec.questions.forEach(q => {
+        const circle = document.createElement('div');
+        const isActive = !isNewQuestion && q.id === activeQuestionId;
+        circle.className = 'le-q-circle' + (isActive ? ' active' : ' saved');
+        circle.textContent = q.order;
+        circle.title = `Question ${q.order}`;
+        circle.addEventListener('click', () => handleSelectQuestion(q.id));
+        grid.appendChild(circle);
+    });
+
+    // "+" add-question circle
+    const addCircle = document.createElement('div');
+    addCircle.className = 'le-q-circle le-q-circle-add' + (isNewQuestion ? ' new-mode' : '');
+    addCircle.textContent = '+';
+    addCircle.title = 'Add new question';
+    addCircle.addEventListener('click', () => handleAddNewQuestion());
+    grid.appendChild(addCircle);
+}
+
+// ── Navigation + unsaved guard ─────────────────────────
+function handleSelectSection(sectionId) {
+    if (sectionId === activeSectionId) return;
+    if (isDirty) { pendingAction = { type: 'select_section', sectionId }; getModal('unsavedModal').show(); return; }
+    doSelectSection(sectionId);
+}
+function handleSelectQuestion(questionId) {
+    if (questionId === activeQuestionId && !isNewQuestion) return;
+    if (isDirty) { pendingAction = { type: 'select_question', questionId }; getModal('unsavedModal').show(); return; }
+    doSelectQuestion(questionId);
+}
+function handleAddNewQuestion() {
+    if (isNewQuestion) return;
+    if (isDirty) { pendingAction = { type: 'new_question' }; getModal('unsavedModal').show(); return; }
+    doAddNewQuestion();
+}
+
+function doSelectSection(sectionId) {
+    activeSectionId = sectionId; activeQuestionId = null; isNewQuestion = false; isDirty = false;
+    renderSectionTabs(); renderPalette(); hideEditor();
+}
+function doSelectQuestion(questionId) {
+    activeQuestionId = questionId; isNewQuestion = false; isDirty = false;
+    const sec = activeSection();
+    const q = sec ? sec.questions.find(x => x.id === questionId) : null;
+    renderPalette(); renderSectionTabs(); loadEditor(q);
+}
+function doAddNewQuestion() {
+    activeQuestionId = null; isNewQuestion = true; isDirty = false;
+    renderPalette(); loadEditor(null);
+}
+function executePending(action) {
+    if (!action) return;
+    if (action.type === 'select_section') doSelectSection(action.sectionId);
+    else if (action.type === 'select_question') doSelectQuestion(action.questionId);
+    else if (action.type === 'new_question') doAddNewQuestion();
+}
+
+// ── Editor: load / hide ────────────────────────────────
+function loadEditor(questionData) {
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('questionEditor').style.display = 'block';
+
+    const sec = activeSection();
+    if (questionData) {
+        document.getElementById('qHeaderLabel').textContent = `Question ${questionData.order}`;
+        document.getElementById('deleteQuestionBtn').style.display = 'inline-flex';
+        document.getElementById('qText').value = questionData.question_text || '';
+        setImagePreview('q', questionData.image_url);
+        renderOptions(questionData.options || []);
+        document.getElementById('solutionText').value = questionData.solution_text || '';
+        setImagePreview('sol', questionData.solution_image_url);
+    } else {
+        const newOrder = sec ? sec.questions.length + 1 : 1;
+        document.getElementById('qHeaderLabel').textContent = `Question ${newOrder} — New`;
+        document.getElementById('deleteQuestionBtn').style.display = 'none';
+        document.getElementById('qText').value = '';
+        setImagePreview('q', null);
+        renderOptions([]);
+        document.getElementById('solutionText').value = '';
+        setImagePreview('sol', null);
+    }
+    // Collapse solution
+    document.getElementById('solutionContent').style.display = 'none';
+    document.getElementById('solutionChevron').className = 'fas fa-chevron-down';
+    setSaveStatus(''); isDirty = false;
+
+    // Scroll editor to top
+    document.getElementById('questionPanel').scrollTop = 0;
+}
+function hideEditor() {
+    document.getElementById('questionEditor').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'flex';
+}
+
+// ── Image preview helpers ──────────────────────────────
+function setImagePreview(prefix, url) {
+    const preview = document.getElementById(`${prefix}ImgPreview`);
+    const placeholder = document.getElementById(`${prefix}ImgPlaceholder`);
+    const clearBtn = document.getElementById(`${prefix}ImgClearBtn`);
+    const input = document.getElementById(`${prefix}ImgInput`);
+    input.value = '';
+    preview.removeAttribute('data-cleared');
+    if (url) {
+        preview.src = url; preview.style.display = 'block';
+        placeholder.style.display = 'none'; clearBtn.style.display = 'inline-block';
+    } else {
+        preview.src = ''; preview.style.display = 'none';
+        placeholder.style.display = 'flex'; clearBtn.style.display = 'none';
+    }
+}
+
+// ── Options ────────────────────────────────────────────
+function renderOptions(options) {
+    const container = document.getElementById('optionsContainer');
+    container.innerHTML = '';
+    if (options.length === 0) {
+        for (let i = 0; i < 4; i++) addOptionRow(null);
+    } else {
+        options.forEach(opt => addOptionRow(opt));
+    }
+}
+
+function addOptionRow(optionData) {
+    const container = document.getElementById('optionsContainer');
+    const row = document.createElement('div');
+    row.className = 'le-option-row' + (optionData && optionData.is_correct ? ' is-correct' : '');
+    if (optionData && optionData.id) row.dataset.optionId = optionData.id;
+
+    // Radio (mark correct)
+    const radio = document.createElement('input');
+    radio.type = 'radio'; radio.name = 'correctOption'; radio.className = 'le-option-radio';
+    if (optionData && optionData.is_correct) radio.checked = true;
+    radio.addEventListener('change', () => {
+        // Update is-correct highlight on all rows
+        container.querySelectorAll('.le-option-row').forEach(r => r.classList.remove('is-correct'));
+        row.classList.add('is-correct');
+        isDirty = true;
+    });
+    row.appendChild(radio);
+
+    // Text input
+    const textInput = document.createElement('input');
+    textInput.type = 'text'; textInput.className = 'le-option-text';
+    textInput.placeholder = 'Option text';
+    textInput.value = optionData ? (optionData.text || optionData.option_text || '') : '';
+    textInput.addEventListener('input', () => { isDirty = true; });
+    row.appendChild(textInput);
+
+    // Image area
+    const imgWrap = document.createElement('div');
+    imgWrap.style.cssText = 'display:flex;align-items:center;gap:4px;flex-shrink:0;';
+
+    if (optionData && optionData.image_url) {
+        const thumb = document.createElement('img');
+        thumb.src = optionData.image_url; thumb.className = 'le-opt-img-thumb';
+        imgWrap.appendChild(thumb);
+    }
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.style.display = 'none';
+    fileInput.className = 'le-option-img-input';
+    fileInput.addEventListener('change', e => {
+        if (e.target.files[0]) {
+            const reader = new FileReader();
+            reader.onload = ev => {
+                let thumb = imgWrap.querySelector('.le-opt-img-thumb');
+                if (!thumb) { thumb = document.createElement('img'); thumb.className = 'le-opt-img-thumb'; imgWrap.prepend(thumb); }
+                thumb.src = ev.target.result;
+            };
+            reader.readAsDataURL(e.target.files[0]); isDirty = true;
+        }
+    });
+    imgWrap.appendChild(fileInput);
+
+    const imgBtn = document.createElement('button');
+    imgBtn.type = 'button'; imgBtn.className = 'le-opt-img-btn'; imgBtn.title = 'Add/change image';
+    imgBtn.innerHTML = '<i class="fas fa-image"></i>';
+    imgBtn.addEventListener('click', () => fileInput.click());
+    imgWrap.appendChild(imgBtn);
+    row.appendChild(imgWrap);
+
+    // Delete button
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button'; delBtn.className = 'le-opt-del-btn'; delBtn.title = 'Remove option';
+    delBtn.innerHTML = '<i class="fas fa-times"></i>';
+    delBtn.addEventListener('click', () => {
+        if (container.querySelectorAll('.le-option-row').length <= 2) {
+            showToast('Minimum 2 options required.', 'warning'); return;
+        }
+        row.remove(); isDirty = true;
+    });
+    row.appendChild(delBtn);
+
+    container.appendChild(row);
+}
+
+// ── Save Question ──────────────────────────────────────
+async function saveQuestion() {
+    const sec = activeSection();
+    if (!sec) return;
+
+    document.getElementById('saveQuestionBtn').disabled = true;
+    setSaveStatus('<i class="fas fa-spinner fa-spin"></i> Saving…');
+
+    const fd = new FormData();
+    fd.append('section_id', sec.id);
+    if (activeQuestionId !== null) fd.append('question_id', activeQuestionId);
+    fd.append('question_text', document.getElementById('qText').value.trim());
+    fd.append('solution_text', document.getElementById('solutionText').value.trim());
+
+    // Question image
+    const qImg = document.getElementById('qImgInput');
+    if (qImg.files[0]) { fd.append('question_image', qImg.files[0]); }
+    else if (document.getElementById('qImgPreview').dataset.cleared === '1') { fd.append('clear_question_image', '1'); }
+
+    // Solution image
+    const solImg = document.getElementById('solImgInput');
+    if (solImg.files[0]) { fd.append('solution_image', solImg.files[0]); }
+    else if (document.getElementById('solImgPreview').dataset.cleared === '1') { fd.append('clear_solution_image', '1'); }
+
+    // Options
+    const rows = document.querySelectorAll('#optionsContainer .le-option-row');
+    fd.append('option_count', rows.length);
+    rows.forEach((row, i) => {
+        if (row.dataset.optionId) fd.append(`option_${i}_id`, row.dataset.optionId);
+        fd.append(`option_${i}_text`, row.querySelector('.le-option-text').value.trim());
+        const radio = row.querySelector('.le-option-radio');
+        fd.append(`option_${i}_correct`, radio && radio.checked ? '1' : '0');
+        fd.append(`option_${i}_order`, i + 1);
+        const fileInput = row.querySelector('.le-option-img-input');
+        if (fileInput && fileInput.files[0]) fd.append(`option_${i}_image`, fileInput.files[0]);
+    });
+
+    try {
+        const resp = await csrfPost(`/builder/${DRAFT_ID}/api/question/save/`, fd);
+        const data = await resp.json();
+        if (data.success) {
+            const q = data.question;
+            if (isNewQuestion) { sec.questions.push(q); isNewQuestion = false; }
+            else { const idx = sec.questions.findIndex(x => x.id === q.id); if (idx !== -1) sec.questions[idx] = q; }
+            activeQuestionId = q.id; isDirty = false;
+            document.getElementById('qHeaderLabel').textContent = `Question ${q.order}`;
+            document.getElementById('deleteQuestionBtn').style.display = 'inline-flex';
+            renderPalette();
+            setSaveStatus('<span style="color:#22c55e;"><i class="fas fa-check"></i> Saved</span>');
+            if (pendingAction) { const a = pendingAction; pendingAction = null; executePending(a); }
+        } else {
+            setSaveStatus(`<span style="color:#ef4444;"><i class="fas fa-times"></i> ${data.error}</span>`);
+            showToast(data.error, 'danger');
+        }
+    } catch {
+        setSaveStatus('<span style="color:#ef4444;"><i class="fas fa-times"></i> Save failed</span>');
+        showToast('Save failed. Please try again.', 'danger');
+    }
+    document.getElementById('saveQuestionBtn').disabled = false;
+}
+
+// ── Delete Question ────────────────────────────────────
+async function deleteQuestion() {
+    if (activeQuestionId === null || isNewQuestion) return;
+    if (!confirm('Delete this question? This cannot be undone.')) return;
+
+    const fd = new FormData();
+    try {
+        const resp = await csrfPost(`/builder/${DRAFT_ID}/api/question/${activeQuestionId}/delete/`, fd);
+        const data = await resp.json();
+        if (data.success) {
+            const sec = activeSection();
+            sec.questions = sec.questions.filter(q => q.id !== activeQuestionId);
+            sec.questions.forEach((q, i) => q.order = i + 1);
+            activeQuestionId = null; isNewQuestion = false; isDirty = false;
+            renderPalette(); hideEditor();
+            showToast('Question deleted.', 'success');
+        } else { showToast('Delete failed.', 'danger'); }
+    } catch { showToast('Delete failed.', 'danger'); }
+}
+
+// ── Sections ───────────────────────────────────────────
+async function addSection(name) {
+    const fd = new FormData();
+    fd.append('name', name);
+    try {
+        const resp = await csrfPost(`/builder/${DRAFT_ID}/api/section/add/`, fd);
+        const data = await resp.json();
+        if (data.success) {
+            sections.push({ ...data.section, questions: [] });
+            activeSectionId = data.section.id; activeQuestionId = null; isNewQuestion = false; isDirty = false;
+            renderSectionTabs(); renderPalette(); hideEditor();
+            showToast(`Section "${data.section.name}" added.`, 'success');
+        } else { showToast('Failed to add section.', 'danger'); }
+    } catch { showToast('Failed to add section.', 'danger'); }
+}
+
+async function renameSection(sectionId, newName) {
+    const fd = new FormData();
+    fd.append('name', newName);
+    try {
+        const resp = await csrfPost(`/builder/${DRAFT_ID}/api/section/${sectionId}/rename/`, fd);
+        const data = await resp.json();
+        if (data.success) {
+            const s = sections.find(x => x.id === sectionId);
+            if (s) s.name = data.name;
+            renderSectionTabs();
+            if (activeSectionId === sectionId)
+                document.getElementById('paletteSectionTitle').textContent = 'SECTION: ' + data.name.toUpperCase();
+            showToast('Section renamed.', 'success');
+        } else { showToast(data.error || 'Rename failed.', 'danger'); }
+    } catch { showToast('Rename failed.', 'danger'); }
+}
+
+async function deleteSection(sectionId) {
+    const fd = new FormData();
+    try {
+        const resp = await csrfPost(`/builder/${DRAFT_ID}/api/section/${sectionId}/delete/`, fd);
+        const data = await resp.json();
+        if (data.success) {
+            sections = sections.filter(s => s.id !== sectionId);
+            if (activeSectionId === sectionId) {
+                activeSectionId = sections.length ? sections[0].id : null;
+                activeQuestionId = null; isNewQuestion = false; isDirty = false;
+            }
+            renderSectionTabs(); renderPalette();
+            if (activeSectionId === null || !activeSection()) hideEditor();
+            showToast('Section deleted.', 'success');
+        } else { showToast(data.error || 'Delete failed.', 'danger'); }
+    } catch { showToast('Delete failed.', 'danger'); }
+}
+
+function openRenameModal(sectionId, currentName) {
+    document.getElementById('renameSectionId').value = sectionId;
+    document.getElementById('renameSectionName').value = currentName;
+    getModal('renameSectionModal').show();
+    setTimeout(() => { const el = document.getElementById('renameSectionName'); el.focus(); el.select(); }, 300);
+}
+
+function handleDeleteSection(sectionId, sectionName) {
+    const sec = sections.find(s => s.id === sectionId);
+    const qCount = sec ? sec.questions.length : 0;
+    const msg = qCount > 0
+        ? `Delete section "${sectionName}" and its ${qCount} question${qCount > 1 ? 's' : ''}? This cannot be undone.`
+        : `Delete section "${sectionName}"?`;
+    if (!confirm(msg)) return;
+    deleteSection(sectionId);
+}
+
+// ── Init ───────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+
+    renderSectionTabs();
+    renderPalette();
+
+    // Add section
+    document.getElementById('addSectionBtn').addEventListener('click', () => {
+        document.getElementById('newSectionName').value = '';
+        getModal('addSectionModal').show();
+        setTimeout(() => document.getElementById('newSectionName').focus(), 300);
+    });
+    document.getElementById('confirmAddSection').addEventListener('click', () => {
+        const name = document.getElementById('newSectionName').value.trim();
+        if (!name) { document.getElementById('newSectionName').classList.add('is-invalid'); return; }
+        getModal('addSectionModal').hide();
+        addSection(name);
+    });
+    document.getElementById('newSectionName').addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('confirmAddSection').click();
+    });
+
+    // Rename section
+    document.getElementById('confirmRenameSection').addEventListener('click', () => {
+        const id = parseInt(document.getElementById('renameSectionId').value);
+        const name = document.getElementById('renameSectionName').value.trim();
+        if (!name) { document.getElementById('renameSectionName').classList.add('is-invalid'); return; }
+        getModal('renameSectionModal').hide();
+        renameSection(id, name);
+    });
+    document.getElementById('renameSectionName').addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('confirmRenameSection').click();
+    });
+
+    // Save / delete question
+    document.getElementById('saveQuestionBtn').addEventListener('click', () => saveQuestion());
+    document.getElementById('deleteQuestionBtn').addEventListener('click', () => deleteQuestion());
+
+    // Add option
+    document.getElementById('addOptionBtn').addEventListener('click', () => { addOptionRow(null); isDirty = true; });
+
+    // Dirty tracking on textarea inputs
+    document.getElementById('qText').addEventListener('input', () => { isDirty = true; });
+    document.getElementById('solutionText').addEventListener('input', () => { isDirty = true; });
+
+    // Image upload & clear for question + solution
+    ['q', 'sol'].forEach(prefix => {
+        const box = document.getElementById(`${prefix}ImgBox`);
+        const input = document.getElementById(`${prefix}ImgInput`);
+        const clearBtn = document.getElementById(`${prefix}ImgClearBtn`);
+        const preview = document.getElementById(`${prefix}ImgPreview`);
+
+        box.addEventListener('click', e => {
+            if (!clearBtn.contains(e.target)) input.click();
+        });
+        input.addEventListener('change', e => {
+            if (e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = ev => { setImagePreview(prefix, ev.target.result); };
+                reader.readAsDataURL(e.target.files[0]);
+                isDirty = true;
+            }
+        });
+        clearBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            setImagePreview(prefix, null);
+            preview.dataset.cleared = '1';
+            isDirty = true;
+        });
+    });
+
+    // Solution toggle
+    document.getElementById('solutionToggle').addEventListener('click', () => {
+        const content = document.getElementById('solutionContent');
+        const chevron = document.getElementById('solutionChevron');
+        const open = content.style.display !== 'none';
+        content.style.display = open ? 'none' : 'block';
+        chevron.className = open ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+    });
+
+    // Unsaved modal: discard
+    document.getElementById('discardChangesBtn').addEventListener('click', () => {
+        getModal('unsavedModal').hide();
+        isDirty = false;
+        const a = pendingAction; pendingAction = null; executePending(a);
+    });
+    // Unsaved modal: save then continue
+    document.getElementById('saveAndContinueBtn').addEventListener('click', () => {
+        getModal('unsavedModal').hide();
+        saveQuestion(); // pendingAction executed inside saveQuestion on success
+    });
+
+    // Warn before leaving page if dirty
+    window.addEventListener('beforeunload', e => {
+        if (isDirty) { e.preventDefault(); e.returnValue = ''; }
+    });
+});
+</script>
+{% endblock %}

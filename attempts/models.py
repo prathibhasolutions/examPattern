@@ -21,6 +21,8 @@ class TestAttempt(models.Model):
 	section_timings = models.JSONField(default=dict, blank=True)
 
 	duration_seconds = models.PositiveIntegerField(default=0)
+	# Saved timer state for resuming — stores remaining seconds as of last heartbeat
+	time_remaining_seconds = models.IntegerField(null=True, blank=True)
 
 	STATUS_IN_PROGRESS = 'in_progress'
 	STATUS_SUBMITTED = 'submitted'
