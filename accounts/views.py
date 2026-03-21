@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
@@ -10,14 +10,95 @@ from django.core.files.base import ContentFile
 import os
 import re
 from .models import CustomUser
+from .forms import RegistrationForm, LoginForm
 
 
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "POST"])
 def login_view(request):
-    """Login page — Google OAuth only."""
+    """Login page — manual email/password or Google OAuth."""
     if request.user.is_authenticated:
         return redirect('tests_list')
-    return render(request, 'accounts/login.html', {})
+
+    form = LoginForm()
+
+    if request.method == 'POST':
+        form = LoginForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data['email'].lower()
+            password = form.cleaned_data['password']
+            try:
+                user_obj = CustomUser.objects.get(email=email)
+            except CustomUser.DoesNotExist:
+                user_obj = None
+
+            if user_obj is not None:
+                user = authenticate(request, username=user_obj.username, password=password)
+            else:
+                user = None
+
+            if user is not None:
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                return redirect(request.GET.get('next') or 'tests_list')
+            else:
+                messages.error(request, 'Invalid email or password.')
+
+    return render(request, 'accounts/login.html', {'form': form})
+
+
+@require_http_methods(["GET", "POST"])
+def register_view(request):
+    """Registration page — manual sign-up."""
+    if request.user.is_authenticated:
+        return redirect('tests_list')
+
+    form = RegistrationForm()
+
+    if request.method == 'POST':
+        form = RegistrationForm(request.POST, request.FILES)
+        if form.is_valid():
+            email = form.cleaned_data['email']
+            username = form.cleaned_data['username']
+            mobile = form.cleaned_data['mobile']
+            password = form.cleaned_data['password']
+            photo = form.cleaned_data.get('photo')
+
+            user = CustomUser.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                mobile=mobile,
+                is_verified=False,
+            )
+
+            if photo:
+                try:
+                    img = Image.open(photo)
+                    img.verify()
+                    photo.seek(0)
+                    img = Image.open(photo)
+                    if img.mode == 'RGBA':
+                        bg = Image.new('RGB', img.size, (255, 255, 255))
+                        bg.paste(img, mask=img.split()[3])
+                        img = bg
+                    elif img.mode != 'RGB':
+                        img = img.convert('RGB')
+                    img.thumbnail((800, 800), Image.Resampling.LANCZOS)
+                    output = BytesIO()
+                    img.save(output, format='JPEG', quality=85, optimize=True)
+                    output.seek(0)
+                    user.photo.save(
+                        f"user_{user.id}_{photo.name}",
+                        ContentFile(output.read()),
+                        save=True,
+                    )
+                except Exception:
+                    pass  # photo upload failure is non-fatal
+
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+            messages.success(request, f'Welcome to examPattern, {user.username}!')
+            return redirect('tests_list')
+
+    return render(request, 'accounts/register.html', {'form': form})
 
 
 @login_required(login_url='login')
@@ -102,7 +183,18 @@ def check_username_availability(request):
     return JsonResponse({'available': True, 'message': 'Username is available!'})
 
 
+def check_email_availability(request):
+    """AJAX endpoint to check email availability"""
+    from django.http import JsonResponse
+    email = request.GET.get('email', '').strip().lower()
 
+    if not email or '@' not in email:
+        return JsonResponse({'available': False, 'message': 'Enter a valid email address.'})
+
+    if CustomUser.objects.filter(email=email).exists():
+        return JsonResponse({'available': False, 'message': 'An account with this email already exists.'})
+
+    return JsonResponse({'available': True, 'message': 'Email is available!'})
 
 
 @login_required(login_url='login')

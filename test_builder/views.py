@@ -471,7 +471,51 @@ def manage_sections(request, draft_id):
     if request.method == 'POST':
         # Refresh lock timestamp
         draft.refresh_lock(request.user)
-        
+
+        action = request.POST.get('action', 'update_sections')
+
+        if action == 'update_test_metadata':
+            new_name = request.POST.get('test_name', '').strip()
+            new_duration = request.POST.get('duration_minutes', '').strip()
+            new_marks = request.POST.get('marks_per_question', '').strip()
+            new_negative = request.POST.get('negative_marks', '').strip()
+
+            errors = []
+            if not new_name:
+                errors.append("Test name cannot be empty.")
+            if not new_duration or not new_duration.isdigit() or int(new_duration) < 1:
+                errors.append("Duration must be a positive integer.")
+            try:
+                float(new_marks)
+            except (ValueError, TypeError):
+                errors.append("Marks per question must be a valid number.")
+            try:
+                float(new_negative)
+            except (ValueError, TypeError):
+                errors.append("Negative marks must be a valid number.")
+
+            if errors:
+                for e in errors:
+                    messages.error(request, e)
+            else:
+                # Check name uniqueness (excluding self)
+                if (
+                    TestDraft.objects.filter(series=draft.series, name__iexact=new_name)
+                    .exclude(id=draft.id)
+                    .exists()
+                ):
+                    messages.error(request, f"A test named '{new_name}' already exists in {draft.series.name}.")
+                else:
+                    from decimal import Decimal
+                    draft.name = new_name
+                    draft.duration_minutes = int(new_duration)
+                    draft.marks_per_question = Decimal(new_marks)
+                    draft.negative_marks = Decimal(new_negative)
+                    draft.save(update_fields=['name', 'duration_minutes', 'marks_per_question', 'negative_marks'])
+                    messages.success(request, "Test details updated successfully!")
+
+            return redirect('manage_sections', draft_id=draft.id)
+
         # Update section names
         for section in sections:
             section_name = request.POST.get(f'section_{section.id}_name')

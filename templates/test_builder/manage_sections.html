@@ -255,8 +255,11 @@
 
     <!-- Test Summary Card -->
     <div class="card mb-4">
-        <div class="card-header bg-info text-white">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0">ℹ️ Test Summary</h5>
+            <button type="button" class="btn btn-sm btn-light fw-semibold" data-bs-toggle="modal" data-bs-target="#editTestModal">
+                ✏️ Edit Test Details
+            </button>
         </div>
         <div class="card-body">
             <div class="row">
@@ -276,6 +279,50 @@
                     <p class="mb-0"><strong>Sections:</strong></p>
                     <p class="text-muted">{{ sections.count }} section{{ sections.count|pluralize }}</p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Test Details Modal -->
+    <div class="modal fade" id="editTestModal" tabindex="-1" aria-labelledby="editTestModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_test_metadata">
+                    <div class="modal-header bg-info text-white">
+                        <h5 class="modal-title" id="editTestModalLabel">✏️ Edit Test Details</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="test_name" class="form-label fw-semibold">Test Name</label>
+                            <input type="text" class="form-control" id="test_name" name="test_name"
+                                   value="{{ draft.name }}" required maxlength="200">
+                        </div>
+                        <div class="mb-3">
+                            <label for="duration_minutes" class="form-label fw-semibold">Duration (minutes)</label>
+                            <input type="number" class="form-control" id="duration_minutes" name="duration_minutes"
+                                   value="{{ draft.duration_minutes }}" required min="1">
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label for="marks_per_question" class="form-label fw-semibold">Marks per Question</label>
+                                <input type="number" class="form-control" id="marks_per_question" name="marks_per_question"
+                                       value="{{ draft.marks_per_question }}" required min="0" step="0.25">
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label for="negative_marks" class="form-label fw-semibold">Negative Marks</label>
+                                <input type="number" class="form-control" id="negative_marks" name="negative_marks"
+                                       value="{{ draft.negative_marks }}" required min="0" step="0.25">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-info text-white fw-semibold">💾 Save Changes</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -501,7 +548,7 @@
             
             <div class="footer-contact">
                 <h6>Contact Us</h6>
-                <p><i class="fas fa-envelope"></i> prathbhainstitutions@gmail.com</p>
+                <p><i class="fas fa-envelope"></i> prathibhainstitutions@gmail.com</p>
                 <p><i class="fas fa-phone"></i> +91 9030941099</p>
                 <p><i class="fas fa-map-marker-alt"></i> Beside Bank of Maharashtra, Namdevwada, Nizamabad</p>
             </div>
