@@ -591,12 +591,10 @@
                 <span class="info-label"><i class="fas fa-id-badge"></i> User ID</span>
                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                     <span class="info-value" id="userUidDisplay" style="font-family:monospace;letter-spacing:.05em;color:#6d28d9;font-weight:700;">{{ user.uid|default:"—" }}</span>
-                    <button type="button" onclick="copyUid()" title="Copy User ID" style="background:none;border:1.5px solid #7c3aed;border-radius:6px;padding:4px 10px;cursor:pointer;color:#7c3aed;font-size:12px;font-weight:600;transition:all .2s;">
-                        <i class="fas fa-copy"></i> Copy
-                    </button>
+                    
                     <span id="uidCopied" style="display:none;color:#16a34a;font-size:12px;font-weight:700;"><i class="fas fa-check"></i> Copied!</span>
                 </div>
-                <small style="display:block;margin-top:4px;font-size:11px;color:#94a3b8;">Share this ID with an admin to get builder or admin access.</small>
+        
             </div>
             <div class="info-item">
                 <span class="info-label"><i class="fas fa-user-circle"></i> Username</span>
