@@ -5,6 +5,14 @@
 {% block header %}{% endblock %}
 
 {% block extra_css %}
+<script>
+// Configure MathJax to support $...$ inline math (must run before MathJax initialises)
+window.MathJax = window.MathJax || {};
+window.MathJax.tex = Object.assign(window.MathJax.tex || {}, {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']]
+});
+</script>
 <style>
 /* ── Reset ─────────────────────────────────── */
 body { margin: 0; padding: 0; overflow: hidden; height: 100vh; }
@@ -272,6 +280,26 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
 .le-toast.le-toast-success { border-left-color: #22c55e; }
 .le-toast.le-toast-danger { border-left-color: #ef4444; }
 .le-toast.le-toast-warning { border-left-color: #f59e0b; }
+
+/* ── LaTeX live preview ─────────────────────── */
+.le-preview-label {
+    font-size: 10px; font-weight: 700; color: #6366f1;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    margin: 6px 0 3px; display: flex; align-items: center; gap: 4px;
+}
+.le-latex-preview {
+    background: #eef3ff; border: 1px solid #c7d5ff; border-radius: 6px;
+    padding: 8px 12px; font-size: 14px; line-height: 1.7; color: #1e3a8a;
+    margin-top: 2px; min-height: 36px; overflow-x: auto; word-break: break-word;
+}
+.le-latex-preview:empty::before {
+    content: 'Rendered preview will appear here…';
+    color: #94a3b8; font-style: italic; font-size: 13px;
+}
+.le-opt-preview {
+    padding: 4px 10px; font-size: 13px; min-height: 26px;
+    margin-top: 2px; margin-bottom: 6px;
+}
 </style>
 {% endblock %}
 
@@ -332,6 +360,8 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
             <div class="le-field-group">
                 <label class="le-field-label">Question Text <span style="font-weight:400;text-transform:none;color:#94a3b8;">(required if no image)</span></label>
                 <textarea id="qText" class="le-textarea" rows="4" placeholder="Type the question here..."></textarea>
+                <div class="le-preview-label"><i class="fas fa-eye" style="font-size:9px;"></i> Live Preview</div>
+                <div id="qTextPreview" class="le-latex-preview"></div>
             </div>
 
             <!-- Question image -->
@@ -372,6 +402,8 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
                             <label class="le-field-label">Solution Explanation</label>
                             <textarea id="solutionText" class="le-textarea" rows="4"
                                 placeholder="Step-by-step explanation for students..."></textarea>
+                            <div class="le-preview-label"><i class="fas fa-eye" style="font-size:9px;"></i> Live Preview</div>
+                            <div id="solTextPreview" class="le-latex-preview"></div>
                         </div>
                         <div class="le-field-group" style="margin-bottom:0;">
                             <label class="le-field-label">Solution Image <span style="font-weight:400;text-transform:none;color:#94a3b8;">(optional)</span></label>
@@ -649,6 +681,10 @@ function loadEditor(questionData) {
         document.getElementById('solutionText').value = '';
         setImagePreview('sol', null);
     }
+    // Trigger live previews for initial loaded values
+    updateLatexPreview(document.getElementById('qText').value, document.getElementById('qTextPreview'));
+    updateLatexPreview(document.getElementById('solutionText').value, document.getElementById('solTextPreview'));
+
     // Collapse solution
     document.getElementById('solutionContent').style.display = 'none';
     document.getElementById('solutionChevron').className = 'fas fa-chevron-down';
@@ -677,6 +713,20 @@ function setImagePreview(prefix, url) {
         preview.src = ''; preview.style.display = 'none';
         placeholder.style.display = 'flex'; clearBtn.style.display = 'none';
     }
+}
+
+// ── LaTeX live preview ─────────────────────────────────
+const _previewTimers = new WeakMap();
+function updateLatexPreview(text, el) {
+    if (!el) return;
+    if (_previewTimers.has(el)) clearTimeout(_previewTimers.get(el));
+    _previewTimers.set(el, setTimeout(() => {
+        el.textContent = text || '';
+        if (text && text.trim() && window.MathJax && window.MathJax.typesetPromise) {
+            if (window.MathJax.typesetClear) window.MathJax.typesetClear([el]);
+            window.MathJax.typesetPromise([el]).catch(() => {});
+        }
+    }, 250));
 }
 
 // ── Options ────────────────────────────────────────────
@@ -757,11 +807,19 @@ function addOptionRow(optionData) {
         if (container.querySelectorAll('.le-option-row').length <= 2) {
             showToast('Minimum 2 options required.', 'warning'); return;
         }
-        row.remove(); isDirty = true;
+        wrapper.remove(); isDirty = true;
     });
     row.appendChild(delBtn);
 
-    container.appendChild(row);
+    // Wrap row + live preview together
+    const wrapper = document.createElement('div');
+    const optPreview = document.createElement('div');
+    optPreview.className = 'le-latex-preview le-opt-preview';
+    textInput.addEventListener('input', () => updateLatexPreview(textInput.value, optPreview));
+    if (textInput.value) updateLatexPreview(textInput.value, optPreview);
+    wrapper.appendChild(row);
+    wrapper.appendChild(optPreview);
+    container.appendChild(wrapper);
 }
 
 // ── Save Question ──────────────────────────────────────
@@ -954,9 +1012,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add option
     document.getElementById('addOptionBtn').addEventListener('click', () => { addOptionRow(null); isDirty = true; });
 
-    // Dirty tracking on textarea inputs
-    document.getElementById('qText').addEventListener('input', () => { isDirty = true; });
-    document.getElementById('solutionText').addEventListener('input', () => { isDirty = true; });
+    // Dirty tracking + live preview on textarea inputs
+    document.getElementById('qText').addEventListener('input', function() {
+        isDirty = true;
+        updateLatexPreview(this.value, document.getElementById('qTextPreview'));
+    });
+    document.getElementById('solutionText').addEventListener('input', function() {
+        isDirty = true;
+        updateLatexPreview(this.value, document.getElementById('solTextPreview'));
+    });
 
     // Image upload & clear for question + solution
     ['q', 'sol'].forEach(prefix => {

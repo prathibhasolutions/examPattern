@@ -519,10 +519,15 @@
                         </div>
                     </a>
                     <a href="{% url 'profile' %}" class="nav-link">{{ user.username }}</a>
-                    {% if user.is_staff and user.is_superuser %}
+                    {% if user.is_staff %}
                         <a href="/builder/" class="nav-link" style="color: #ffc107 !important;">
                             <i class="fas fa-tools"></i> Builder
                         </a>
+                    {% endif %}
+                    {% if user.is_superuser %}
+                        <button type="button" class="btn btn-login" data-bs-toggle="modal" data-bs-target="#manageAdminsModal" style="background:rgba(109,40,217,0.85);margin-left:4px;">
+                            <i class="fas fa-users-cog"></i> Admins
+                        </button>
                     {% endif %}
                     <a href="{% url 'logout' %}" class="btn btn-logout">
                         <i class="fas fa-sign-out-alt"></i> Logout
@@ -582,7 +587,17 @@
                 <span class="info-value">{{ user.email }}</span>
             </div>
 
-            <!-- Username inline edit -->
+            <div class="info-item">
+                <span class="info-label"><i class="fas fa-id-badge"></i> User ID</span>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <span class="info-value" id="userUidDisplay" style="font-family:monospace;letter-spacing:.05em;color:#6d28d9;font-weight:700;">{{ user.uid|default:"—" }}</span>
+                    <button type="button" onclick="copyUid()" title="Copy User ID" style="background:none;border:1.5px solid #7c3aed;border-radius:6px;padding:4px 10px;cursor:pointer;color:#7c3aed;font-size:12px;font-weight:600;transition:all .2s;">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                    <span id="uidCopied" style="display:none;color:#16a34a;font-size:12px;font-weight:700;"><i class="fas fa-check"></i> Copied!</span>
+                </div>
+                <small style="display:block;margin-top:4px;font-size:11px;color:#94a3b8;">Share this ID with an admin to get builder or admin access.</small>
+            </div>
             <div class="info-item">
                 <span class="info-label"><i class="fas fa-user-circle"></i> Username</span>
                 <div class="inline-edit-row" id="usernameRow">
@@ -786,6 +801,16 @@
             }
         });
 
+        function copyUid() {
+            var uid = document.getElementById('userUidDisplay').textContent.trim();
+            if (!uid || uid === '—') return;
+            navigator.clipboard.writeText(uid).then(function() {
+                var el = document.getElementById('uidCopied');
+                el.style.display = 'inline';
+                setTimeout(function(){ el.style.display = 'none'; }, 2000);
+            });
+        }
+
         // Username availability check
         (function() {
             var input = document.getElementById('usernameInput');
@@ -869,7 +894,7 @@
                     <h6>Quick Links</h6>
                     <a href="{% url 'tests_list' %}"><i class="fas fa-home"></i> Home</a>
                     <a href="{% url 'profile' %}"><i class="fas fa-user"></i> Profile</a>
-                    {% if user.is_staff and user.is_superuser %}
+                    {% if user.is_staff %}
                         <a href="/builder/"><i class="fas fa-tools"></i> Test Builder</a>
                     {% endif %}
                 </div>
@@ -888,6 +913,130 @@
             </div>
         </div>
     </footer>
+    <!-- Manage Admins Modal (superuser only) -->
+    {% if user.is_superuser %}
+    <div class="modal fade" id="manageAdminsModal" tabindex="-1" aria-labelledby="manageAdminsLabel">
+      <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
+        <div class="modal-content" style="border-radius:16px;overflow:hidden;">
+          <div class="modal-header" style="background:linear-gradient(135deg,#4c1d95,#7c3aed);color:white;padding:16px 20px;">
+            <h5 class="modal-title" id="manageAdminsLabel" style="font-weight:700;font-size:16px;"><i class="fas fa-users-cog"></i> Manage Admins</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body" style="padding:20px;">
+            <div style="display:flex;gap:8px;margin-bottom:16px;">
+              <input type="text" id="admMgrInput" class="form-control" placeholder="User ID (EXP2026XXXX) or username…" style="font-size:14px;">
+              <button type="button" id="admMgrSearchBtn" class="btn btn-primary" style="white-space:nowrap;font-size:14px;"><i class="fas fa-search"></i> Find</button>
+            </div>
+            <div id="admMgrError" class="alert alert-warning py-2" style="display:none;font-size:13px;"></div>
+            <div id="admMgrCard" style="display:none;">
+              <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:16px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <div id="admMgrAvatar" style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-weight:700;color:white;font-size:19px;overflow:hidden;flex-shrink:0;"></div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-weight:700;color:#1e3a8a;font-size:15px;" id="admMgrName"></div>
+                    <div style="font-size:13px;color:#475569;" id="admMgrUsername"></div>
+                    <div style="font-size:12px;color:#94a3b8;word-break:break-all;" id="admMgrEmail"></div>
+                  </div>
+                  <div style="text-align:right;flex-shrink:0;">
+                    <div style="font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:.08em;">USER ID</div>
+                    <div style="font-family:monospace;font-weight:700;font-size:13px;color:#6d28d9;" id="admMgrUid"></div>
+                  </div>
+                </div>
+                <div style="margin-top:10px;" id="admMgrStatusBadge"></div>
+              </div>
+              <input type="hidden" id="admMgrUserId">
+              <p style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;">Grant access as:</p>
+              <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+                <label id="lblBuilder" style="cursor:pointer;display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;transition:all .2s;background:#fff;">
+                  <input type="radio" name="admLevel" value="builder" id="radBuilder" style="margin-top:3px;accent-color:#2563eb;">
+                  <div><div style="font-weight:600;font-size:14px;color:#1e3a8a;">Builder Admin</div><div style="font-size:12px;color:#64748b;">Can create and edit tests. Cannot manage admins.</div></div>
+                </label>
+                <label id="lblSuper" style="cursor:pointer;display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;transition:all .2s;background:#fff;">
+                  <input type="radio" name="admLevel" value="super" id="radSuper" style="margin-top:3px;accent-color:#7c3aed;">
+                  <div><div style="font-weight:600;font-size:14px;color:#6d28d9;">Super Admin</div><div style="font-size:12px;color:#64748b;">Builder access + can manage admins (same power as you).</div></div>
+                </label>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button type="button" id="admMgrGrantBtn" class="btn btn-success" style="flex:1;font-weight:600;"><i class="fas fa-check"></i> Grant Access</button>
+                <button type="button" id="admMgrRevokeBtn" class="btn btn-danger" style="font-weight:600;"><i class="fas fa-user-times"></i> Remove</button>
+              </div>
+              <div id="admMgrMsg" style="display:none;margin-top:10px;font-size:13px;font-weight:600;text-align:center;padding:8px;border-radius:8px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+    (function(){
+      var inp=document.getElementById('admMgrInput');
+      var srchBtn=document.getElementById('admMgrSearchBtn');
+      var card=document.getElementById('admMgrCard');
+      var errEl=document.getElementById('admMgrError');
+      if(!srchBtn) return;
+      function getCsrf(){var m=document.cookie.match('(^|;)\\s*csrftoken=([^;]+)');return m?m[2]:'';}
+      function styleRadios(){
+        document.querySelectorAll('input[name="admLevel"]').forEach(function(r){
+          var lbl=r.closest('label');
+          if(r.checked){lbl.style.borderColor=r.value==='super'?'#7c3aed':'#2563eb';lbl.style.background=r.value==='super'?'#f5f3ff':'#eff6ff';}
+          else{lbl.style.borderColor='#e2e8f0';lbl.style.background='#fff';}
+        });
+      }
+      document.querySelectorAll('input[name="admLevel"]').forEach(function(r){r.addEventListener('change',styleRadios);});
+      function doSearch(){
+        var q=inp.value.trim();if(!q)return;
+        srchBtn.disabled=true;srchBtn.innerHTML='<i class="fas fa-spinner fa-spin"></i>';
+        card.style.display='none';errEl.style.display='none';
+        fetch('/accounts/admin-search/?q='+encodeURIComponent(q))
+          .then(function(r){return r.json();})
+          .then(function(data){
+            srchBtn.disabled=false;srchBtn.innerHTML='<i class="fas fa-search"></i> Find';
+            if(!data.results||!data.results.length){errEl.textContent=data.error||'No user found.';errEl.style.display='block';return;}
+            var u=data.results[0];
+            document.getElementById('admMgrUserId').value=u.id;
+            var av=document.getElementById('admMgrAvatar');
+            av.innerHTML=u.photo_url?'<img src="'+u.photo_url+'" style="width:100%;height:100%;object-fit:cover;">':u.full_name.charAt(0).toUpperCase();
+            document.getElementById('admMgrName').textContent=u.full_name;
+            document.getElementById('admMgrUsername').textContent='@'+u.username;
+            document.getElementById('admMgrEmail').textContent=u.email;
+            document.getElementById('admMgrUid').textContent=u.uid||'—';
+            var sc={regular:'#64748b',builder_admin:'#2563eb',super_admin:'#7c3aed'};
+            var col=sc[u.status]||'#64748b';
+            document.getElementById('admMgrStatusBadge').innerHTML='<span style="background:'+col+'20;color:'+col+';border:1px solid '+col+';border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;">'+u.status_label+'</span>';
+            if(u.status==='super_admin'){document.getElementById('radSuper').checked=true;}else{document.getElementById('radBuilder').checked=true;}
+            styleRadios();
+            document.getElementById('admMgrMsg').style.display='none';
+            card.style.display='block';
+          }).catch(function(){srchBtn.disabled=false;srchBtn.innerHTML='<i class="fas fa-search"></i> Find';});
+      }
+      srchBtn.addEventListener('click',doSearch);
+      inp.addEventListener('keydown',function(e){if(e.key==='Enter')doSearch();});
+      function postAction(action,level){
+        var uid=document.getElementById('admMgrUserId').value;if(!uid)return;
+        var fd=new FormData();fd.append('csrfmiddlewaretoken',getCsrf());fd.append('user_id',uid);fd.append('action',action);fd.append('level',level||'');
+        fetch('/accounts/admin-manage/',{method:'POST',body:fd})
+          .then(function(r){return r.json();})
+          .then(function(d){
+            var msg=document.getElementById('admMgrMsg');
+            msg.textContent=d.message||d.error||'Done.';
+            msg.style.background=d.success?'#dcfce7':'#fee2e2';msg.style.color=d.success?'#166534':'#991b1b';
+            msg.style.display='block';
+            if(d.success)setTimeout(doSearch,1400);
+          });
+      }
+      document.getElementById('admMgrGrantBtn').addEventListener('click',function(){
+        var lvl=document.querySelector('input[name="admLevel"]:checked');if(!lvl){alert('Select access level.');return;}
+        postAction('grant',lvl.value);
+      });
+      document.getElementById('admMgrRevokeBtn').addEventListener('click',function(){
+        if(!confirm('Remove all admin access from this user?'))return;
+        postAction('revoke','');
+      });
+      var modalEl=document.getElementById('manageAdminsModal');
+      if(modalEl)modalEl.addEventListener('hidden.bs.modal',function(){inp.value='';card.style.display='none';errEl.style.display='none';});
+    })();
+    </script>
+    {% endif %}
+
     <!-- Global search overlay -->
     <div id="searchOverlay" class="search-overlay" role="dialog" aria-modal="true">
       <div class="search-overlay-inner">

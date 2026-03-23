@@ -3,6 +3,14 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import FileExtensionValidator
 from django.utils import timezone
 import secrets
+import random
+import string
+
+
+def _generate_uid(year):
+    """Generate UID: EXP + 4-digit year + 4 random uppercase alphanumeric chars"""
+    chars = string.ascii_uppercase + string.digits
+    return 'EXP' + str(year) + ''.join(random.choices(chars, k=4))
 
 class CustomUser(AbstractUser):
     """Custom user model with email, mobile, and photo"""
@@ -17,6 +25,8 @@ class CustomUser(AbstractUser):
     )
     is_verified = models.BooleanField(default=False, help_text="Email verified status")
     active_session_key = models.CharField(max_length=40, null=True, blank=True)
+    uid = models.CharField(max_length=11, unique=True, null=True, blank=True, db_index=True,
+                           help_text="Unique user ID in format EXP{YEAR}{4 chars}, e.g. EXP2026A3F9")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -24,6 +34,16 @@ class CustomUser(AbstractUser):
         ordering = ['-created_at']
         verbose_name = 'User'
         verbose_name_plural = 'Users'
+
+    def save(self, *args, **kwargs):
+        if not self.uid:
+            year = timezone.now().year
+            for _ in range(30):
+                candidate = _generate_uid(year)
+                if not CustomUser.objects.filter(uid=candidate).exclude(pk=self.pk or 0).exists():
+                    self.uid = candidate
+                    break
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.username} ({self.email})"

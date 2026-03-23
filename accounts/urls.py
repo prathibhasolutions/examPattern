@@ -10,4 +10,6 @@ urlpatterns = [
     path('profile/remove-photo/', views.remove_profile_photo, name='remove_profile_photo'),
     path('check-username/', views.check_username_availability, name='check_username'),
     path('check-email/', views.check_email_availability, name='check_email'),
+    path('admin-search/', views.search_user_for_admin, name='admin_search_user'),
+    path('admin-manage/', views.manage_admin_access, name='manage_admin_access'),
 ]

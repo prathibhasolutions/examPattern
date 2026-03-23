@@ -12,18 +12,18 @@ from testseries.models import TestSeries, TestSeriesExamSection, TestSeriesHighl
 from questions.models import Question, Option
 
 
-# Permission check: Only staff/admin users can access builder
+# Permission check: Only staff users can access builder
 def is_admin(user):
-    """Check if user is staff/admin"""
-    return user.is_staff and user.is_superuser
+    """Check if user has builder (staff) access"""
+    return user.is_staff
 
 
 def admin_required(view_func):
-    """Decorator to require admin access"""
+    """Decorator to require builder/admin access"""
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect('login')
-        if not (request.user.is_staff and request.user.is_superuser):
+        if not request.user.is_staff:
             return HttpResponseForbidden(
                 '<h1>Access Denied</h1><p>You do not have permission to access the test builder. '
                 'Only administrators can create and manage tests.</p>'

@@ -286,3 +286,68 @@ def remove_profile_photo(request):
         messages.info(request, "No profile photo to remove.")
     
     return redirect('profile')
+
+
+@login_required(login_url='login')
+def search_user_for_admin(request):
+    """AJAX: search users by UID or username. Superuser only."""
+    from django.http import JsonResponse
+    from django.db.models import Q
+    if not request.user.is_superuser:
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+    query = request.GET.get('q', '').strip()
+    if not query:
+        return JsonResponse({'results': []})
+    users = CustomUser.objects.filter(
+        Q(uid__iexact=query) | Q(username__icontains=query)
+    ).exclude(pk=request.user.pk)[:8]
+    results = []
+    for u in users:
+        if u.is_superuser:
+            status, label = 'super_admin', 'Super Admin'
+        elif u.is_staff:
+            status, label = 'builder_admin', 'Builder Admin'
+        else:
+            status, label = 'regular', 'Regular User'
+        results.append({
+            'id': u.pk,
+            'uid': u.uid or '',
+            'username': u.username,
+            'full_name': u.get_full_name() or u.username,
+            'email': u.email,
+            'status': status,
+            'status_label': label,
+            'photo_url': u.photo.url if u.photo else None,
+        })
+    return JsonResponse({'results': results})
+
+
+@login_required(login_url='login')
+@require_http_methods(["POST"])
+def manage_admin_access(request):
+    """AJAX: grant or revoke admin access. Superuser only."""
+    from django.http import JsonResponse
+    if not request.user.is_superuser:
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+    target_id = request.POST.get('user_id', '').strip()
+    action = request.POST.get('action', '').strip()
+    level = request.POST.get('level', '').strip()
+    if not target_id or action not in ('grant', 'revoke'):
+        return JsonResponse({'error': 'Invalid parameters.'}, status=400)
+    try:
+        target = CustomUser.objects.get(pk=int(target_id))
+    except (CustomUser.DoesNotExist, ValueError):
+        return JsonResponse({'error': 'User not found.'}, status=404)
+    if target.pk == request.user.pk:
+        return JsonResponse({'error': 'You cannot modify your own admin status.'}, status=400)
+    if action == 'grant':
+        target.is_staff = True
+        target.is_superuser = (level == 'super')
+        target.save(update_fields=['is_staff', 'is_superuser'])
+        label = 'Super Admin' if level == 'super' else 'Builder Admin'
+        return JsonResponse({'success': True, 'message': f'{target.username} is now a {label}.'})
+    else:
+        target.is_staff = False
+        target.is_superuser = False
+        target.save(update_fields=['is_staff', 'is_superuser'])
+        return JsonResponse({'success': True, 'message': f'Admin access removed from {target.username}.'})
