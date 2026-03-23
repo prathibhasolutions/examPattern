@@ -1,0 +1,399 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}About — examPattern{% endblock %}
+
+{% block header %}{% endblock %}
+
+{% block footer %}{% endblock %}
+
+{% block content %}
+<style>
+    main.container-fluid { padding: 0 !important; margin-top: 0 !important; }
+    body { margin: 0; padding: 0; }
+
+    /* ── NAVBAR ── */
+    .navbar-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        padding: 12px 0;
+        position: sticky; top: 0; z-index: 1000;
+        width: 100vw;
+        position: relative;
+        left: 50%; right: 50%;
+        margin-left: -50vw !important;
+        margin-right: -50vw !important;
+    }
+    .navbar-custom .navbar-brand img { height: 45px; width: auto; }
+    .navbar-profile { display: flex; align-items: center; gap: 15px; margin-left: auto; }
+    .profile-avatar {
+        width: 40px; height: 40px; border-radius: 50%;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white; display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 16px; border: 2px solid rgba(255,255,255,0.3);
+        cursor: pointer; transition: all 0.3s; overflow: hidden;
+    }
+    .profile-avatar:hover { transform: scale(1.1); border-color: white; }
+    .profile-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+    .navbar-custom .nav-link {
+        color: rgba(255,255,255,0.9) !important; font-weight: 500; font-size: 14px;
+        padding: 8px 16px !important; border-radius: 20px; transition: all 0.3s;
+    }
+    .navbar-custom .nav-link:hover { background: rgba(255,255,255,0.15); color: white !important; }
+    .navbar-custom .btn-logout {
+        background: rgba(220,53,69,0.9); color: white; border: none;
+        padding: 8px 20px; border-radius: 20px; font-weight: 600; font-size: 14px; transition: all 0.3s;
+    }
+    .navbar-custom .btn-logout:hover { background: #dc3545; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(220,53,69,0.4); }
+    .navbar-custom .btn-login {
+        background: rgba(40,167,69,0.9); color: white; border: none;
+        padding: 8px 20px; border-radius: 20px; font-weight: 600; font-size: 14px; transition: all 0.3s; text-decoration: none;
+    }
+    .navbar-custom .btn-login:hover { background: #28a745; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(40,167,69,0.4); }
+
+    /* ── PAGE WRAPPER ── */
+    .about-wrap { background: #f6f8fb; min-height: 100vh; padding-bottom: 0; }
+
+    /* ── HERO ── */
+    .about-hero {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 55%, #1e3c72 100%);
+        padding: clamp(50px, 9vw, 90px) 20px clamp(60px, 10vw, 100px);
+        text-align: center; position: relative; overflow: hidden;
+    }
+    .about-hero::before {
+        content: '';
+        position: absolute; inset: 0;
+        background: radial-gradient(ellipse at 30% 50%, rgba(255,255,255,0.05) 0%, transparent 60%),
+                    radial-gradient(ellipse at 70% 50%, rgba(255,255,255,0.04) 0%, transparent 60%);
+        pointer-events: none;
+    }
+    .about-hero::after {
+        content: '';
+        position: absolute; bottom: -1px; left: 0; right: 0;
+        height: 48px; background: #f6f8fb;
+        clip-path: ellipse(55% 100% at 50% 100%);
+    }
+    .about-hero-logo-wrap {
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.18);
+        border-radius: 20px;
+        padding: clamp(12px,2vw,20px) clamp(24px,4vw,48px);
+        display: inline-block; margin-bottom: 26px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+        position: relative; z-index: 1;
+    }
+    .about-hero-logo { height: clamp(44px, 6.5vw, 68px); width: auto; max-width: 80vw; display: block; }
+    .about-hero-tagline {
+        font-size: clamp(15px, 2.4vw, 21px); color: rgba(255,255,255,0.92);
+        font-weight: 500; max-width: 560px; margin: 0 auto 22px; line-height: 1.6;
+        position: relative; z-index: 1;
+    }
+    .about-hero-pills {
+        display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+        position: relative; z-index: 1;
+    }
+    .about-hero-pill {
+        background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25);
+        color: rgba(255,255,255,0.9); padding: 6px 18px; border-radius: 999px;
+        font-size: 13px; font-weight: 600; letter-spacing: 0.01em;
+    }
+
+    /* ── SECTIONS ── */
+    .about-section { max-width: 960px; margin: 0 auto; padding: 54px 24px 0; }
+    .section-heading {
+        font-size: clamp(18px, 2.8vw, 24px); font-weight: 800; color: #1e3c72; margin-bottom: 8px;
+    }
+    .section-bar {
+        width: 46px; height: 4px;
+        background: linear-gradient(135deg, #1e3c72, #2a5298);
+        border-radius: 2px; margin-bottom: 22px;
+    }
+    .about-text { font-size: 15px; color: #475569; line-height: 1.85; max-width: 840px; margin-bottom: 0; }
+
+    /* ── FEATURES ── */
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        gap: 18px; margin-top: 24px;
+    }
+    .feature-card {
+        background: white; border-radius: 14px; padding: 26px 20px;
+        box-shadow: 0 4px 20px rgba(30,60,114,0.07);
+        border: 1.5px solid #e8edf5; transition: all 0.25s ease;
+    }
+    .feature-card:hover {
+        transform: translateY(-5px); box-shadow: 0 14px 36px rgba(30,60,114,0.13);
+        border-color: #2a5298;
+    }
+    .feature-icon { font-size: 30px; margin-bottom: 12px; display: block; }
+    .feature-title { font-size: 14px; font-weight: 700; color: #1e3c72; margin-bottom: 7px; }
+    .feature-desc { font-size: 13px; color: #64748b; line-height: 1.65; margin: 0; }
+
+    /* ── PARTNERS ── */
+    .partners-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 28px; margin-top: 28px;
+    }
+    .partner-card {
+        background: white; border-radius: 20px; padding: 36px 30px;
+        text-align: center; box-shadow: 0 6px 28px rgba(30,60,114,0.08);
+        border: 2px solid #e8edf5;
+        text-decoration: none; color: inherit; display: block;
+        transition: all 0.28s ease; position: relative; overflow: hidden;
+    }
+    .partner-card::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+        background: linear-gradient(90deg, #1e3c72, #2a5298);
+        opacity: 0; transition: opacity 0.25s;
+    }
+    .partner-card:hover {
+        transform: translateY(-8px); color: inherit; text-decoration: none;
+        box-shadow: 0 22px 52px rgba(30,60,114,0.16); border-color: #2a5298;
+    }
+    .partner-card:hover::before { opacity: 1; }
+    .partner-logo-wrap {
+        background: linear-gradient(135deg, #1e3c72, #2a5298);
+        border-radius: 16px;
+        padding: clamp(14px,2.5vw,22px) clamp(22px,4vw,40px);
+        display: inline-block; margin-bottom: 24px;
+        box-shadow: 0 4px 16px rgba(30,60,114,0.25);
+        transition: box-shadow 0.25s;
+    }
+    .partner-card:hover .partner-logo-wrap { box-shadow: 0 8px 28px rgba(30,60,114,0.38); }
+    .partner-logo {
+        height: clamp(80px, 12vw, 140px); width: auto; max-width: 85%;
+        object-fit: contain; display: block; margin: 0 auto 20px;
+        transition: transform 0.25s;
+    }
+    .partner-card:hover .partner-logo { transform: scale(1.05); }
+    .partner-role {
+        font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em;
+        text-transform: uppercase; color: #94a3b8; margin-bottom: 7px;
+    }
+    .partner-name { font-size: 17px; font-weight: 800; color: #1e3c72; margin-bottom: 12px; }
+    .partner-desc { font-size: 13.5px; color: #64748b; line-height: 1.72; margin-bottom: 22px; }
+    .partner-visit {
+        display: inline-flex; align-items: center; gap: 7px;
+        font-size: 13px; font-weight: 700; color: #2a5298;
+        background: #eff4ff; padding: 8px 22px; border-radius: 999px;
+        transition: all 0.22s; border: 1.5px solid #c7d9ff;
+    }
+    .partner-card:hover .partner-visit { background: #1e3c72; color: white; border-color: #1e3c72; }
+
+    /* ── FOOTER ── */
+    .footer-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white; padding: 40px 0 20px; margin-top: 70px;
+    }
+    .footer-content { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 30px; margin-bottom: 30px; }
+    .footer-logo-section { display: flex; flex-direction: column; gap: 15px; }
+    .footer-logo-section img { width: 180px; max-width: 25vw; height: auto; object-fit: contain; }
+    .footer-logo-section p { color: rgba(255,255,255,0.85); font-size: 14px; margin: 0; }
+    .footer-links { display: flex; flex-direction: column; gap: 10px; }
+    .footer-links h6 { font-weight: 700; font-size: 16px; margin-bottom: 10px; color: white; }
+    .footer-links a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 14px; transition: all 0.3s; }
+    .footer-links a:hover { color: white; padding-left: 5px; }
+    .footer-contact { display: flex; flex-direction: column; gap: 10px; }
+    .footer-contact h6 { font-weight: 700; font-size: 16px; margin-bottom: 10px; color: white; }
+    .footer-contact p { color: rgba(255,255,255,0.8); font-size: 14px; margin: 0; }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px; text-align: center; }
+    .footer-bottom p { margin: 5px 0; font-size: 13px; color: rgba(255,255,255,0.75); }
+    .footer-credit { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 10px; }
+    .footer-credit a { color: #ffc107; text-decoration: none; font-weight: 600; transition: all 0.3s; }
+    .footer-credit a:hover { color: #ffdd57; text-decoration: underline; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+        .footer-content { grid-template-columns: 1fr; gap: 25px; text-align: center; }
+        .footer-logo-section img { margin: 0 auto; }
+        .footer-custom .container-fluid { padding-left: 20px !important; padding-right: 20px !important; }
+        .partners-grid { grid-template-columns: 1fr; }
+        .features-grid { grid-template-columns: repeat(2, 1fr); }
+        .navbar-profile { gap: 8px; }
+    }
+    @media (max-width: 480px) {
+        .features-grid { grid-template-columns: 1fr; }
+    }
+</style>
+
+<!-- ═══ NAVBAR ═══ -->
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <div class="container-fluid" style="padding-left:20px;padding-right:20px;">
+        <a class="navbar-brand" href="{% url 'tests_list' %}">
+            <img src="{% static 'examPattern.png' %}" alt="examPattern">
+        </a>
+        <div class="navbar-profile">
+            {% if user.is_authenticated %}
+                <a href="{% url 'profile' %}" class="text-decoration-none">
+                    <div class="profile-avatar" title="{{ user.get_full_name|default:user.username }}">
+                        {% if user.photo %}
+                            <img src="{{ user.photo.url }}" alt="{{ user.username }}">
+                        {% else %}
+                            {{ user.username|first|upper }}
+                        {% endif %}
+                    </div>
+                </a>
+                <a href="{% url 'profile' %}" class="nav-link">{{ user.username }}</a>
+                {% if user.is_staff %}
+                    <a href="/builder/" class="nav-link" style="color:#ffc107 !important;">
+                        <i class="fas fa-tools"></i> Builder
+                    </a>
+                {% endif %}
+                {% if user.is_superuser %}
+                    <button type="button" class="btn btn-login" data-bs-toggle="modal" data-bs-target="#manageAdminsModal" style="background:rgba(109,40,217,0.85);margin-left:4px;">
+                        <i class="fas fa-users-cog"></i> Admins
+                    </button>
+                {% endif %}
+                <a href="{% url 'logout' %}" class="btn btn-logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-login">Login</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<!-- ═══ PAGE ═══ -->
+<div class="about-wrap">
+
+    <!-- Hero -->
+    <div class="about-hero">
+        <div class="about-hero-logo-wrap">
+            <img src="{% static 'examPattern.png' %}" alt="examPattern" class="about-hero-logo">
+        </div>
+        <p class="about-hero-tagline">India's smarter way to prepare for competitive exams</p>
+        <div class="about-hero-pills">
+            <span class="about-hero-pill">🎯 Mock Tests</span>
+            <span class="about-hero-pill">📊 Performance Analytics</span>
+            <span class="about-hero-pill">📱 Mobile-Friendly</span>
+            <span class="about-hero-pill">🔐 Secure Platform</span>
+        </div>
+    </div>
+
+    <!-- What is examPattern? -->
+    <div class="about-section">
+        <div class="section-heading">What is examPattern?</div>
+        <div class="section-bar"></div>
+        <p class="about-text">
+            examPattern is a powerful online mock test platform built for students preparing for competitive entrance exams like
+            <strong>TS EAPCET (formerly EAMCET)</strong> and beyond. It delivers timed practice tests that closely simulate real exam
+            conditions — giving students the confidence and strategy they need to perform at their best on exam day.
+            After every test, students receive in-depth performance analytics, question-wise solution reviews, and subject-wise
+            breakdowns that help turn weak areas into strengths. Whether you're aiming for Engineering, Agriculture, or Pharmacy,
+            examPattern is your complete digital preparation companion.
+        </p>
+    </div>
+
+    <!-- Key Features -->
+    <div class="about-section">
+        <div class="section-heading">Key Features</div>
+        <div class="section-bar"></div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <span class="feature-icon">📝</span>
+                <div class="feature-title">Practice Mock Tests</div>
+                <p class="feature-desc">Full-length and section-wise tests that mirror real exam patterns and difficulty levels.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">⏱️</span>
+                <div class="feature-title">Real-Time Timer</div>
+                <p class="feature-desc">Countdown timer and auto-submission simulate actual exam pressure and build time management.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">⚡</span>
+                <div class="feature-title">Instant Results</div>
+                <p class="feature-desc">Scores and detailed performance analytics delivered the moment you submit your test.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">🔍</span>
+                <div class="feature-title">Solution Review</div>
+                <p class="feature-desc">Question-by-question review with detailed explanations and correct answer highlighting.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">📊</span>
+                <div class="feature-title">Performance Tracking</div>
+                <p class="feature-desc">Subject-wise breakdown and score history to guide and sharpen your preparation strategy.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">🔒</span>
+                <div class="feature-title">Secure & Reliable</div>
+                <p class="feature-desc">Session-based test locking and secure authentication keep your progress safe at all times.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Our Family -->
+    <div class="about-section">
+        <div class="section-heading">Our Family</div>
+        <div class="section-bar"></div>
+        <p class="about-text">
+            examPattern is proudly <strong>powered by Prathibha Institute</strong> and <strong>built by Prathibha Solutions</strong> —
+            two Telangana-based startups united by a shared mission to make quality education accessible to every student.
+        </p>
+        <div class="partners-grid">
+
+            <a href="https://www.prathibhainstitutions.com" target="_blank" rel="noopener noreferrer" class="partner-card">
+                <img src="{% static 'Prathibha Institute.png' %}" alt="Prathibha Institute" class="partner-logo">
+                <div class="partner-role">Powers Our Content</div>
+                <div class="partner-name">Prathibha Institute</div>
+                <p class="partner-desc">
+                    The educational institution behind our curated question banks, expert academic content, and student-first
+                    approach. Serving aspiring students across Telangana with quality coaching and personalised guidance.
+                </p>
+                <span class="partner-visit"><i class="fas fa-external-link-alt"></i> Visit Website</span>
+            </a>
+
+            <a href="https://www.prathibhasolutions.com" target="_blank" rel="noopener noreferrer" class="partner-card">
+                <img src="{% static 'Prathibha Solutions.png' %}" alt="Prathibha Solutions" class="partner-logo">
+                <div class="partner-role">Built &amp; Maintains This App</div>
+                <div class="partner-name">Prathibha Solutions</div>
+                <p class="partner-desc">
+                    The tech startup that designed, developed, and continues to maintain examPattern. Building innovative
+                    digital solutions that bridge the gap between education and technology for a better tomorrow.
+                </p>
+                <span class="partner-visit"><i class="fas fa-external-link-alt"></i> Visit Website</span>
+            </a>
+
+        </div>
+    </div>
+
+</div><!-- /.about-wrap -->
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer-custom">
+    <div class="container-fluid" style="padding-left:60px;padding-right:60px;">
+        <div class="footer-content">
+            <div class="footer-logo-section">
+                <img src="{% static 'examPattern.png' %}" alt="examPattern">
+                <p>Learn. Thrive. Succeed.</p>
+            </div>
+            <div class="footer-links">
+                <h6>Quick Links</h6>
+                <a href="{% url 'tests_list' %}"><i class="fas fa-home"></i> Home</a>
+                <a href="{% url 'about' %}"><i class="fas fa-info-circle"></i> About</a>
+                {% if user.is_authenticated %}
+                    <a href="{% url 'profile' %}"><i class="fas fa-user"></i> Profile</a>
+                {% endif %}
+                {% if user.is_staff %}
+                    <a href="/builder/"><i class="fas fa-tools"></i> Test Builder</a>
+                {% endif %}
+                <a href="{% url 'privacy_policy' %}"><i class="fas fa-shield-alt"></i> Privacy Policy</a>
+                <a href="{% url 'terms_of_service' %}"><i class="fas fa-file-contract"></i> Terms of Service</a>
+            </div>
+            <div class="footer-contact">
+                <h6>Contact Us</h6>
+                <p><i class="fas fa-envelope"></i> prathibhainstitutions@gmail.com</p>
+                <p><i class="fas fa-phone"></i> +91 9030941099</p>
+                <p><i class="fas fa-map-marker-alt"></i> Beside Bank of Maharashtra, Namdevwada, Nizamabad</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 examPattern. All rights reserved.</p>
+            <p class="footer-credit">Made by <a href="https://www.prathibhasolutions.com" target="_blank" rel="noopener noreferrer">Prathibha Solutions</a></p>
+        </div>
+    </div>
+</footer>
+
+{% endblock %}

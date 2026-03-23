@@ -23,6 +23,11 @@ from evaluation.models import EvaluationResult
 from testseries.models import TestSeriesExamSection, TestSeriesHighlight
 
 @require_http_methods(["GET"])
+def about_page(request):
+    return render(request, 'about.html')
+
+
+@require_http_methods(["GET"])
 def series_suggest(request):
     """Return JSON list of active test series names matching query (for autocomplete)."""
     q = request.GET.get('q', '').strip()
