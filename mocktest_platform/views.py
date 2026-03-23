@@ -383,20 +383,24 @@ def attempt_results(request, attempt_id):
             evaluation.max_marks = 0
             evaluation.percentage = 0.0
             
-        # Get total attempts for rank display (only first attempts)
+        # Get total attempts for rank display (only first attempts, excluding admins)
         evaluation.total_attempts = TestAttempt.objects.filter(
             test=attempt.test,
             status=TestAttempt.STATUS_SUBMITTED,
-            attempt_number=1
+            attempt_number=1,
+            user__is_staff=False,
+            user__is_superuser=False,
         ).count()
         
-        # Only calculate rank and percentile for first attempts
-        if attempt.attempt_number == 1:
-            # Calculate rank among first attempts only
+        # Only calculate rank and percentile for first attempts of non-admin users
+        if attempt.attempt_number == 1 and not (attempt.user.is_staff or attempt.user.is_superuser):
+            # Calculate rank among first attempts only (excluding admins)
             better_scores = EvaluationResult.objects.filter(
                 attempt__test=attempt.test,
                 attempt__status=TestAttempt.STATUS_SUBMITTED,
                 attempt__attempt_number=1,
+                attempt__user__is_staff=False,
+                attempt__user__is_superuser=False,
                 total_score__gt=evaluation.total_score
             ).count()
             
@@ -410,14 +414,14 @@ def attempt_results(request, attempt_id):
             else:
                 evaluation.percentile = 0.0
         else:
-            # For second attempts, don't calculate rank/percentile
+            # For admin attempts or second attempts, don't calculate rank/percentile
             evaluation.rank = None
             evaluation.percentile = None
         
     except EvaluationResult.DoesNotExist:
         pass
     
-    # Get top 10 rankings for this test (only first attempts)
+    # Get top 10 rankings for this test (only first attempts, excluding admins)
     top_rankings = []
     if evaluation:
         top_rankings = (
@@ -425,7 +429,9 @@ def attempt_results(request, attempt_id):
             .filter(
                 attempt__test=attempt.test,
                 attempt__status=TestAttempt.STATUS_SUBMITTED,
-                attempt__attempt_number=1
+                attempt__attempt_number=1,
+                attempt__user__is_staff=False,
+                attempt__user__is_superuser=False,
             )
             .select_related('attempt__user')
             .order_by('-total_score', 'evaluated_at')[:10]

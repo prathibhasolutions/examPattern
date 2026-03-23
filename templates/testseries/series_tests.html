@@ -508,6 +508,11 @@
                                                 <a href="{% url 'review_solutions' info.latest_submitted_id %}" class="btn btn-success attempt-btn">
                                                     <i class="fas fa-eye"></i> Review Solutions
                                                 </a>
+                                                {% if user.is_staff or user.is_superuser %}
+                                                <a href="{% url 'test_instructions' test.id %}" class="btn btn-primary attempt-btn">
+                                                    <i class="fas fa-redo"></i> Re-attempt
+                                                </a>
+                                                {% endif %}
                                               {% elif info.submitted_count == 1 %}
                                                 <a href="{% url 'review_solutions' info.latest_submitted_id %}" class="btn btn-success attempt-btn">
                                                     <i class="fas fa-eye"></i> Review Solutions
@@ -577,6 +582,11 @@
                                         <a href="{% url 'review_solutions' info.latest_submitted_id %}" class="btn btn-success attempt-btn">
                                             <i class="fas fa-eye"></i> Review Solutions
                                         </a>
+                                        {% if user.is_staff or user.is_superuser %}
+                                        <a href="{% url 'test_instructions' test.id %}" class="btn btn-primary attempt-btn">
+                                            <i class="fas fa-redo"></i> Re-attempt
+                                        </a>
+                                        {% endif %}
                                       {% elif info.submitted_count == 1 %}
                                         <a href="{% url 'review_solutions' info.latest_submitted_id %}" class="btn btn-success attempt-btn">
                                             <i class="fas fa-eye"></i> Review Solutions

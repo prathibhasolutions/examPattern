@@ -109,15 +109,18 @@ def evaluate_attempt(attempt: TestAttempt) -> EvaluationResult:
 
     # Rank and percentile among submitted attempts for this test
     # Only consider first attempts (attempt_number=1) for fair ranking
+    # Exclude staff/superuser attempts from the ranking pool
     submitted = TestAttempt.objects.filter(
         test=attempt.test,
         status=TestAttempt.STATUS_SUBMITTED,
         score__isnull=False,
         attempt_number=1,  # Only count first attempts
+        user__is_staff=False,
+        user__is_superuser=False,
     )
 
-    # Only calculate rank/percentile for first attempts
-    if attempt.attempt_number == 1:
+    # Only calculate rank/percentile for first attempts of non-admin users
+    if attempt.attempt_number == 1 and not (attempt.user.is_staff or attempt.user.is_superuser):
         total_attempts = submitted.count()
         higher_count = submitted.filter(score__gt=total_score).count()
 

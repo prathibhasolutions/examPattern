@@ -141,7 +141,7 @@ class TestViewSet(viewsets.ReadOnlyModelViewSet):
             serializer = TestAttemptSerializer(in_progress)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
-        if submitted_count >= 2:
+        if submitted_count >= 2 and not (user.is_staff or user.is_superuser):
             return Response(
                 {'error': 'Maximum attempt limit reached. You can only attempt this test twice.'},
                 status=status.HTTP_400_BAD_REQUEST
