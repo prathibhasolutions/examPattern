@@ -306,7 +306,7 @@
   /* Test Layout */
   .test-layout {
     display: flex;
-    height: calc(100vh - 117px);
+    height: calc(100vh - 117px - var(--offline-banner-height));
     overflow: hidden;
   }
 
@@ -675,7 +675,7 @@
     }
 
     .test-layout {
-      height: calc(100vh - 100px);
+      height: calc(100vh - 100px - var(--offline-banner-height));
     }
 
     .question-header {
@@ -786,6 +786,28 @@
       grid-template-columns: 1fr;
     }
   }
+
+  /* Offline Warning Banner */
+  :root {
+    --offline-banner-height: 0px;
+  }
+
+  #offline-banner {
+    display: none;
+    background: #b45309;
+    color: #fff;
+    text-align: center;
+    padding: 7px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    position: relative;
+    z-index: 150;
+  }
+
+  #offline-banner.visible {
+    display: block;
+  }
 </style>
 {% endblock %}
 
@@ -827,6 +849,12 @@
   <div class="sections-bar" id="sectionsBar">
     <!-- Sections will be dynamically loaded here -->
   </div>
+</div>
+
+<!-- Offline Warning Banner -->
+<div id="offline-banner">
+  <i class="fas fa-wifi me-2" style="opacity:0.85;"></i>
+  No internet connection. You can continue writing &mdash; just make sure you&rsquo;re connected before submitting or the timer runs out.
 </div>
 
 <!-- Test Layout -->

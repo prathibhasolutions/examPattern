@@ -289,5 +289,90 @@
   </script>
   {% endif %}
 
+  <script>
+  // Pending exam submission recovery
+  // If a student's submit failed because of no internet and they closed the tab,
+  // this script silently completes the submission the next time they visit any page.
+  (function () {
+    var API_BASE = '/api/v1';
+
+    function getPendingKeys() {
+      var keys = [];
+      try {
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('exam_pending_submission_') === 0) keys.push(k);
+        }
+      } catch (e) {}
+      return keys;
+    }
+
+    async function processKey(key) {
+      var data;
+      try { data = JSON.parse(localStorage.getItem(key)); } catch (e) { return; }
+      if (!data || !data.attemptId || !data.answers) return;
+
+      var attemptId = data.attemptId;
+
+      // 1. Re-send all saved answers
+      for (var qId in data.answers) {
+        if (!Object.prototype.hasOwnProperty.call(data.answers, qId)) continue;
+        var ans = data.answers[qId];
+        if (!ans || ans.status === 'not_visited') continue;
+        try {
+          var r = await fetch(API_BASE + '/attempts/' + attemptId + '/save_answer/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              question: parseInt(qId),
+              selected_option_ids: ans.selected_option_ids || [],
+              response_text: ans.response_text || '',
+              status: ans.status || 'visited',
+              time_spent_seconds: ans.time_spent_seconds || 0,
+            }),
+            credentials: 'same-origin',
+          });
+          if (r.status === 400) {
+            // Attempt already submitted — just clear localStorage
+            localStorage.removeItem(key);
+            localStorage.removeItem('exam_answer_queue_' + attemptId);
+            return;
+          }
+          if (!r.ok) return; // Server error — try again next visit
+        } catch (e) {
+          return; // Still offline — try again next visit
+        }
+      }
+
+      // 2. Submit the attempt
+      try {
+        var resp = await fetch(API_BASE + '/attempts/' + attemptId + '/submit/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+        });
+        if (resp.ok || resp.status === 400) {
+          // Success (or already submitted) — clean up
+          localStorage.removeItem(key);
+          localStorage.removeItem('exam_answer_queue_' + attemptId);
+        }
+      } catch (e) {
+        // Still offline — will retry on next visit
+      }
+    }
+
+    async function runRecovery() {
+      var keys = getPendingKeys();
+      for (var i = 0; i < keys.length; i++) {
+        await processKey(keys[i]);
+      }
+    }
+
+    // Run on page load and whenever connectivity is restored
+    runRecovery();
+    window.addEventListener('online', runRecovery);
+  })();
+  </script>
+
   </body>
 </html>

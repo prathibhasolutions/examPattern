@@ -1,4 +1,95 @@
 /**
+ * Offline Answer Queue
+ * Buffers failed saves in localStorage so they can be retried on reconnect,
+ * and stores a full pending-submission snapshot when submit fails offline.
+ */
+const OfflineQueue = {
+  queueKey: () => `exam_answer_queue_${ATTEMPT_ID}`,
+  pendingKey: () => `exam_pending_submission_${ATTEMPT_ID}`,
+
+  // Add a failed answer to the retry queue
+  enqueue: (questionId, payload) => {
+    try {
+      const raw = localStorage.getItem(OfflineQueue.queueKey());
+      const queue = raw ? JSON.parse(raw) : {};
+      queue[questionId] = payload;
+      localStorage.setItem(OfflineQueue.queueKey(), JSON.stringify(queue));
+    } catch (e) {
+      console.warn('OfflineQueue.enqueue failed:', e);
+    }
+  },
+
+  // Flush queued answers to the server
+  flush: async () => {
+    let queue;
+    try {
+      const raw = localStorage.getItem(OfflineQueue.queueKey());
+      queue = raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      return;
+    }
+    const ids = Object.keys(queue);
+    if (!ids.length) return;
+
+    const failed = {};
+    for (const qId of ids) {
+      try {
+        await API.saveAnswer(ATTEMPT_ID, queue[qId]);
+        if (UI.answers[qId]) UI.answers[qId]._savedToServer = true;
+      } catch (e) {
+        failed[qId] = queue[qId];
+      }
+    }
+    if (Object.keys(failed).length) {
+      localStorage.setItem(OfflineQueue.queueKey(), JSON.stringify(failed));
+    } else {
+      localStorage.removeItem(OfflineQueue.queueKey());
+    }
+  },
+
+  // Flush every in-memory answer to server (called just before submitting)
+  flushAllAnswers: async () => {
+    const answers = UI.answers || {};
+    for (const [qId, answer] of Object.entries(answers)) {
+      if (answer.status === 'not_visited') continue;
+      try {
+        await API.saveAnswer(ATTEMPT_ID, {
+          question: parseInt(qId),
+          selected_option_ids: answer.selected_option_ids || [],
+          response_text: answer.response_text || '',
+          status: answer.status || 'visited',
+          time_spent_seconds: answer.time_spent_seconds || 0,
+        });
+        if (UI.answers[qId]) UI.answers[qId]._savedToServer = true;
+      } catch (e) {
+        // Continue — if we're offline, submit will fail and trigger localStorage save
+      }
+    }
+    localStorage.removeItem(OfflineQueue.queueKey());
+  },
+
+  // Persist full answer state + metadata for deferred submission
+  savePendingSubmission: (attemptId, answers, timerRemaining) => {
+    try {
+      localStorage.setItem(OfflineQueue.pendingKey(), JSON.stringify({
+        attemptId,
+        answers,
+        timerRemaining,
+        savedAt: Date.now(),
+      }));
+    } catch (e) {
+      console.warn('OfflineQueue.savePendingSubmission failed:', e);
+    }
+  },
+
+  // Remove pending submission after successful submit
+  clearPendingSubmission: () => {
+    localStorage.removeItem(OfflineQueue.pendingKey());
+    localStorage.removeItem(OfflineQueue.queueKey());
+  },
+};
+
+/**
  * Main Test Interface App
  * Orchestrates all modules
  */
@@ -17,6 +108,8 @@ const testApp = {
   allowSectionSwitch: false,
   forceSectionSwitch: false,
   timerHeartbeatId: null,
+  isOffline: false,
+  pendingSubmitOnReconnect: false,
 
   // Initialize app
   init: async () => {
@@ -388,48 +481,73 @@ const testApp = {
     try {
       // Mark as submitting to prevent beforeunload warning
       testApp.isSubmitting = true;
-      
+
       // Record and sync time tracker before submitting
       if (window.TimeTracker && typeof window.TimeTracker.recordCurrentQuestion === 'function') {
         TimeTracker.recordCurrentQuestion();
-        
+
         // Stop periodic sync to avoid conflicts
         if (typeof TimeTracker.stopPeriodicSync === 'function') {
           TimeTracker.stopPeriodicSync();
         }
-        
+
         // Sync time updates and wait for completion
         await TimeTracker.syncTimeUpdates();
-        
-        // Add small delay to ensure requests are processed
+
+        // Small delay to ensure requests are processed
         await new Promise(resolve => setTimeout(resolve, 500));
       }
-      
+
       Timer.stop();
-      // Clear heartbeat interval
       if (testApp.timerHeartbeatId) {
         clearInterval(testApp.timerHeartbeatId);
         testApp.timerHeartbeatId = null;
       }
-      const result = await API.submitAttempt(ATTEMPT_ID);
-      
-      // Redirect to results page immediately with success parameter
-      window.location.replace(`/results/${ATTEMPT_ID}/?submitted=true`);
+
+      // Flush all in-memory answers to the server before submitting
+      // so nothing that was written offline gets lost
+      await OfflineQueue.flushAllAnswers();
+
+      try {
+        await API.submitAttempt(ATTEMPT_ID);
+        OfflineQueue.clearPendingSubmission();
+        window.location.replace(`/results/${ATTEMPT_ID}/?submitted=true`);
+      } catch (submitError) {
+        // Submit failed (likely offline) — persist full state to localStorage
+        // and set a flag to auto-submit the moment internet returns
+        OfflineQueue.savePendingSubmission(ATTEMPT_ID, UI.answers, Timer.remainingSeconds);
+        testApp.pendingSubmitOnReconnect = true;
+        testApp.isSubmitting = false;
+
+        // Remove any "submitting" state so the page stays usable
+        const existing = document.getElementById('pending-submit-toast');
+        if (existing) existing.remove();
+
+        const pendingToast = document.createElement('div');
+        pendingToast.id = 'pending-submit-toast';
+        pendingToast.className = 'alert alert-warning position-fixed bottom-0 start-50 translate-middle-x mb-3';
+        pendingToast.style.zIndex = '9999';
+        pendingToast.style.maxWidth = '500px';
+        pendingToast.style.fontSize = '14px';
+        pendingToast.innerHTML =
+          '<i class="fas fa-cloud-upload-alt me-2"></i>' +
+          '<strong>No internet.</strong> Your answers are saved on this device and will be submitted automatically once you\'re back online.';
+        document.body.appendChild(pendingToast);
+      }
     } catch (error) {
       console.error('Failed to submit:', error);
       testApp.isSubmitting = false;
-      
+
       const errorToast = document.createElement('div');
       errorToast.className = 'alert alert-danger position-fixed top-0 start-50 translate-middle-x mt-3';
       errorToast.style.zIndex = '9999';
       errorToast.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Failed to submit test. Please try again.';
       document.body.appendChild(errorToast);
-      
+
       setTimeout(() => {
         errorToast.remove();
       }, 3000);
-      
-      // Restart timer if submission failed
+
       Timer.start();
     }
   },
@@ -514,6 +632,36 @@ const testApp = {
         leaveModal.show();
         
         return false;
+      }
+    });
+
+    // Offline / online detection
+    window.addEventListener('offline', () => {
+      testApp.isOffline = true;
+      const banner = document.getElementById('offline-banner');
+      if (banner) {
+        banner.classList.add('visible');
+        document.documentElement.style.setProperty('--offline-banner-height', banner.offsetHeight + 'px');
+      }
+    });
+
+    window.addEventListener('online', () => {
+      testApp.isOffline = false;
+      const banner = document.getElementById('offline-banner');
+      if (banner) {
+        banner.classList.remove('visible');
+        document.documentElement.style.setProperty('--offline-banner-height', '0px');
+      }
+
+      // Silently flush any answers that failed to save while offline
+      OfflineQueue.flush();
+
+      // Auto-submit if the submit was attempted while offline
+      if (testApp.pendingSubmitOnReconnect) {
+        testApp.pendingSubmitOnReconnect = false;
+        const pendingToast = document.getElementById('pending-submit-toast');
+        if (pendingToast) pendingToast.remove();
+        testApp.submitAttempt();
       }
     });
   },

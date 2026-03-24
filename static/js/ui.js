@@ -269,16 +269,23 @@ const UI = {
     const answer = UI.answers[questionId];
     if (!answer) return;
 
+    const payload = {
+      question: questionId,
+      selected_option_ids: answer.selected_option_ids || [],
+      response_text: answer.response_text || '',
+      status: answer.status || 'visited',
+      time_spent_seconds: answer.time_spent_seconds || 0,
+    };
+
     try {
-      await API.saveAnswer(ATTEMPT_ID, {
-        question: questionId,
-        selected_option_ids: answer.selected_option_ids || [],
-        response_text: answer.response_text || '',
-        status: answer.status || 'visited',
-        time_spent_seconds: answer.time_spent_seconds || 0,
-      });
+      await API.saveAnswer(ATTEMPT_ID, payload);
+      if (UI.answers[questionId]) UI.answers[questionId]._savedToServer = true;
     } catch (error) {
       console.error('Failed to save answer:', error);
+      // Queue for retry when internet returns
+      if (window.OfflineQueue) {
+        OfflineQueue.enqueue(questionId, payload);
+      }
     }
   },
 
