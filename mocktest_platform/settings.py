@@ -107,11 +107,12 @@ WSGI_APPLICATION = 'mocktest_platform.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres',
-        'PASSWORD': 'sherLOCKED123$%^',
-        'HOST': 'exampattern-db.c922kmuauwy1.ap-south-1.rds.amazonaws.com',
+        'NAME': os.getenv('DB_NAME', 'postgres'),
+        'USER': os.getenv('DB_USER', 'postgres'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'sherLOCKED123$%^'),
+        'HOST': os.getenv('DB_HOST', 'exampattern-db.c922kmuauwy1.ap-south-1.rds.amazonaws.com'),
         'PORT': '5432',
+        'CONN_MAX_AGE': 60,
     }
 }
 
