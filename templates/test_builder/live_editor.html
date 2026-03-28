@@ -274,13 +274,26 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
     width: 11px; height: 11px; border-radius: 50%;
     background: #a855f7; border: 2px solid #1e293b; pointer-events: none;
 }
+/* Warning state: amber dot in bottom-right corner (distinct position from error dot) */
+.le-q-circle.has-warning::after {
+    content: ''; position: absolute; bottom: -4px; right: -4px;
+    width: 11px; height: 11px; border-radius: 50%;
+    background: #f59e0b; border: 2px solid #1e293b; pointer-events: none;
+}
 /* Error dot on section tabs */
 .le-error-dot {
     display: inline-block; width: 8px; height: 8px; border-radius: 50%;
     background: #a855f7; flex-shrink: 0; margin-left: 3px; vertical-align: middle;
 }
+/* Warning dot on section tabs */
+.le-warning-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: #f59e0b; flex-shrink: 0; margin-left: 3px; vertical-align: middle;
+}
 /* Error legend dot */
 .le-dot-error { background: rgba(168,85,247,0.5); border-color: rgba(168,85,247,0.9); }
+/* Warning legend dot */
+.le-dot-warning { background: rgba(245,158,11,0.5); border-color: rgba(245,158,11,0.9); }
 /* Validation error summary panel in palette */
 .le-validation-panel {
     background: rgba(168,85,247,0.12); border: 1px solid rgba(168,85,247,0.35);
@@ -291,6 +304,27 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
     color: #c084fc; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
 }
 .le-validation-panel-title i { font-size: 11px; }
+/* Warning summary panel in palette */
+.le-warning-panel {
+    background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3);
+    border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;
+}
+.le-warning-panel-title {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    color: #fbbf24; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+}
+.le-warning-panel-title i { font-size: 11px; }
+.le-validation-warning-list {
+    list-style: none; margin: 0; padding: 0;
+}
+.le-validation-warning-list li {
+    display: flex; align-items: flex-start; gap: 6px;
+    padding: 4px 0; border-bottom: 1px solid rgba(245,158,11,0.15);
+    font-size: 11px; color: #fde68a; cursor: pointer; transition: color 0.15s; line-height: 1.4;
+}
+.le-validation-warning-list li:last-child { border-bottom: none; }
+.le-validation-warning-list li:hover { color: #fef3c7; }
+.le-validation-warning-list li i { color: #fbbf24; margin-top: 1px; flex-shrink: 0; font-size: 10px; }
 .le-validation-error-list {
     list-style: none; margin: 0; padding: 0;
 }
@@ -600,6 +634,8 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
         <div class="le-palette-inner">
             <!-- Validation error summary (shown after failed publish attempt) -->
             <div id="validationErrorPanel" style="display:none;"></div>
+            <!-- Soft warning summary (shown when publish is valid but has warnings) -->
+            <div id="validationWarningPanel" style="display:none;"></div>
             <div class="le-status-block">
                 <div class="le-status-title">Status</div>
                 <div class="le-status-legends">
@@ -607,6 +643,7 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
                     <span class="le-legend"><span class="le-legend-dot le-dot-editing"></span> Editing</span>
                     <span class="le-legend"><span class="le-legend-dot le-dot-new"></span> New</span>
                     <span class="le-legend"><span class="le-legend-dot le-dot-error"></span> Error</span>
+                    <span class="le-legend"><span class="le-legend-dot le-dot-warning"></span> Warning</span>
                 </div>
             </div>
             <div class="le-palette-section-title" id="paletteSectionTitle">SECTION: —</div>
@@ -710,6 +747,9 @@ let pendingAction = null;      // { type, ... } deferred after save/discard
 // validationErrors: { sectionId: { sectionError: null|string, questionErrors: { questionId: string } } }
 let validationErrors = {};
 let globalValidationErrors = [];
+// questionWarnings: { sectionId: { questionId: string } } — soft warnings, publish still allowed
+let questionWarnings = {};
+let hasWarningsOnly = false;  // true when validate returns valid:true but warnings exist
 
 // ── Helpers ────────────────────────────────────────────
 function activeSection() { return sections.find(s => s.id === activeSectionId); }
@@ -757,6 +797,16 @@ function renderSectionTabs() {
                 ? secErr.sectionError
                 : `${qCount} question${qCount > 1 ? 's' : ''} with errors`;
             tab.appendChild(dot);
+        } else {
+            // Warning dot (amber): show if section has warnings but no hard errors
+            const secWarn = questionWarnings[sec.id];
+            if (secWarn && Object.keys(secWarn).length > 0) {
+                const wdot = document.createElement('span');
+                wdot.className = 'le-warning-dot';
+                const wCount = Object.keys(secWarn).length;
+                wdot.title = `${wCount} question${wCount > 1 ? 's' : ''} with warnings`;
+                tab.appendChild(wdot);
+            }
         }
 
         // Rename button
@@ -800,11 +850,17 @@ function renderPalette() {
         const secErr = validationErrors[sec.id];
         const qErrMsg = secErr && secErr.questionErrors ? secErr.questionErrors[q.id] : null;
         const sectionErrMsg = secErr ? secErr.sectionError : null;
+        // Warning indicator: amber dot — show if question has a soft warning (and no hard error)
+        const secWarn = questionWarnings[sec.id];
+        const qWarnMsg = secWarn ? secWarn[q.id] : null;
         if (qErrMsg || sectionErrMsg) {
             circle.classList.add('has-error');
             circle.title = qErrMsg
                 ? `Q${q.order}: ${qErrMsg}`
                 : `Q${q.order}: section issue — ${sectionErrMsg}`;
+        } else if (qWarnMsg) {
+            circle.classList.add('has-warning');
+            circle.title = `Q${q.order}: ⚠ ${qWarnMsg}`;
         } else {
             circle.title = `Question ${q.order}`;
         }
@@ -1091,14 +1147,27 @@ async function saveQuestion() {
 
 // ── Validate & clear error markers when question is saved ──────────
 function clearQuestionError(sectionId, questionId) {
-    if (!validationErrors[sectionId]) return;
-    if (validationErrors[sectionId].questionErrors) {
-        delete validationErrors[sectionId].questionErrors[questionId];
+    if (validationErrors[sectionId]) {
+        if (validationErrors[sectionId].questionErrors) {
+            delete validationErrors[sectionId].questionErrors[questionId];
+        }
+        if (!validationErrors[sectionId].sectionError &&
+            Object.keys(validationErrors[sectionId].questionErrors || {}).length === 0) {
+            delete validationErrors[sectionId];
+        }
     }
-    // Remove section entry entirely if no more errors remain
-    if (!validationErrors[sectionId].sectionError &&
-        Object.keys(validationErrors[sectionId].questionErrors || {}).length === 0) {
-        delete validationErrors[sectionId];
+    // Also clear any soft warning for this question after a save
+    if (questionWarnings[sectionId]) {
+        delete questionWarnings[sectionId][questionId];
+        if (Object.keys(questionWarnings[sectionId]).length === 0) {
+            delete questionWarnings[sectionId];
+        }
+    }
+    // Reset warning-only publish flow if all warnings gone
+    if (hasWarningsOnly && Object.keys(questionWarnings).length === 0) {
+        hasWarningsOnly = false;
+        const btn = document.getElementById('publishBtn');
+        if (btn) btn.innerHTML = '<i class="fas fa-upload"></i> Publish';
     }
     renderSectionTabs();
     renderPalette();
@@ -1114,63 +1183,104 @@ function renderErrorSummary() {
     if (!hasGlobal && !hasLocal) {
         panel.style.display = 'none';
         panel.innerHTML = '';
+    } else {
+        let html = '<div class="le-validation-panel">';
+        html += '<div class="le-validation-panel-title"><i class="fas fa-exclamation-circle"></i> Publish Errors</div>';
+
+        // Global errors (e.g. duplicate section names)
+        globalValidationErrors.forEach(msg => {
+            html += `<div class="le-validation-global-error"><i class="fas fa-times-circle"></i><span>${msg}</span></div>`;
+        });
+
+        const items = [];
+        sections.forEach(sec => {
+            const secErr = validationErrors[sec.id];
+            if (!secErr) return;
+            if (secErr.sectionError) {
+                items.push({ sectionId: sec.id, questionId: null, label: `${sec.name}: ${secErr.sectionError}` });
+            }
+            const qErrors = secErr.questionErrors || {};
+            Object.entries(qErrors).forEach(([qid, msg]) => {
+                const q = sec.questions.find(x => x.id === parseInt(qid));
+                const label = `${sec.name} › Q${q ? q.order : qid}: ${msg}`;
+                items.push({ sectionId: sec.id, questionId: parseInt(qid), label });
+            });
+        });
+
+        if (items.length > 0) {
+            html += '<ul class="le-validation-error-list" id="validationErrorList"></ul>';
+        }
+        html += '</div>';
+        panel.innerHTML = html;
+        panel.style.display = '';
+
+        const listEl = panel.querySelector('#validationErrorList');
+        if (listEl) {
+            items.forEach(item => {
+                const li = document.createElement('li');
+                li.innerHTML = `<i class="fas fa-arrow-right"></i><span>${item.label}</span>`;
+                li.addEventListener('click', () => {
+                    if (item.sectionId !== activeSectionId) doSelectSection(item.sectionId);
+                    if (item.questionId !== null) {
+                        setTimeout(() => doSelectQuestion(item.questionId), 50);
+                    }
+                });
+                listEl.appendChild(li);
+            });
+        }
+    }
+
+    // Always sync warning panel too
+    renderWarningSummary();
+}
+
+// ── Render soft-warning summary panel (amber, non-blocking) ────────
+function renderWarningSummary() {
+    const panel = document.getElementById('validationWarningPanel');
+    const hasWarnings = Object.keys(questionWarnings).length > 0;
+    if (!hasWarnings) {
+        panel.style.display = 'none';
+        panel.innerHTML = '';
         return;
     }
 
-    let html = '<div class="le-validation-panel">';
-    html += '<div class="le-validation-panel-title"><i class="fas fa-exclamation-circle"></i> Publish Errors</div>';
-
-    // Global errors (e.g. duplicate section names)
-    globalValidationErrors.forEach(msg => {
-        html += `<div class="le-validation-global-error"><i class="fas fa-times-circle"></i><span>${msg}</span></div>`;
-    });
-
-    // Per-question errors (clickable)
-    const ul = document.createElement('ul');
-    ul.className = 'le-validation-error-list';
-    const items = [];
-    sections.forEach(sec => {
-        const secErr = validationErrors[sec.id];
-        if (!secErr) return;
-        if (secErr.sectionError) {
-            items.push({ sectionId: sec.id, questionId: null, label: `${sec.name}: ${secErr.sectionError}` });
-        }
-        const qErrors = secErr.questionErrors || {};
-        Object.entries(qErrors).forEach(([qid, msg]) => {
-            const q = sec.questions.find(x => x.id === parseInt(qid));
-            const label = `${sec.name} › Q${q ? q.order : qid}: ${msg}`;
-            items.push({ sectionId: sec.id, questionId: parseInt(qid), label });
-        });
-    });
-
-    if (items.length > 0) {
-        html += '<ul class="le-validation-error-list" id="validationErrorList"></ul>';
-    }
-
+    let html = '<div class="le-warning-panel">';
+    html += '<div class="le-warning-panel-title"><i class="fas fa-exclamation-triangle"></i> Warnings (won\'t block publish)</div>';
+    html += '<ul class="le-validation-warning-list" id="validationWarningList"></ul>';
     html += '</div>';
     panel.innerHTML = html;
     panel.style.display = '';
 
-    // Add click handlers
-    const listEl = panel.querySelector('#validationErrorList');
-    if (listEl) {
-        items.forEach(item => {
+    const listEl = panel.querySelector('#validationWarningList');
+    sections.forEach(sec => {
+        const secWarn = questionWarnings[sec.id];
+        if (!secWarn) return;
+        Object.entries(secWarn).forEach(([qid, msg]) => {
+            const q = sec.questions.find(x => x.id === parseInt(qid));
+            const label = `${sec.name} › Q${q ? q.order : qid}: ${msg}`;
             const li = document.createElement('li');
-            li.innerHTML = `<i class="fas fa-arrow-right"></i><span>${item.label}</span>`;
+            li.innerHTML = `<i class="fas fa-exclamation-triangle"></i><span>${label}</span>`;
             li.addEventListener('click', () => {
-                if (item.sectionId !== activeSectionId) doSelectSection(item.sectionId);
-                if (item.questionId !== null) {
-                    setTimeout(() => doSelectQuestion(item.questionId), 50);
-                }
+                if (sec.id !== activeSectionId) doSelectSection(sec.id);
+                setTimeout(() => doSelectQuestion(parseInt(qid)), 50);
             });
             listEl.appendChild(li);
         });
-    }
+    });
 }
 
 // ── Validate & Publish ─────────────────────────────────────────────
 async function validateAndPublish() {
     const btn = document.getElementById('publishBtn');
+
+    // Second click after warnings were shown → user confirmed, proceed to publish
+    if (hasWarningsOnly) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing…';
+        window.location.href = `/builder/${DRAFT_ID}/publish/`;
+        return;
+    }
+
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking…';
 
@@ -1181,15 +1291,51 @@ async function validateAndPublish() {
         const data = await resp.json();
 
         if (data.valid) {
-            // All clear — navigate to publish
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing…';
-            window.location.href = `/builder/${DRAFT_ID}/publish/`;
+            // Collect any soft warnings from the response
+            questionWarnings = {};
+            let totalWarnings = 0;
+            (data.sections || []).forEach(sec => {
+                const qW = {};
+                (sec.question_warnings || []).forEach(qw => { qW[qw.id] = qw.warning; });
+                if (Object.keys(qW).length > 0) {
+                    questionWarnings[sec.id] = qW;
+                    totalWarnings += Object.keys(qW).length;
+                }
+            });
+
+            if (totalWarnings === 0) {
+                // All clear — publish immediately
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing…';
+                window.location.href = `/builder/${DRAFT_ID}/publish/`;
+                return;
+            }
+
+            // Warnings found — show them and wait for a second confirmation click
+            hasWarningsOnly = true;
+            renderSectionTabs();
+            renderPalette();
+            renderWarningSummary();
+
+            // Navigate to the first question with a warning
+            const firstWarnSec = data.sections.find(s => s.question_warnings && s.question_warnings.length > 0);
+            if (firstWarnSec) {
+                if (firstWarnSec.id !== activeSectionId) doSelectSection(firstWarnSec.id);
+                if (firstWarnSec.question_warnings.length > 0) {
+                    setTimeout(() => doSelectQuestion(firstWarnSec.question_warnings[0].id), 60);
+                }
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-upload"></i> Publish Anyway';
+            showToast(`${totalWarnings} warning${totalWarnings > 1 ? 's' : ''} found — review or click "Publish Anyway" to proceed`, 'warning', 8000);
             return;
         }
 
-        // Build error state from response
+        // Hard errors — block publish
         validationErrors = {};
         globalValidationErrors = data.global_errors || [];
+        questionWarnings = {};
+        hasWarningsOnly = false;
 
         (data.sections || []).forEach(sec => {
             const qErrors = {};
@@ -1206,7 +1352,6 @@ async function validateAndPublish() {
         renderPalette();
         renderErrorSummary();
 
-        // Navigate to the first section/question with an error
         const firstErrSec = data.sections.find(s =>
             s.section_error || (s.question_errors && s.question_errors.length > 0)
         );

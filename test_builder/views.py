@@ -1376,6 +1376,7 @@ def api_validate_draft(request, draft_id):
     for section_draft in draft.sections.all():
         section_error = None
         question_errors = []
+        question_warnings = []
         name = section_draft.name.strip()
 
         if not name:
@@ -1387,6 +1388,7 @@ def api_validate_draft(request, draft_id):
 
         for q in section_draft.questions.all():
             q_error_parts = []
+            q_warning_parts = []
 
             if not q.question_text and not q.question_image:
                 q_error_parts.append("no question text or image")
@@ -1411,11 +1413,22 @@ def api_validate_draft(request, draft_id):
                         is_valid = False
                         break
 
+                # Soft warning: duplicate option text within the same question
+                option_texts = [o.option_text.strip().lower() for o in options if o.option_text.strip()]
+                if len(option_texts) != len(set(option_texts)):
+                    q_warning_parts.append("two or more options have identical text")
+
             if q_error_parts:
                 question_errors.append({
                     'id': q.id,
                     'order': q.order,
                     'error': '; '.join(q_error_parts),
+                })
+            if q_warning_parts:
+                question_warnings.append({
+                    'id': q.id,
+                    'order': q.order,
+                    'warning': '; '.join(q_warning_parts),
                 })
 
         sections_result.append({
@@ -1423,6 +1436,7 @@ def api_validate_draft(request, draft_id):
             'name': section_draft.name,
             'section_error': section_error,
             'question_errors': question_errors,
+            'question_warnings': question_warnings,
         })
 
     return JsonResponse({
