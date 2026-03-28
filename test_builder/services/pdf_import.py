@@ -66,6 +66,61 @@ def _normalize_label(value):
     return (value or '').strip().upper()
 
 
+def _split_by_latex_segments(text):
+    # Keep existing $...$ blocks untouched while transforming only plain text parts.
+    parts = re.split(r'(\$[^$]+\$)', text or '')
+    return parts
+
+
+def _chemical_to_latex(formula):
+    # H2SO4 -> H_{2}SO_{4}
+    return re.sub(r'(\d+)', r'_{\1}', formula)
+
+
+def _convert_plain_math_segment(segment):
+    value = segment
+
+    value = re.sub(
+        r'\bsqrt\s*\(\s*([^()]{1,80})\s*\)',
+        lambda m: f'$\\sqrt{{{m.group(1).strip()}}}$',
+        value,
+        flags=re.IGNORECASE,
+    )
+    value = re.sub(
+        r'\b([A-Za-z])\^(-?\d+)\b',
+        lambda m: f'${m.group(1)}^{{{m.group(2)}}}$',
+        value,
+    )
+    value = re.sub(
+        r'\b([A-Za-z])_(\d+)\b',
+        lambda m: f'${m.group(1)}_{{{m.group(2)}}}$',
+        value,
+    )
+    value = re.sub(
+        r'\b([A-Z][A-Za-z0-9]*\d+[A-Za-z0-9]*)\b',
+        lambda m: f'${_chemical_to_latex(m.group(1))}$',
+        value,
+    )
+    value = re.sub(r'\s*≤\s*', r' $\\le$ ', value)
+    value = re.sub(r'\s*≥\s*', r' $\\ge$ ', value)
+    value = re.sub(r'\s*≠\s*', r' $\\ne$ ', value)
+    value = re.sub(r'\s*±\s*', r' $\\pm$ ', value)
+    value = re.sub(r'\s*×\s*', r' $\\times$ ', value)
+    value = re.sub(r'\s*÷\s*', r' $\\div$ ', value)
+    return _normalize_text(value)
+
+
+def _auto_latex_text(text):
+    parts = _split_by_latex_segments(text)
+    converted_parts = []
+    for part in parts:
+        if part.startswith('$') and part.endswith('$'):
+            converted_parts.append(part)
+        else:
+            converted_parts.append(_convert_plain_math_segment(part))
+    return _normalize_text(' '.join(p for p in converted_parts if p is not None))
+
+
 def _stem_contains_option_markers(stem):
     markers = re.findall(r'(?:\([1-9A-Ea-e]\)|\b[A-Ea-e][\)\.])', stem or '')
     return len(markers) >= 2
@@ -392,7 +447,12 @@ def _pick_question_image(page_map, candidate, page_question_counts):
 
 
 @transaction.atomic
-def import_pdf_into_section(section: SectionDraft, pdf_file, import_job: PDFImportJob | None = None) -> dict:
+def import_pdf_into_section(
+    section: SectionDraft,
+    pdf_file,
+    import_job: PDFImportJob | None = None,
+    auto_latex: bool = False,
+) -> dict:
     if import_job:
         import_job.status = PDFImportJob.STATUS_RUNNING
         import_job.error_message = ''
@@ -415,6 +475,7 @@ def import_pdf_into_section(section: SectionDraft, pdf_file, import_job: PDFImpo
         skipped_count = 0
         skipped_reasons = Counter()
         auto_adjusted_count = 0
+        latex_converted_fields = 0
 
         for candidate in candidates:
             stem = _normalize_text(candidate.stem)
@@ -430,6 +491,12 @@ def import_pdf_into_section(section: SectionDraft, pdf_file, import_job: PDFImpo
                 skipped_count += 1
                 skipped_reasons['missing stem'] += 1
                 continue
+
+            if auto_latex:
+                latex_stem = _auto_latex_text(stem)
+                if latex_stem != stem:
+                    latex_converted_fields += 1
+                stem = latex_stem
 
             if len(options) == 0:
                 options = [{'label': 'A', 'text': 'Option A (auto-generated)'}]
@@ -455,6 +522,12 @@ def import_pdf_into_section(section: SectionDraft, pdf_file, import_job: PDFImpo
                     skipped_reasons['option text exceeds draft limit'] += 1
                     normalized_options = []
                     break
+
+                if auto_latex:
+                    latex_option = _auto_latex_text(option_text)
+                    if latex_option != option_text:
+                        latex_converted_fields += 1
+                    option_text = latex_option
 
                 is_correct = option_label == correct_label
                 if is_correct:
@@ -500,6 +573,7 @@ def import_pdf_into_section(section: SectionDraft, pdf_file, import_job: PDFImpo
             'imported_count': imported_count,
             'skipped_count': skipped_count,
             'auto_adjusted_count': auto_adjusted_count,
+            'latex_converted_fields': latex_converted_fields,
             'skip_summary': [f"{count} {reason}" for reason, count in sorted(skipped_reasons.items())],
         }
 

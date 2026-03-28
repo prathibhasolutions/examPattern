@@ -1325,6 +1325,7 @@ def import_pdf_to_draft(request, draft_id):
 
     section_id = request.POST.get('section_id', '').strip()
     pdf_file = request.FILES.get('pdf_file')
+    auto_latex = request.POST.get('auto_latex') == '1'
 
     if not section_id:
         messages.error(request, 'Select a section before importing a PDF.')
@@ -1349,7 +1350,12 @@ def import_pdf_to_draft(request, draft_id):
     )
 
     try:
-        result = import_pdf_into_section(section, pdf_file, import_job=import_job)
+        result = import_pdf_into_section(
+            section,
+            pdf_file,
+            import_job=import_job,
+            auto_latex=auto_latex,
+        )
     except Exception as exc:
         messages.error(request, f'PDF import failed: {exc}')
         return redirect('live_editor', draft_id=draft.id)
@@ -1358,6 +1364,7 @@ def import_pdf_to_draft(request, draft_id):
     skipped_count = result.get('skipped_count', 0)
     skip_summary = result.get('skip_summary', [])
     provider_name = result.get('provider_name', 'unknown')
+    latex_converted_fields = result.get('latex_converted_fields', 0)
 
     if imported_count:
         messages.success(
@@ -1378,6 +1385,13 @@ def import_pdf_to_draft(request, draft_id):
             request,
             f"Skipped {skipped_count} question{'s' if skipped_count != 1 else ''} to preserve accuracy"
             + (f': {summary}.' if summary else '.'),
+        )
+
+    if auto_latex and latex_converted_fields:
+        messages.info(
+            request,
+            f'Applied LaTeX conversion to {latex_converted_fields} imported field'
+            f"{'s' if latex_converted_fields != 1 else ''} for better math formatting.",
         )
 
     return redirect('live_editor', draft_id=draft.id)

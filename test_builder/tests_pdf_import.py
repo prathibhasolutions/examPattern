@@ -4,12 +4,28 @@ from unittest.mock import patch
 from test_builder.services.pdf_import import (
     ExtractedPage,
     QuestionCandidate,
+    _auto_latex_text,
     _parse_candidates,
     _select_best_extraction,
 )
 
 
 class PDFImportParserTests(SimpleTestCase):
+    def test_auto_latex_converts_common_math_patterns(self):
+        text = 'Find x^2 if H2SO4 has 2 atoms and sqrt(16) = 4 and a ≤ b.'
+        converted = _auto_latex_text(text)
+
+        self.assertIn('$x^{2}$', converted)
+        self.assertIn('$H_{2}SO_{4}$', converted)
+        self.assertIn('$\\sqrt{16}$', converted)
+        self.assertIn('$\\le$', converted)
+
+    def test_auto_latex_keeps_existing_latex_unchanged(self):
+        text = 'Already formatted $x^2 + y^2$ relation'
+        converted = _auto_latex_text(text)
+
+        self.assertEqual(converted, text)
+
     def test_parses_mcqs_and_answer_key(self):
         pages = [
             ExtractedPage(

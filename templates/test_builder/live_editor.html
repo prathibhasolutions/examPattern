@@ -371,12 +371,16 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
             {% endfor %}
         </select>
         <input type="file" name="pdf_file" class="le-import-file" accept=".pdf,application/pdf" required>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#334155;white-space:nowrap;">
+            <input type="checkbox" name="auto_latex" value="1" checked>
+            Auto LaTeX math
+        </label>
         <button type="submit" class="le-import-btn">
             <i class="fas fa-file-import"></i> Import PDF
         </button>
     </form>
     <div class="le-import-note">
-        PDF import only adds high-confidence single-correct MCQs to drafts. Ambiguous questions are skipped so you can review accuracy manually.
+        PDF import only adds high-confidence single-correct MCQs to drafts. Ambiguous questions are skipped so you can review accuracy manually. Enable Auto LaTeX to convert math-like text (x^2, H2SO4, sqrt(...), <=/>= symbols) into MathJax-friendly format.
     </div>
 </div>
 
