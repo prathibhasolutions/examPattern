@@ -257,6 +257,7 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
     background: rgba(255,255,255,0.12); color: white;
     border: 2px solid rgba(255,255,255,0.25);
     transition: all 0.2s; user-select: none;
+    position: relative;
 }
 .le-q-circle:hover { background: rgba(255,255,255,0.3); transform: scale(1.06); }
 .le-q-circle.active { background: #ef4444; border-color: #dc2626; }
@@ -267,6 +268,46 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
     color: #86efac; font-size: 20px; font-weight: 300;
 }
 .le-q-circle-add:hover { background: rgba(34,197,94,0.35); }
+/* Error state: purple dot in top-right corner of a question circle */
+.le-q-circle.has-error::after {
+    content: ''; position: absolute; top: -4px; right: -4px;
+    width: 11px; height: 11px; border-radius: 50%;
+    background: #a855f7; border: 2px solid #1e293b; pointer-events: none;
+}
+/* Error dot on section tabs */
+.le-error-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: #a855f7; flex-shrink: 0; margin-left: 3px; vertical-align: middle;
+}
+/* Error legend dot */
+.le-dot-error { background: rgba(168,85,247,0.5); border-color: rgba(168,85,247,0.9); }
+/* Validation error summary panel in palette */
+.le-validation-panel {
+    background: rgba(168,85,247,0.12); border: 1px solid rgba(168,85,247,0.35);
+    border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;
+}
+.le-validation-panel-title {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    color: #c084fc; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+}
+.le-validation-panel-title i { font-size: 11px; }
+.le-validation-error-list {
+    list-style: none; margin: 0; padding: 0;
+}
+.le-validation-error-list li {
+    display: flex; align-items: flex-start; gap: 6px;
+    padding: 4px 0; border-bottom: 1px solid rgba(168,85,247,0.15);
+    font-size: 11px; color: #e9d5ff; cursor: pointer; transition: color 0.15s;
+    line-height: 1.4;
+}
+.le-validation-error-list li:last-child { border-bottom: none; }
+.le-validation-error-list li:hover { color: #f0abfc; }
+.le-validation-error-list li i { color: #c084fc; margin-top: 1px; flex-shrink: 0; font-size: 10px; }
+.le-validation-global-error {
+    font-size: 11px; color: #fca5a5; margin-bottom: 6px; padding-bottom: 6px;
+    border-bottom: 1px solid rgba(168,85,247,0.15); display: flex; gap: 6px; align-items: flex-start;
+}
+.le-validation-global-error i { color: #f87171; flex-shrink: 0; margin-top: 1px; font-size: 10px; }
 
 /* Toast */
 .le-toast {
@@ -371,9 +412,9 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
         <a href="{% url 'manage_sections' draft.id %}" class="le-topbar-btn le-topbar-btn-back">
             ← Back
         </a>
-        <a href="{% url 'builder_publish_test' draft.id %}" class="le-topbar-btn le-topbar-btn-publish">
+        <button type="button" id="publishBtn" class="le-topbar-btn le-topbar-btn-publish" onclick="validateAndPublish()">
             <i class="fas fa-upload"></i> Publish
-        </a>
+        </button>
         <a href="{% url 'logout' %}" class="le-topbar-btn le-topbar-btn-logout">
             <i class="fas fa-sign-out-alt"></i> Logout
         </a>
@@ -557,12 +598,15 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
     <!-- RIGHT: Palette -->
     <div class="le-palette-panel">
         <div class="le-palette-inner">
+            <!-- Validation error summary (shown after failed publish attempt) -->
+            <div id="validationErrorPanel" style="display:none;"></div>
             <div class="le-status-block">
                 <div class="le-status-title">Status</div>
                 <div class="le-status-legends">
                     <span class="le-legend"><span class="le-legend-dot le-dot-saved"></span> Saved</span>
                     <span class="le-legend"><span class="le-legend-dot le-dot-editing"></span> Editing</span>
                     <span class="le-legend"><span class="le-legend-dot le-dot-new"></span> New</span>
+                    <span class="le-legend"><span class="le-legend-dot le-dot-error"></span> Error</span>
                 </div>
             </div>
             <div class="le-palette-section-title" id="paletteSectionTitle">SECTION: —</div>
@@ -638,6 +682,8 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
 {% endblock %}
 
 {% block extra_js %}
+{# Pass Django messages (e.g. from a publish redirect) into JS for display as toasts #}
+<script>const DJANGO_MESSAGES=[{% for message in messages %}{"text":"{{ message|escapejs }}","tags":"{{ message.tags|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}];</script>
 <script>
 /* ================================================================
    LIVE EDITOR — JavaScript
@@ -661,6 +707,10 @@ let isNewQuestion = false;     // true while composing a new (unsaved) question
 let isDirty = false;           // editor has unsaved edits
 let pendingAction = null;      // { type, ... } deferred after save/discard
 
+// validationErrors: { sectionId: { sectionError: null|string, questionErrors: { questionId: string } } }
+let validationErrors = {};
+let globalValidationErrors = [];
+
 // ── Helpers ────────────────────────────────────────────
 function activeSection() { return sections.find(s => s.id === activeSectionId); }
 function activeQuestion() {
@@ -672,13 +722,13 @@ function csrfPost(url, formData) {
     formData.append('csrfmiddlewaretoken', CSRF);
     return fetch(url, { method: 'POST', body: formData });
 }
-function showToast(msg, type = 'success') {
+function showToast(msg, type = 'success', duration = 3000) {
     const t = document.createElement('div');
     t.className = `le-toast le-toast-${type}`;
     t.textContent = msg;
     document.body.appendChild(t);
     requestAnimationFrame(() => t.classList.add('show'));
-    setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 350); }, 3000);
+    setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 350); }, duration);
 }
 function setSaveStatus(html) { document.getElementById('saveStatus').innerHTML = html; }
 function getModal(id) { return bootstrap.Modal.getOrCreateInstance(document.getElementById(id)); }
@@ -696,6 +746,18 @@ function renderSectionTabs() {
         nameSpan.textContent = sec.name;
         nameSpan.style.cssText = 'pointer-events:none;';
         tab.appendChild(nameSpan);
+
+        // Error dot: show if this section has a section-level error OR question errors
+        const secErr = validationErrors[sec.id];
+        if (secErr && (secErr.sectionError || Object.keys(secErr.questionErrors || {}).length > 0)) {
+            const dot = document.createElement('span');
+            dot.className = 'le-error-dot';
+            const qCount = Object.keys(secErr.questionErrors || {}).length;
+            dot.title = secErr.sectionError
+                ? secErr.sectionError
+                : `${qCount} question${qCount > 1 ? 's' : ''} with errors`;
+            tab.appendChild(dot);
+        }
 
         // Rename button
         const rnBtn = document.createElement('button');
@@ -732,8 +794,22 @@ function renderPalette() {
         const circle = document.createElement('div');
         const isActive = !isNewQuestion && q.id === activeQuestionId;
         circle.className = 'le-q-circle' + (isActive ? ' active' : ' saved');
+
+        // Error indicator: purple dot — show if this specific question has an error
+        // OR if its parent section has a section-level error (e.g. duplicate name/order).
+        const secErr = validationErrors[sec.id];
+        const qErrMsg = secErr && secErr.questionErrors ? secErr.questionErrors[q.id] : null;
+        const sectionErrMsg = secErr ? secErr.sectionError : null;
+        if (qErrMsg || sectionErrMsg) {
+            circle.classList.add('has-error');
+            circle.title = qErrMsg
+                ? `Q${q.order}: ${qErrMsg}`
+                : `Q${q.order}: section issue — ${sectionErrMsg}`;
+        } else {
+            circle.title = `Question ${q.order}`;
+        }
+
         circle.textContent = q.order;
-        circle.title = `Question ${q.order}`;
         circle.addEventListener('click', () => handleSelectQuestion(q.id));
         grid.appendChild(circle);
     });
@@ -997,6 +1073,8 @@ async function saveQuestion() {
             activeQuestionId = q.id; isDirty = false;
             document.getElementById('qHeaderLabel').textContent = `Question ${q.order}`;
             document.getElementById('deleteQuestionBtn').style.display = 'inline-flex';
+            // Clear any error marker for this question now that it's been saved
+            clearQuestionError(sec.id, q.id);
             renderPalette();
             setSaveStatus('<span style="color:#22c55e;"><i class="fas fa-check"></i> Saved</span>');
             if (pendingAction) { const a = pendingAction; pendingAction = null; executePending(a); }
@@ -1009,6 +1087,146 @@ async function saveQuestion() {
         showToast('Save failed. Please try again.', 'danger');
     }
     document.getElementById('saveQuestionBtn').disabled = false;
+}
+
+// ── Validate & clear error markers when question is saved ──────────
+function clearQuestionError(sectionId, questionId) {
+    if (!validationErrors[sectionId]) return;
+    if (validationErrors[sectionId].questionErrors) {
+        delete validationErrors[sectionId].questionErrors[questionId];
+    }
+    // Remove section entry entirely if no more errors remain
+    if (!validationErrors[sectionId].sectionError &&
+        Object.keys(validationErrors[sectionId].questionErrors || {}).length === 0) {
+        delete validationErrors[sectionId];
+    }
+    renderSectionTabs();
+    renderPalette();
+    renderErrorSummary();
+}
+
+// ── Render validation error summary panel ─────────────────────────
+function renderErrorSummary() {
+    const panel = document.getElementById('validationErrorPanel');
+    const hasGlobal = globalValidationErrors.length > 0;
+    const hasLocal = Object.keys(validationErrors).length > 0;
+
+    if (!hasGlobal && !hasLocal) {
+        panel.style.display = 'none';
+        panel.innerHTML = '';
+        return;
+    }
+
+    let html = '<div class="le-validation-panel">';
+    html += '<div class="le-validation-panel-title"><i class="fas fa-exclamation-circle"></i> Publish Errors</div>';
+
+    // Global errors (e.g. duplicate section names)
+    globalValidationErrors.forEach(msg => {
+        html += `<div class="le-validation-global-error"><i class="fas fa-times-circle"></i><span>${msg}</span></div>`;
+    });
+
+    // Per-question errors (clickable)
+    const ul = document.createElement('ul');
+    ul.className = 'le-validation-error-list';
+    const items = [];
+    sections.forEach(sec => {
+        const secErr = validationErrors[sec.id];
+        if (!secErr) return;
+        if (secErr.sectionError) {
+            items.push({ sectionId: sec.id, questionId: null, label: `${sec.name}: ${secErr.sectionError}` });
+        }
+        const qErrors = secErr.questionErrors || {};
+        Object.entries(qErrors).forEach(([qid, msg]) => {
+            const q = sec.questions.find(x => x.id === parseInt(qid));
+            const label = `${sec.name} › Q${q ? q.order : qid}: ${msg}`;
+            items.push({ sectionId: sec.id, questionId: parseInt(qid), label });
+        });
+    });
+
+    if (items.length > 0) {
+        html += '<ul class="le-validation-error-list" id="validationErrorList"></ul>';
+    }
+
+    html += '</div>';
+    panel.innerHTML = html;
+    panel.style.display = '';
+
+    // Add click handlers
+    const listEl = panel.querySelector('#validationErrorList');
+    if (listEl) {
+        items.forEach(item => {
+            const li = document.createElement('li');
+            li.innerHTML = `<i class="fas fa-arrow-right"></i><span>${item.label}</span>`;
+            li.addEventListener('click', () => {
+                if (item.sectionId !== activeSectionId) doSelectSection(item.sectionId);
+                if (item.questionId !== null) {
+                    setTimeout(() => doSelectQuestion(item.questionId), 50);
+                }
+            });
+            listEl.appendChild(li);
+        });
+    }
+}
+
+// ── Validate & Publish ─────────────────────────────────────────────
+async function validateAndPublish() {
+    const btn = document.getElementById('publishBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking…';
+
+    try {
+        const resp = await fetch(`/builder/${DRAFT_ID}/api/validate/`, {
+            headers: { 'X-CSRFToken': CSRF },
+        });
+        const data = await resp.json();
+
+        if (data.valid) {
+            // All clear — navigate to publish
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing…';
+            window.location.href = `/builder/${DRAFT_ID}/publish/`;
+            return;
+        }
+
+        // Build error state from response
+        validationErrors = {};
+        globalValidationErrors = data.global_errors || [];
+
+        (data.sections || []).forEach(sec => {
+            const qErrors = {};
+            (sec.question_errors || []).forEach(qe => { qErrors[qe.id] = qe.error; });
+            if (sec.section_error || Object.keys(qErrors).length > 0) {
+                validationErrors[sec.id] = {
+                    sectionError: sec.section_error || null,
+                    questionErrors: qErrors,
+                };
+            }
+        });
+
+        renderSectionTabs();
+        renderPalette();
+        renderErrorSummary();
+
+        // Navigate to the first section/question with an error
+        const firstErrSec = data.sections.find(s =>
+            s.section_error || (s.question_errors && s.question_errors.length > 0)
+        );
+        if (firstErrSec) {
+            if (firstErrSec.id !== activeSectionId) doSelectSection(firstErrSec.id);
+            if (firstErrSec.question_errors && firstErrSec.question_errors.length > 0) {
+                setTimeout(() => doSelectQuestion(firstErrSec.question_errors[0].id), 60);
+            }
+        }
+
+        const totalErrors = (globalValidationErrors.length) + Object.values(validationErrors)
+            .reduce((s, v) => s + (v.sectionError ? 1 : 0) + Object.keys(v.questionErrors || {}).length, 0);
+        showToast(`${totalErrors} issue${totalErrors > 1 ? 's' : ''} found — fix them before publishing`, 'danger', 6000);
+
+    } catch (err) {
+        showToast('Validation check failed. Please try again.', 'danger');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-upload"></i> Publish';
 }
 
 // ── Delete Question ────────────────────────────────────
@@ -1201,6 +1419,15 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('beforeunload', e => {
         if (isDirty) { e.preventDefault(); e.returnValue = ''; }
     });
+
+    // Show any Django messages passed from server-side redirects (e.g. publish errors)
+    if (typeof DJANGO_MESSAGES !== 'undefined') {
+        DJANGO_MESSAGES.forEach(m => {
+            const level = m.tags.includes('error') ? 'danger'
+                        : m.tags.includes('warning') ? 'warning' : 'success';
+            showToast(m.text, level, level === 'danger' ? 8000 : 4000);
+        });
+    }
 });
 </script>
 {% endblock %}

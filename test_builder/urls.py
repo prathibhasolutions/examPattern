@@ -16,6 +16,7 @@ urlpatterns = [
     path('<int:draft_id>/api/section/<int:section_id>/delete/', views.api_delete_section, name='api_delete_section'),
     path('<int:draft_id>/api/question/save/', views.api_save_question, name='api_save_question'),
     path('<int:draft_id>/api/question/<int:question_id>/delete/', views.api_delete_question, name='api_delete_question'),
+    path('<int:draft_id>/api/validate/', views.api_validate_draft, name='api_validate_draft'),
     path('<int:draft_id>/publish/', views.publish_test, name='builder_publish_test'),
     path('<int:draft_id>/delete/', views.delete_draft, name='builder_delete_draft'),
     path('<int:draft_id>/unpublish/', views.unpublish_test, name='builder_unpublish_test'),

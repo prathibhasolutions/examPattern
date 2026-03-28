@@ -740,151 +740,172 @@ def manage_questions(request, draft_id, section_id):
 @transaction.atomic
 def publish_test(request, draft_id):
     """Convert draft to actual test or update existing published test"""
-    from datetime import datetime
-    
+    from django.db import IntegrityError
+
     draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
-    
+
     # Check if locked by another admin
     if not draft.can_edit(request.user):
         messages.error(request, f"❌ This test is currently being edited by {draft.locked_by.username}. "
                                 f"Please wait until they finish. Lock will auto-expire after 30 minutes of inactivity.")
         return redirect('builder_dashboard')
-    
+
     if draft.is_published:
         messages.warning(request, "This test is already published!")
         return redirect('builder_dashboard')
 
-    series_section = draft.series_section
-    if not series_section:
-        series_section, _ = SeriesSection.objects.get_or_create(
-            series=draft.series,
-            name="All Tests",
-            defaults={
-                "slug": slugify("all-tests"),
-                "order": 1,
-                "is_active": True,
-            },
-        )
-
-    series_subsection = draft.series_subsection
-    if series_subsection and series_subsection.section != series_section:
-        series_subsection = None
-    
-    # Check if this draft has a published test from before (republishing case)
-    published_test = None
-    if draft.published_test_id:
-        try:
-            published_test = Test.objects.get(id=draft.published_test_id)
-            # Delete old sections (this will cascade delete questions and options)
-            published_test.sections.all().delete()
-        except Test.DoesNotExist:
-            published_test = None
-    
-    if published_test:
-        # Republishing: Update existing test
-        published_test.name = draft.name
-        published_test.description = draft.description
-        published_test.series_section = series_section
-        published_test.series_subsection = series_subsection
-        published_test.duration_seconds = draft.duration_minutes * 60
-        published_test.marks_per_question = draft.marks_per_question
-        published_test.negative_marks_per_question = draft.negative_marks
-        published_test.use_sectional_timing = draft.use_sectional_timing
-        published_test.is_active = True
-        published_test.save()
-        test = published_test
-    else:
-        # First time publishing: Create new test
-        # Use a unique slug to avoid conflicts with old deactivated tests
-        base_slug = slugify(draft.name)
-        slug = base_slug
-        counter = 1
-        
-        while Test.objects.filter(series=draft.series, slug=slug).exists():
-            slug = f"{base_slug}-v{counter}"
-            counter += 1
-        
-        test = Test.objects.create(
-            series=draft.series,
-            series_section=series_section,
-            series_subsection=series_subsection,
-            name=draft.name,
-            slug=slug,
-            description=draft.description,
-            duration_seconds=draft.duration_minutes * 60,
-            marks_per_question=draft.marks_per_question,
-            negative_marks_per_question=draft.negative_marks,
-            use_sectional_timing=draft.use_sectional_timing,
-            is_active=True
-        )
-    
-    # Create sections
+    # ── Phase 1: Pre-publish validation (no DB writes) ──────────────────
+    # All validation runs before touching the database so that:
+    # (a) partial-write corruption inside the atomic block cannot occur, and
+    # (b) admins are always redirected back to the live editor with a clear message.
+    section_names_seen = {}
     for section_draft in draft.sections.all():
-        # Calculate section time limit in seconds if sectional timing is enabled
-        section_time_seconds = 0
-        if draft.use_sectional_timing and section_draft.time_limit_minutes:
-            section_time_seconds = section_draft.time_limit_minutes * 60
-        
-        section = Section.objects.create(
-            test=test,
-            name=section_draft.name,
-            order=section_draft.order,
-            time_limit_seconds=section_time_seconds
-        )
-        
-        # Create questions
+        name = section_draft.name.strip()
+        if not name:
+            messages.error(request, "❌ A section has an empty name. Please name all sections before publishing.")
+            return redirect('live_editor', draft_id=draft_id)
+        if name in section_names_seen:
+            messages.error(request, f"❌ Two sections share the name '{name}'. Each section must have a unique name.")
+            return redirect('live_editor', draft_id=draft_id)
+        section_names_seen[name] = True
+
         for question_draft in section_draft.questions.all():
-            # Validation during publish: Question must have text or image
             if not question_draft.question_text and not question_draft.question_image:
-                messages.error(request, f"❌ Cannot publish: Question in '{section_draft.name}' has neither text nor image.")
-                return redirect('builder_dashboard')
-            
-            question = Question.objects.create(
-                section=section,
-                text=question_draft.question_text,
-                image=question_draft.question_image,
-                explanation=question_draft.solution_text,
-                solution_image=question_draft.solution_image
+                messages.error(request, f"❌ Cannot publish: A question in '{name}' has no text or image.")
+                return redirect('live_editor', draft_id=draft_id)
+
+            options = list(question_draft.options.all())
+            if not options:
+                messages.error(request, f"❌ Cannot publish: A question in '{name}' has no options.")
+                return redirect('live_editor', draft_id=draft_id)
+
+            correct = sum(1 for o in options if o.is_correct)
+            if correct == 0:
+                messages.error(request, f"❌ Cannot publish: A question in '{name}' has no correct answer marked.")
+                return redirect('live_editor', draft_id=draft_id)
+            if correct > 1:
+                messages.error(request, f"❌ Cannot publish: A question in '{name}' has {correct} correct answers. Only 1 is allowed.")
+                return redirect('live_editor', draft_id=draft_id)
+
+            for opt in options:
+                if not opt.option_text and not opt.option_image:
+                    messages.error(request, f"❌ Cannot publish: An option in '{name}' has no text or image.")
+                    return redirect('live_editor', draft_id=draft_id)
+
+    # ── Phase 2: DB writes (all validation passed above) ────────────────
+    try:
+        series_section = draft.series_section
+        if not series_section:
+            series_section, _ = SeriesSection.objects.get_or_create(
+                series=draft.series,
+                name="All Tests",
+                defaults={
+                    "slug": slugify("all-tests"),
+                    "order": 1,
+                    "is_active": True,
+                },
             )
-            
-            # Validation: Question must have at least one option
-            if question_draft.options.count() == 0:
-                messages.error(request, f"❌ Cannot publish: Question in '{section_draft.name}' has no options.")
-                return redirect('builder_dashboard')
-            
-            # Validation: Question must have exactly one correct answer
-            correct_options_count = question_draft.options.filter(is_correct=True).count()
-            if correct_options_count == 0:
-                messages.error(request, f"❌ Cannot publish: A question in '{section_draft.name}' has no correct answer selected.")
-                return redirect('builder_dashboard')
-            elif correct_options_count > 1:
-                messages.error(request, f"❌ Cannot publish: A question in '{section_draft.name}' has {correct_options_count} correct answers. Only one correct answer is allowed per question.")
-                return redirect('builder_dashboard')
-            
-            # Create options
-            for option_draft in question_draft.options.all():
-                # Validation: Option must have text or image
-                if not option_draft.option_text and not option_draft.option_image:
-                    messages.error(request, f"❌ Cannot publish: An option in '{section_draft.name}' has neither text nor image.")
-                    return redirect('builder_dashboard')
-                
-                Option.objects.create(
-                    question=question,
-                    text=option_draft.option_text,
-                    image=option_draft.option_image,
-                    is_correct=option_draft.is_correct,
-                    order=option_draft.order
+
+        series_subsection = draft.series_subsection
+        if series_subsection and series_subsection.section != series_section:
+            series_subsection = None
+
+        # Check if this draft has a published test from before (republishing case)
+        published_test = None
+        if draft.published_test_id:
+            try:
+                published_test = Test.objects.get(id=draft.published_test_id)
+                # Delete old sections (this will cascade delete questions and options)
+                published_test.sections.all().delete()
+            except Test.DoesNotExist:
+                published_test = None
+
+        if published_test:
+            # Republishing: Update existing test
+            published_test.name = draft.name
+            published_test.description = draft.description
+            published_test.series_section = series_section
+            published_test.series_subsection = series_subsection
+            published_test.duration_seconds = draft.duration_minutes * 60
+            published_test.marks_per_question = draft.marks_per_question
+            published_test.negative_marks_per_question = draft.negative_marks
+            published_test.use_sectional_timing = draft.use_sectional_timing
+            published_test.is_active = True
+            published_test.save()
+            test = published_test
+        else:
+            # First time publishing: Create new test
+            # Use a unique slug to avoid conflicts with old deactivated tests
+            base_slug = slugify(draft.name)
+            slug = base_slug
+            counter = 1
+
+            while Test.objects.filter(series=draft.series, slug=slug).exists():
+                slug = f"{base_slug}-v{counter}"
+                counter += 1
+
+            test = Test.objects.create(
+                series=draft.series,
+                series_section=series_section,
+                series_subsection=series_subsection,
+                name=draft.name,
+                slug=slug,
+                description=draft.description,
+                duration_seconds=draft.duration_minutes * 60,
+                marks_per_question=draft.marks_per_question,
+                negative_marks_per_question=draft.negative_marks,
+                use_sectional_timing=draft.use_sectional_timing,
+                is_active=True
+            )
+
+        # Create sections — use sequential index (1, 2, 3…) instead of draft.order to
+        # guarantee uniqueness against uq_section_order_within_test even if draft orders drifted.
+        for seq_order, section_draft in enumerate(draft.sections.all(), start=1):
+            section_time_seconds = 0
+            if draft.use_sectional_timing and section_draft.time_limit_minutes:
+                section_time_seconds = section_draft.time_limit_minutes * 60
+
+            section = Section.objects.create(
+                test=test,
+                name=section_draft.name,
+                order=seq_order,
+                time_limit_seconds=section_time_seconds
+            )
+
+            for question_draft in section_draft.questions.all():
+                question = Question.objects.create(
+                    section=section,
+                    text=question_draft.question_text,
+                    image=question_draft.question_image,
+                    explanation=question_draft.solution_text,
+                    solution_image=question_draft.solution_image
                 )
-    
-    # Mark draft as published and store the published test ID
-    draft.is_published = True
-    draft.published_test_id = test.id
-    draft.release_lock()  # Release lock after successful publish
-    draft.save()
-    
-    action_type = "updated" if published_test else "published"
-    messages.success(request, f"Test '{test.name}' {action_type} successfully! Students can now take this test.")
-    return redirect('builder_dashboard')
+
+                for option_draft in question_draft.options.all():
+                    Option.objects.create(
+                        question=question,
+                        text=option_draft.option_text,
+                        image=option_draft.option_image,
+                        is_correct=option_draft.is_correct,
+                        order=option_draft.order
+                    )
+
+        # Mark draft as published and store the published test ID
+        draft.is_published = True
+        draft.published_test_id = test.id
+        draft.release_lock()  # Release lock after successful publish
+        draft.save()
+
+        action_type = "updated" if published_test else "published"
+        messages.success(request, f"Test '{test.name}' {action_type} successfully! Students can now take this test.")
+        return redirect('builder_dashboard')
+
+    except IntegrityError as e:
+        messages.error(request, f"❌ Database conflict during publish — likely a duplicate section name or ordering issue. Details: {e}")
+        return redirect('live_editor', draft_id=draft_id)
+    except Exception as e:
+        messages.error(request, f"❌ An unexpected error occurred while publishing: {e}")
+        return redirect('live_editor', draft_id=draft_id)
 
 
 @admin_required
@@ -1089,6 +1110,13 @@ def live_editor(request, draft_id):
 
     draft.acquire_lock(request.user)
 
+    # Heal any corrupted section orders (gaps or duplicates from past deletes)
+    # so the editor always works with clean sequential 1, 2, 3... ordering.
+    for i, sec in enumerate(draft.sections.order_by('order', 'id'), start=1):
+        if sec.order != i:
+            sec.order = i
+            sec.save(update_fields=['order'])
+
     sections_data = []
     for section in draft.sections.all():
         questions_data = []
@@ -1166,6 +1194,12 @@ def api_delete_section(request, draft_id, section_id):
     if draft.sections.count() <= 1:
         return JsonResponse({'success': False, 'error': 'Cannot delete the only section.'}, status=400)
     section.delete()
+    # Renumber remaining sections 1, 2, 3… so order values never have gaps or duplicates.
+    # This prevents uq_section_order_within_test IntegrityError on publish.
+    for i, sec in enumerate(SectionDraft.objects.filter(test_draft=draft).order_by('order', 'id'), start=1):
+        if sec.order != i:
+            sec.order = i
+            sec.save(update_fields=['order'])
     return JsonResponse({'success': True})
 
 
@@ -1307,6 +1341,95 @@ def api_delete_question(request, draft_id, question_id):
             q.order = i
             q.save(update_fields=['order'])
     return JsonResponse({'success': True})
+
+
+@admin_required
+@login_required
+def api_validate_draft(request, draft_id):
+    """
+    Validate a draft before publishing — returns JSON with all errors grouped by section/question.
+    No DB writes are performed here. Used by the live editor's pre-publish check.
+    """
+    from django.http import JsonResponse
+
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+
+    global_errors = []
+    sections_result = []
+    is_valid = True
+
+    # Detect duplicate section names (causes IntegrityError on uq_section_name_within_test)
+    section_name_counts = {}
+    for sec in draft.sections.all():
+        n = sec.name.strip()
+        section_name_counts[n] = section_name_counts.get(n, 0) + 1
+    duplicate_names = {n for n, cnt in section_name_counts.items() if cnt > 1}
+    if duplicate_names:
+        is_valid = False
+        for dup in sorted(duplicate_names):
+            global_errors.append(f"Duplicate section name: '{dup}' — each section must have a unique name")
+
+    # NOTE: Duplicate section orders are NOT checked here because publish_test always
+    # normalises orders to sequential 1,2,3… via enumerate, so they never reach the DB.
+    # Orders are also healed when the live editor is opened.
+
+    for section_draft in draft.sections.all():
+        section_error = None
+        question_errors = []
+        name = section_draft.name.strip()
+
+        if not name:
+            section_error = "Section name cannot be empty"
+            is_valid = False
+        elif name in duplicate_names:
+            section_error = "Duplicate section name — rename this to something unique"
+            is_valid = False
+
+        for q in section_draft.questions.all():
+            q_error_parts = []
+
+            if not q.question_text and not q.question_image:
+                q_error_parts.append("no question text or image")
+                is_valid = False
+
+            options = list(q.options.all())
+            if not options:
+                q_error_parts.append("no options added")
+                is_valid = False
+            else:
+                correct_count = sum(1 for o in options if o.is_correct)
+                if correct_count == 0:
+                    q_error_parts.append("no correct answer marked")
+                    is_valid = False
+                elif correct_count > 1:
+                    q_error_parts.append(f"{correct_count} correct answers (only 1 allowed)")
+                    is_valid = False
+
+                for opt in options:
+                    if not opt.option_text and not opt.option_image:
+                        q_error_parts.append("an option has no text or image")
+                        is_valid = False
+                        break
+
+            if q_error_parts:
+                question_errors.append({
+                    'id': q.id,
+                    'order': q.order,
+                    'error': '; '.join(q_error_parts),
+                })
+
+        sections_result.append({
+            'id': section_draft.id,
+            'name': section_draft.name,
+            'section_error': section_error,
+            'question_errors': question_errors,
+        })
+
+    return JsonResponse({
+        'valid': is_valid,
+        'global_errors': global_errors,
+        'sections': sections_result,
+    })
 
 
 @admin_required
