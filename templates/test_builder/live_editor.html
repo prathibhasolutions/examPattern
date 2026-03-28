@@ -303,9 +303,24 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
 
 /* ── Import strip ───────────────────────────── */
 .le-import-strip {
-    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
     padding: 10px 16px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;
-    flex-wrap: wrap; flex-shrink: 0;
+    flex-shrink: 0;
+}
+.le-import-tabs {
+    display: flex; gap: 4px;
+}
+.le-import-tab {
+    border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #475569;
+    padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.le-import-tab.active {
+    background: #0f766e; color: #fff; border-color: #0f766e;
+}
+.le-import-tab:hover:not(.active) { background: #f1f5f9; }
+.le-import-panel {
+    display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; width: 100%;
 }
 .le-import-form {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -316,6 +331,11 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
     padding: 8px 10px; font-size: 13px;
 }
 .le-import-file { max-width: 260px; }
+.le-json-textarea {
+    border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #0f172a;
+    padding: 8px 10px; font-size: 12px; font-family: monospace;
+    width: 400px; height: 68px; resize: vertical;
+}
 .le-import-btn {
     display: inline-flex; align-items: center; gap: 8px;
     border: none; border-radius: 8px; background: #0f766e; color: white;
@@ -324,7 +344,7 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
 }
 .le-import-btn:hover { background: #115e59; }
 .le-import-note {
-    font-size: 12px; color: #475569; max-width: 560px; line-height: 1.5;
+    font-size: 12px; color: #475569; max-width: 480px; line-height: 1.5;
 }
 
 /* ── Inline alerts ──────────────────────────── */
@@ -360,27 +380,60 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
     </div>
 </div>
 
-<!-- PDF IMPORT STRIP -->
+<!-- IMPORT STRIP (PDF + JSON tabs) -->
 <div class="le-import-strip">
-    <form class="le-import-form" method="post" enctype="multipart/form-data" action="{% url 'import_pdf_to_draft' draft.id %}">
-        {% csrf_token %}
-        <select name="section_id" class="le-import-select" required>
-            <option value="">Choose section</option>
-            {% for section in sections_for_import %}
-                <option value="{{ section.id }}">{{ section.name }}</option>
-            {% endfor %}
-        </select>
-        <input type="file" name="pdf_file" class="le-import-file" accept=".pdf,application/pdf" required>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#334155;white-space:nowrap;">
-            <input type="checkbox" name="auto_latex" value="1" checked>
-            Auto LaTeX math
-        </label>
-        <button type="submit" class="le-import-btn">
-            <i class="fas fa-file-import"></i> Import PDF
+    <!-- Tab switcher -->
+    <div class="le-import-tabs">
+        <button type="button" class="le-import-tab active" id="importTabPdf" onclick="switchImportTab('pdf')">
+            <i class="fas fa-file-pdf"></i> Import PDF
         </button>
-    </form>
-    <div class="le-import-note">
-        PDF import only adds high-confidence single-correct MCQs to drafts. Ambiguous questions are skipped so you can review accuracy manually. Enable Auto LaTeX to convert math-like text (x^2, H2SO4, sqrt(...), <=/>= symbols) into MathJax-friendly format.
+        <button type="button" class="le-import-tab" id="importTabJson" onclick="switchImportTab('json')">
+            <i class="fas fa-code"></i> Paste JSON
+        </button>
+    </div>
+
+    <!-- PDF panel (shown by default) -->
+    <div class="le-import-panel" id="importPdfPanel">
+        <form class="le-import-form" method="post" enctype="multipart/form-data" action="{% url 'import_pdf_to_draft' draft.id %}">
+            {% csrf_token %}
+            <select name="section_id" class="le-import-select" required>
+                <option value="">Choose section</option>
+                {% for section in sections_for_import %}
+                    <option value="{{ section.id }}">{{ section.name }}</option>
+                {% endfor %}
+            </select>
+            <input type="file" name="pdf_file" class="le-import-file" accept=".pdf,application/pdf" required>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#334155;white-space:nowrap;">
+                <input type="checkbox" name="auto_latex" value="1" checked>
+                Auto LaTeX math
+            </label>
+            <button type="submit" class="le-import-btn">
+                <i class="fas fa-file-import"></i> Import PDF
+            </button>
+        </form>
+        <div class="le-import-note">
+            PDF import only adds high-confidence single-correct MCQs to drafts. Ambiguous questions are skipped so you can review accuracy manually. Enable Auto LaTeX to convert math-like text (x^2, H2SO4, sqrt(...), &lt;=/&gt;= symbols) into MathJax-friendly format.
+        </div>
+    </div>
+
+    <!-- JSON panel (hidden by default) -->
+    <div class="le-import-panel" id="importJsonPanel" style="display:none;">
+        <form class="le-import-form" method="post" action="{% url 'import_json_to_draft' draft.id %}">
+            {% csrf_token %}
+            <select name="section_id" class="le-import-select" required>
+                <option value="">Choose section</option>
+                {% for section in sections_for_import %}
+                    <option value="{{ section.id }}">{{ section.name }}</option>
+                {% endfor %}
+            </select>
+            <textarea name="json_text" class="le-json-textarea" placeholder='Paste JSON array here, e.g. [{"question_text":"...","options":[...]}]' required></textarea>
+            <button type="submit" class="le-import-btn">
+                <i class="fas fa-file-import"></i> Import JSON
+            </button>
+        </form>
+        <div class="le-import-note">
+            Paste the JSON array from ChatGPT (or any tool). Each item needs <code>question_text</code>, <code>solution_text</code>, and <code>options</code> — an array of objects with <code>option_text</code> and <code>is_correct</code> (exactly one <code>true</code>). Questions go into drafts for manual review before publishing.
+        </div>
     </div>
 </div>
 
@@ -592,6 +645,14 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
 const DRAFT_ID = {{ draft.id }};
 const CSRF = '{{ csrf_token }}';
 let sections = {{ sections_json|safe }};
+
+// ── Import tab switcher ────────────────────────────────
+function switchImportTab(tab) {
+    document.getElementById('importPdfPanel').style.display = tab === 'pdf' ? '' : 'none';
+    document.getElementById('importJsonPanel').style.display = tab === 'json' ? '' : 'none';
+    document.getElementById('importTabPdf').classList.toggle('active', tab === 'pdf');
+    document.getElementById('importTabJson').classList.toggle('active', tab === 'json');
+}
 
 // ── State ──────────────────────────────────────────────
 let activeSectionId = sections.length ? sections[0].id : null;

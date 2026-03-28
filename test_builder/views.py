@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from .models import TestDraft, SectionDraft, QuestionDraft, OptionDraft, PDFImportJob
 from .services.pdf_import import import_pdf_into_section
+from .services.json_import import import_json_into_section
 from testseries.models import TestSeries, TestSeriesExamSection, TestSeriesHighlight, Test, Section, SeriesSection, SeriesSubsection
 from questions.models import Question, Option
 
@@ -1392,6 +1393,67 @@ def import_pdf_to_draft(request, draft_id):
             request,
             f'Applied LaTeX conversion to {latex_converted_fields} imported field'
             f"{'s' if latex_converted_fields != 1 else ''} for better math formatting.",
+        )
+
+    return redirect('live_editor', draft_id=draft.id)
+
+
+@admin_required
+@login_required
+@require_http_methods(["POST"])
+def import_json_to_draft(request, draft_id):
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+
+    if not draft.can_edit(request.user):
+        messages.error(
+            request,
+            f"This test is currently being edited by {draft.locked_by.username}. Please wait until they finish.",
+        )
+        return redirect('builder_dashboard')
+
+    draft.acquire_lock(request.user)
+
+    section_id = request.POST.get('section_id', '').strip()
+    json_text = request.POST.get('json_text', '').strip()
+
+    if not section_id:
+        messages.error(request, 'Select a section before importing.')
+        return redirect('live_editor', draft_id=draft.id)
+
+    section = get_object_or_404(SectionDraft, id=section_id, test_draft=draft)
+
+    if not json_text:
+        messages.error(request, 'Paste the JSON content before importing.')
+        return redirect('live_editor', draft_id=draft.id)
+
+    try:
+        result = import_json_into_section(section, json_text)
+    except ValueError as exc:
+        messages.error(request, f'JSON import failed: {exc}')
+        return redirect('live_editor', draft_id=draft.id)
+    except Exception as exc:
+        messages.error(request, f'JSON import failed unexpectedly: {exc}')
+        return redirect('live_editor', draft_id=draft.id)
+
+    imported_count = result.get('imported_count', 0)
+    skipped_count = result.get('skipped_count', 0)
+    skip_summary = result.get('skip_summary', [])
+
+    if imported_count:
+        messages.success(
+            request,
+            f"Imported {imported_count} question{'s' if imported_count != 1 else ''} into '{section.name}'.",
+        )
+    else:
+        messages.warning(request, 'No questions were imported. Check the JSON format.')
+
+    if skipped_count:
+        summary = ', '.join(skip_summary[:4])
+        if len(skip_summary) > 4:
+            summary += ', ...'
+        messages.warning(
+            request,
+            f"Skipped {skipped_count} question{'s' if skipped_count != 1 else ''}: {summary}.",
         )
 
     return redirect('live_editor', draft_id=draft.id)

@@ -10,6 +10,7 @@ urlpatterns = [
     path('<int:draft_id>/section/<int:section_id>/questions/', views.manage_questions, name='manage_questions'),
     path('<int:draft_id>/live-editor/', views.live_editor, name='live_editor'),
     path('<int:draft_id>/import-pdf/', views.import_pdf_to_draft, name='import_pdf_to_draft'),
+    path('<int:draft_id>/import-json/', views.import_json_to_draft, name='import_json_to_draft'),
     path('<int:draft_id>/api/section/add/', views.api_add_section, name='api_add_section'),
     path('<int:draft_id>/api/section/<int:section_id>/rename/', views.api_rename_section, name='api_rename_section'),
     path('<int:draft_id>/api/section/<int:section_id>/delete/', views.api_delete_section, name='api_delete_section'),
