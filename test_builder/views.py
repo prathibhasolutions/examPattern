@@ -7,7 +7,8 @@ from django.http import HttpResponseForbidden
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 
-from .models import TestDraft, SectionDraft, QuestionDraft, OptionDraft
+from .models import TestDraft, SectionDraft, QuestionDraft, OptionDraft, PDFImportJob
+from .services.pdf_import import import_pdf_into_section
 from testseries.models import TestSeries, TestSeriesExamSection, TestSeriesHighlight, Test, Section, SeriesSection, SeriesSubsection
 from questions.models import Question, Option
 
@@ -110,16 +111,39 @@ def dashboard(request):
     for draft in drafts_qs.select_related('series'):
         drafts_by_series[draft.series].append(draft)
     
+    # Fetch all published drafts first to look up matching Test.is_active
+    published_drafts = list(published_qs.select_related('series'))
+    published_test_ids = [d.published_test_id for d in published_drafts if d.published_test_id]
+    test_active_map = dict(
+        Test.objects.filter(id__in=published_test_ids).values_list('id', 'is_active')
+    )
     published_by_series = defaultdict(list)
-    for draft in published_qs.select_related('series'):
+    for draft in published_drafts:
+        # Annotate draft with the live test's is_active flag for the dashboard toggle
+        draft.live_is_active = test_active_map.get(draft.published_test_id, True)
         published_by_series[draft.series].append(draft)
-    
+
+    # Find orphaned active tests: Test objects that are is_active=True but not tracked by any draft
+    all_draft_published_ids = set(
+        TestDraft.objects.filter(created_by=request.user)
+                         .exclude(published_test_id__isnull=True)
+                         .values_list('published_test_id', flat=True)
+    )
+    # Active tests in series that have at least one draft from this user
+    user_series_ids = list(TestDraft.objects.filter(created_by=request.user).values_list('series_id', flat=True).distinct())
+    orphaned_tests = list(
+        Test.objects.filter(is_active=True, series__in=user_series_ids)
+                    .exclude(id__in=all_draft_published_ids)
+                    .select_related('series')
+    )
+
     # Get all series for suggestions
     all_series = TestSeries.objects.all()
     
     return render(request, 'test_builder/dashboard.html', {
         'drafts_by_series': dict(drafts_by_series),
         'published_by_series': dict(published_by_series),
+        'orphaned_tests': orphaned_tests,
         'all_series': all_series,
         'search_query': search_query,
         'total_drafts': drafts_qs.count(),
@@ -916,7 +940,7 @@ def unpublish_test(request, draft_id):
         draft.save()
         
         messages.success(request, f"Test '{draft.name}' is now editable. Make your changes and publish again.")
-        return redirect('manage_sections', draft_id=draft.id)
+        return redirect('live_editor', draft_id=draft.id)
     
     return render(request, 'test_builder/confirm_unpublish.html', {'draft': draft})
 
@@ -959,7 +983,22 @@ def delete_published_test(request, draft_id):
 def search_suggestions(request):
     """AJAX endpoint for search suggestions"""
     from django.http import JsonResponse
-    
+
+@admin_required
+@login_required
+@require_http_methods(["POST"])
+def deactivate_orphaned_test(request, test_id):
+    """Deactivate an active Test that has no linked published draft (orphaned)."""
+    from django.http import JsonResponse
+    test = get_object_or_404(Test, id=test_id, is_active=True)
+    # Verify it is truly orphaned (no draft from this user tracks it)
+    if TestDraft.objects.filter(created_by=request.user, published_test_id=test_id).exists():
+        return JsonResponse({'success': False, 'message': 'This test is managed by a draft; use Edit Test instead.'}, status=400)
+    test.is_active = False
+    test.save(update_fields=['is_active'])
+    return JsonResponse({'success': True, 'message': f"Test '{test.name}' has been hidden from students."})
+
+
     query = request.GET.get('q', '').strip()
     if len(query) < 2:
         return JsonResponse({'suggestions': []})
@@ -1081,6 +1120,7 @@ def live_editor(request, draft_id):
 
     return render(request, 'test_builder/live_editor.html', {
         'draft': draft,
+        'sections_for_import': draft.sections.all(),
         'sections_json': json.dumps(sections_data),
     })
 
@@ -1266,3 +1306,78 @@ def api_delete_question(request, draft_id, question_id):
             q.order = i
             q.save(update_fields=['order'])
     return JsonResponse({'success': True})
+
+
+@admin_required
+@login_required
+@require_http_methods(["POST"])
+def import_pdf_to_draft(request, draft_id):
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+
+    if not draft.can_edit(request.user):
+        messages.error(
+            request,
+            f"This test is currently being edited by {draft.locked_by.username}. Please wait until they finish.",
+        )
+        return redirect('builder_dashboard')
+
+    draft.acquire_lock(request.user)
+
+    section_id = request.POST.get('section_id', '').strip()
+    pdf_file = request.FILES.get('pdf_file')
+
+    if not section_id:
+        messages.error(request, 'Select a section before importing a PDF.')
+        return redirect('live_editor', draft_id=draft.id)
+
+    section = get_object_or_404(SectionDraft, id=section_id, test_draft=draft)
+
+    if not pdf_file:
+        messages.error(request, 'Choose a PDF file to import.')
+        return redirect('live_editor', draft_id=draft.id)
+
+    filename = (pdf_file.name or '').lower()
+    if not filename.endswith('.pdf'):
+        messages.error(request, 'Only PDF files can be imported here.')
+        return redirect('live_editor', draft_id=draft.id)
+
+    import_job = PDFImportJob.objects.create(
+        draft=draft,
+        section=section,
+        uploaded_by=request.user,
+        source_filename=pdf_file.name or 'upload.pdf',
+    )
+
+    try:
+        result = import_pdf_into_section(section, pdf_file, import_job=import_job)
+    except Exception as exc:
+        messages.error(request, f'PDF import failed: {exc}')
+        return redirect('live_editor', draft_id=draft.id)
+
+    imported_count = result.get('imported_count', 0)
+    skipped_count = result.get('skipped_count', 0)
+    skip_summary = result.get('skip_summary', [])
+    provider_name = result.get('provider_name', 'unknown')
+
+    if imported_count:
+        messages.success(
+            request,
+            f"Imported {imported_count} question{'s' if imported_count != 1 else ''} into '{section.name}' using {provider_name} extraction.",
+        )
+    else:
+        messages.warning(
+            request,
+            'No questions were imported because the parser could not find any high-confidence single-correct MCQs.',
+        )
+
+    if skipped_count:
+        summary = ', '.join(skip_summary[:4])
+        if len(skip_summary) > 4:
+            summary += ', ...'
+        messages.warning(
+            request,
+            f"Skipped {skipped_count} question{'s' if skipped_count != 1 else ''} to preserve accuracy"
+            + (f': {summary}.' if summary else '.'),
+        )
+
+    return redirect('live_editor', draft_id=draft.id)

@@ -372,7 +372,31 @@
             ✅ Published Tests 
             <span class="badge bg-success">{{ total_published }}</span>
         </h2>
-        
+
+    {% if orphaned_tests %}
+    <!-- Orphaned (untracked) active tests -->
+    <div class="alert alert-warning mb-4" id="orphanedTestsAlert">
+        <h5 class="alert-heading">
+            <i class="fas fa-exclamation-triangle"></i> Untracked Live Tests ({{ orphaned_tests|length }})
+        </h5>
+        <p class="mb-2">The following tests are <strong>visible to students</strong> but are not linked to any draft in the builder. They may be left over from an older publish cycle. You can hide them from students here.</p>
+        <div class="row g-2">
+            {% for test in orphaned_tests %}
+            <div class="col-auto" id="orphan-row-{{ test.id }}">
+                <div class="d-flex align-items-center gap-2 bg-white rounded px-3 py-2 border">
+                    <strong>{{ test.name }}</strong>
+                    <small class="text-muted">({{ test.series.name }})</small>
+                    <button class="btn btn-sm btn-outline-danger"
+                            onclick="deactivateOrphan({{ test.id }}, this)">
+                        Hide from Students
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
         {% if published_by_series %}
             {% for series, tests in published_by_series.items %}
                 <div class="card mb-4" style="border-left: 4px solid #10b981;">
@@ -429,7 +453,7 @@
                                                             id="toggle_{{ draft.id }}"
                                                             data-draft-id="{{ draft.id }}"
                                                             data-test-id="{{ draft.published_test_id }}"
-                                                            {% if draft.is_published %}checked{% endif %}
+                                                            {% if draft.live_is_active %}checked{% endif %}
                                                             style="cursor: pointer; width: 2.5em; height: 1.5em;"
                                                         >
                                                     </div>
@@ -438,9 +462,14 @@
                                                     Toggle to show/hide from students. Data remains safe.
                                                 </small>
                                                 
-                                                <a href="{% url 'builder_unpublish_test' draft.id %}" class="btn btn-sm btn-warning">
-                                                    ✏️ Edit Test
-                                                </a>
+                                                <form method="post" action="{% url 'builder_unpublish_test' draft.id %}" style="margin:0;">
+                                                    {% csrf_token %}
+                                                    <button type="submit"
+                                                        class="btn btn-sm btn-warning w-100"
+                                                        onclick="return confirm('Unpublish this test and open it for editing? It will be hidden from students until you republish.')">
+                                                        ✏️ Edit Test
+                                                    </button>
+                                                </form>
                                                 
                                                 <a href="{% url 'builder_delete_published' draft.id %}" class="btn btn-sm btn-outline-danger">
                                                     🗑️ Delete Permanently
@@ -781,6 +810,36 @@ document.querySelectorAll('.test-active-toggle').forEach(toggle => {
     });
 
 });
+</script>
+
+<script>
+function deactivateOrphan(testId, btn) {
+    if (!confirm('Hide this test from students? You can reactivate it later via Django Admin if needed.')) return;
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                      document.cookie.split('; ').find(r => r.startsWith('csrftoken='))?.split('=')[1] || '';
+    btn.disabled = true;
+    btn.textContent = 'Hiding…';
+    fetch(`/builder/orphan/${testId}/deactivate/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const row = document.getElementById('orphan-row-' + testId);
+            if (row) row.remove();
+            const alert = document.getElementById('orphanedTestsAlert');
+            if (alert && alert.querySelectorAll('[id^="orphan-row-"]').length === 0) alert.remove();
+        } else {
+            alert(data.message);
+            btn.disabled = false;
+            btn.textContent = 'Hide from Students';
+        }
+    })
+    .catch(() => { btn.disabled = false; btn.textContent = 'Hide from Students'; });
+}
 </script>
 
 <script>

@@ -9,6 +9,7 @@ urlpatterns = [
     path('<int:draft_id>/sections/', views.manage_sections, name='manage_sections'),
     path('<int:draft_id>/section/<int:section_id>/questions/', views.manage_questions, name='manage_questions'),
     path('<int:draft_id>/live-editor/', views.live_editor, name='live_editor'),
+    path('<int:draft_id>/import-pdf/', views.import_pdf_to_draft, name='import_pdf_to_draft'),
     path('<int:draft_id>/api/section/add/', views.api_add_section, name='api_add_section'),
     path('<int:draft_id>/api/section/<int:section_id>/rename/', views.api_rename_section, name='api_rename_section'),
     path('<int:draft_id>/api/section/<int:section_id>/delete/', views.api_delete_section, name='api_delete_section'),
@@ -19,4 +20,5 @@ urlpatterns = [
     path('<int:draft_id>/unpublish/', views.unpublish_test, name='builder_unpublish_test'),
     path('<int:draft_id>/delete-published/', views.delete_published_test, name='builder_delete_published'),
     path('<int:draft_id>/toggle-active/', views.toggle_test_active, name='builder_toggle_active'),
+    path('orphan/<int:test_id>/deactivate/', views.deactivate_orphaned_test, name='builder_deactivate_orphan'),
 ]

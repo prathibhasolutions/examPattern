@@ -164,3 +164,35 @@ class OptionDraft(models.Model):
     
     class Meta:
         ordering = ['order']
+
+
+class PDFImportJob(models.Model):
+    STATUS_PENDING = 'pending'
+    STATUS_RUNNING = 'running'
+    STATUS_COMPLETED = 'completed'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_RUNNING, 'Running'),
+        (STATUS_COMPLETED, 'Completed'),
+        (STATUS_FAILED, 'Failed'),
+    ]
+
+    draft = models.ForeignKey(TestDraft, on_delete=models.CASCADE, related_name='pdf_import_jobs')
+    section = models.ForeignKey(SectionDraft, on_delete=models.CASCADE, related_name='pdf_import_jobs')
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='pdf_import_jobs')
+    source_filename = models.CharField(max_length=255)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    provider_name = models.CharField(max_length=100, blank=True)
+    imported_count = models.PositiveIntegerField(default=0)
+    skipped_count = models.PositiveIntegerField(default=0)
+    skip_summary = models.JSONField(default=list, blank=True)
+    error_message = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"PDF import for {self.draft.name} -> {self.section.name} ({self.status})"

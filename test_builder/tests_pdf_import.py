@@ -1,0 +1,105 @@
+from django.test import SimpleTestCase
+from unittest.mock import patch
+
+from test_builder.services.pdf_import import (
+    ExtractedPage,
+    QuestionCandidate,
+    _parse_candidates,
+    _select_best_extraction,
+)
+
+
+class PDFImportParserTests(SimpleTestCase):
+    def test_parses_mcqs_and_answer_key(self):
+        pages = [
+            ExtractedPage(
+                page_number=1,
+                image_path='page-1.png',
+                lines=[
+                    '1. What is 2 + 2?',
+                    'A. 3',
+                    'B. 4',
+                    'C. 5',
+                    '2. Capital of France?',
+                    'A. Berlin',
+                    'B. Madrid',
+                    'C. Paris',
+                    'Answer Key',
+                    '1 B 2 C',
+                ],
+            )
+        ]
+
+        candidates = _parse_candidates(pages)
+
+        self.assertEqual(len(candidates), 2)
+        self.assertEqual(candidates[0].correct_label, 'B')
+        self.assertEqual(candidates[1].correct_label, 'C')
+        self.assertEqual(candidates[0].options[1]['text'], '4')
+        self.assertGreaterEqual(candidates[0].confidence, 0.7)
+
+    def test_parses_inline_answer_lines(self):
+        pages = [
+            ExtractedPage(
+                page_number=1,
+                image_path='page-1.png',
+                lines=[
+                    'Q1) The largest planet is',
+                    'A) Earth',
+                    'B) Jupiter',
+                    'C) Mars',
+                    'Answer: B',
+                ],
+            )
+        ]
+
+        candidates = _parse_candidates(pages)
+
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0].correct_label, 'B')
+        self.assertEqual(candidates[0].options[1]['text'], 'Jupiter')
+
+    @patch('test_builder.services.pdf_import._extract_with_tesseract')
+    @patch('test_builder.services.pdf_import._extract_with_textract')
+    @patch('test_builder.services.pdf_import._parse_candidates')
+    @patch('test_builder.services.pdf_import._extract_native_pages')
+    def test_select_best_extraction_uses_ocr_when_native_has_no_confident_candidates(
+        self,
+        mock_native_pages,
+        mock_parse_candidates,
+        mock_textract,
+        mock_tesseract,
+    ):
+        native_pages = [ExtractedPage(page_number=1, lines=['random text'], image_path='p1.png')]
+        textract_pages = [ExtractedPage(page_number=1, lines=['1. Test', 'A. a', 'B. b', 'Answer: B'], image_path='p1.png')]
+        native_candidates = [
+            QuestionCandidate(
+                number=1,
+                stem='noise',
+                options=[],
+                correct_label=None,
+                source_pages=[1],
+                confidence=0.2,
+            )
+        ]
+        textract_candidates = [
+            QuestionCandidate(
+                number=1,
+                stem='Test',
+                options=[{'label': 'A', 'text': 'a'}, {'label': 'B', 'text': 'b'}],
+                correct_label='B',
+                source_pages=[1],
+                confidence=0.8,
+            )
+        ]
+
+        mock_native_pages.return_value = native_pages
+        mock_textract.return_value = textract_pages
+        mock_tesseract.return_value = None
+        mock_parse_candidates.side_effect = [native_candidates, textract_candidates]
+
+        pages, candidates, provider = _select_best_extraction('dummy.pdf', 'dummy-dir')
+
+        self.assertEqual(provider, 'aws-textract')
+        self.assertEqual(pages, textract_pages)
+        self.assertEqual(candidates, textract_candidates)
