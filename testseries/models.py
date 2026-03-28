@@ -146,6 +146,10 @@ class Test(models.Model):
 		default=False,
 		help_text="If True, each section has its own time limit and auto-advances when time ends"
 	)
+	shuffle_questions = models.BooleanField(
+		default=False,
+		help_text="If True, questions and options are shuffled into a unique random order per student"
+	)
 
 	# Default marking scheme (can be overridden at section/question level)
 	marks_per_question = models.DecimalField(max_digits=6, decimal_places=2, default=1.0)

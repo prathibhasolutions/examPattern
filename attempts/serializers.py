@@ -44,6 +44,8 @@ class TestAttemptSerializer(serializers.ModelSerializer):
             'time_remaining_seconds',
             'score',
             'elapsed_seconds',
+            'question_order',
+            'option_order',
             'answers',
         ]
         read_only_fields = ['started_at', 'submitted_at', 'score']

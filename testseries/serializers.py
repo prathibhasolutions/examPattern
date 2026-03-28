@@ -54,6 +54,7 @@ class TestDetailSerializer(serializers.ModelSerializer):
             'series_name',
             'series_section_name',
             'series_subsection_name',
+            'shuffle_questions',
             'sections',
         ]
 

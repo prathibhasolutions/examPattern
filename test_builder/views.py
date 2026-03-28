@@ -830,6 +830,7 @@ def publish_test(request, draft_id):
             published_test.marks_per_question = draft.marks_per_question
             published_test.negative_marks_per_question = draft.negative_marks
             published_test.use_sectional_timing = draft.use_sectional_timing
+            published_test.shuffle_questions = draft.shuffle_questions
             published_test.is_active = True
             published_test.save()
             test = published_test
@@ -855,6 +856,7 @@ def publish_test(request, draft_id):
                 marks_per_question=draft.marks_per_question,
                 negative_marks_per_question=draft.negative_marks,
                 use_sectional_timing=draft.use_sectional_timing,
+                shuffle_questions=draft.shuffle_questions,
                 is_active=True
             )
 
@@ -1341,6 +1343,20 @@ def api_delete_question(request, draft_id, question_id):
             q.order = i
             q.save(update_fields=['order'])
     return JsonResponse({'success': True})
+
+
+@admin_required
+@login_required
+@require_http_methods(["POST"])
+def api_toggle_shuffle(request, draft_id):
+    """Toggle shuffle_questions flag on a draft. Returns new state."""
+    from django.http import JsonResponse
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+    draft.refresh_lock(request.user)
+    enabled = request.POST.get('enabled', '').lower() == 'true'
+    draft.shuffle_questions = enabled
+    draft.save(update_fields=['shuffle_questions'])
+    return JsonResponse({'success': True, 'shuffle_questions': draft.shuffle_questions})
 
 
 @admin_required

@@ -161,7 +161,31 @@ class TestViewSet(viewsets.ReadOnlyModelViewSet):
         # Create Answer records for all questions in the test
         questions = Question.objects.filter(
             section__test=test, section__is_active=True
-        ).select_related('section')
+        ).select_related('section').prefetch_related('options')
+
+        # Build shuffle orders if enabled, then create Answer records
+        question_order = {}  # {str(section_id): [q_id, ...]}
+        option_order = {}    # {str(question_id): [opt_id, ...]}
+
+        if test.shuffle_questions:
+            import random
+            # Group questions by section
+            from collections import defaultdict
+            questions_by_section = defaultdict(list)
+            for q in questions:
+                questions_by_section[q.section_id].append(q)
+            # Shuffle within each section and record the order
+            for sec_id, qs in questions_by_section.items():
+                random.shuffle(qs)
+                question_order[str(sec_id)] = [q.id for q in qs]
+                for q in qs:
+                    opt_ids = list(q.options.values_list('id', flat=True))
+                    random.shuffle(opt_ids)
+                    option_order[str(q.id)] = opt_ids
+
+            attempt.question_order = question_order
+            attempt.option_order = option_order
+            attempt.save(update_fields=['question_order', 'option_order'])
 
         answers = [
             Answer(

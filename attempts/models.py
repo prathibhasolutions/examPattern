@@ -23,6 +23,10 @@ class TestAttempt(models.Model):
 	duration_seconds = models.PositiveIntegerField(default=0)
 	# Saved timer state for resuming — stores remaining seconds as of last heartbeat
 	time_remaining_seconds = models.IntegerField(null=True, blank=True)
+	# Shuffled question order per section: {"<section_id>": [q_id, q_id, ...]}
+	question_order = models.JSONField(default=dict, blank=True)
+	# Shuffled option order per question: {"<question_id>": [opt_id, opt_id, ...]}
+	option_order = models.JSONField(default=dict, blank=True)
 
 	STATUS_IN_PROGRESS = 'in_progress'
 	STATUS_SUBMITTED = 'submitted'

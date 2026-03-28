@@ -33,6 +33,10 @@ class TestDraft(models.Model):
         default=False, 
         help_text="If True, each section has its own time limit and auto-advances when time ends"
     )
+    shuffle_questions = models.BooleanField(
+        default=False,
+        help_text="If True, questions and options are shuffled into a unique random order per student"
+    )
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     is_published = models.BooleanField(default=False)

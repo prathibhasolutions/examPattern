@@ -155,14 +155,35 @@ const testApp = {
       }, {});
 
       sections.forEach(section => {
+        // Apply shuffled question order if this attempt has one for this section
+        const shuffledQIds = (testApp.attempt.question_order || {})[String(section.id)];
+        let sectionQuestions = section.questions || [];
+        if (shuffledQIds && shuffledQIds.length) {
+          // Re-sort the questions array to match the stored shuffle order
+          const qById = Object.fromEntries(sectionQuestions.map(q => [q.id, q]));
+          sectionQuestions = shuffledQIds.map(id => qById[id]).filter(Boolean);
+        }
+
+        // Apply shuffled option order per question
+        const optionOrderMap = testApp.attempt.option_order || {};
+
         let sectionQuestionNumber = 1; // Reset for each section
-        (section.questions || []).forEach(q => {
+        sectionQuestions.forEach(q => {
+          // Reorder options if a shuffle order is stored for this question
+          const shuffledOptIds = optionOrderMap[String(q.id)];
+          let orderedOptions = q.options || [];
+          if (shuffledOptIds && shuffledOptIds.length) {
+            const optById = Object.fromEntries(orderedOptions.map(o => [o.id, o]));
+            orderedOptions = shuffledOptIds.map(id => optById[id]).filter(Boolean);
+          }
+
           const ans = answersByQuestion[q.id] || {};
           if (!testApp.sectionMetaById[section.id].firstQuestionId) {
             testApp.sectionMetaById[section.id].firstQuestionId = q.id;
           }
           questions.push({
             ...q,
+            options: orderedOptions,
             section_id: section.id,
             section_name: section.name,
             section_order: section.order,
