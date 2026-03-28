@@ -1610,3 +1610,153 @@ def import_json_to_draft(request, draft_id):
         )
 
     return redirect('live_editor', draft_id=draft.id)
+
+
+# ──────────────────────────────────────────────────────────────────────
+# COPY FROM EXISTING TEST — two JSON endpoints used by the live editor
+# ──────────────────────────────────────────────────────────────────────
+
+@admin_required
+@login_required
+@require_http_methods(["GET"])
+def api_copy_source_list(request, draft_id):
+    """
+    Return all published + draft tests (with their sections) that can act as
+    copy sources.  The current draft itself is excluded.
+
+    If ?section_questions=1&source_type=...&section_id=... is passed, return
+    the question list for a single section instead (used by the picker modal).
+    """
+    from django.http import JsonResponse
+    from .services.copy_import import list_source_tests, list_questions_in_source_section
+
+    # Confirm the draft belongs to this admin (access guard)
+    get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+
+    if request.GET.get('section_questions') == '1':
+        source_type = request.GET.get('source_type', '').strip()
+        section_id_raw = request.GET.get('section_id', '')
+        if source_type not in ('published', 'draft') or not section_id_raw:
+            return JsonResponse({'questions': []})
+        try:
+            section_id = int(section_id_raw)
+        except ValueError:
+            return JsonResponse({'questions': []})
+        questions = list_questions_in_source_section(source_type, section_id)
+        return JsonResponse({'questions': questions})
+
+    all_sources = list_source_tests()
+
+    # Remove the current draft from the list so admins don't accidentally copy
+    # a section into itself.
+    filtered = []
+    for entry in all_sources:
+        if entry['source_type'] == 'draft' and entry['id'] == int(draft_id):
+            continue
+        filtered.append(entry)
+
+    return JsonResponse({'sources': filtered})
+
+
+@admin_required
+@login_required
+@require_http_methods(["POST"])
+def api_copy_questions(request, draft_id):
+    """
+    Copy questions from a source section (published or draft) into a target
+    SectionDraft of the current draft.
+
+    POST body (form-encoded or JSON):
+        target_section_id  : int
+        source_type        : "published" | "draft"
+        source_section_id  : int
+        question_ids       : comma-separated int list, or empty → copy all
+    """
+    from django.http import JsonResponse
+    import json as _json
+    from .services.copy_import import copy_questions_into_section
+
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+    draft.refresh_lock(request.user)
+
+    # Support both form-encoded and JSON request bodies
+    if request.content_type and 'application/json' in request.content_type:
+        try:
+            payload = _json.loads(request.body)
+        except ValueError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON body.'}, status=400)
+    else:
+        payload = request.POST
+
+    target_section_id = payload.get('target_section_id', '')
+    source_type = payload.get('source_type', '').strip()
+    source_section_id = payload.get('source_section_id', '')
+    question_ids_raw = payload.get('question_ids', '')
+
+    # Validate inputs
+    if not target_section_id:
+        return JsonResponse({'success': False, 'error': 'target_section_id is required.'}, status=400)
+    if source_type not in ('published', 'draft'):
+        return JsonResponse({'success': False, 'error': 'source_type must be "published" or "draft".'}, status=400)
+    if not source_section_id:
+        return JsonResponse({'success': False, 'error': 'source_section_id is required.'}, status=400)
+
+    try:
+        target_section_id = int(target_section_id)
+        source_section_id = int(source_section_id)
+    except (ValueError, TypeError):
+        return JsonResponse({'success': False, 'error': 'Section IDs must be integers.'}, status=400)
+
+    # Parse optional question_ids filter
+    question_ids = []
+    if question_ids_raw:
+        try:
+            if isinstance(question_ids_raw, list):
+                question_ids = [int(x) for x in question_ids_raw]
+            else:
+                question_ids = [int(x.strip()) for x in str(question_ids_raw).split(',') if x.strip()]
+        except ValueError:
+            return JsonResponse({'success': False, 'error': 'question_ids must be integers.'}, status=400)
+
+    target_section = get_object_or_404(SectionDraft, id=target_section_id, test_draft=draft)
+
+    result = copy_questions_into_section(
+        target_section=target_section,
+        source_type=source_type,
+        source_section_id=source_section_id,
+        question_ids=question_ids,
+    )
+
+    if result['errors']:
+        return JsonResponse({'success': False, 'error': result['errors'][0]}, status=400)
+
+    # Re-serialise the target section so the editor's JS state can update
+    questions_data = [
+        {
+            'id': q.id,
+            'order': q.order,
+            'question_text': q.question_text,
+            'image_url': q.question_image.url if q.question_image else None,
+            'solution_text': q.solution_text,
+            'solution_image_url': q.solution_image.url if q.solution_image else None,
+            'options': [
+                {
+                    'id': opt.id,
+                    'text': opt.option_text,
+                    'image_url': opt.option_image.url if opt.option_image else None,
+                    'is_correct': opt.is_correct,
+                    'order': opt.order,
+                }
+                for opt in q.options.all()
+            ],
+        }
+        for q in target_section.questions.order_by('order')
+    ]
+
+    return JsonResponse({
+        'success': True,
+        'copied': result['copied'],
+        'skipped': result['skipped'],
+        'section_id': target_section.id,
+        'questions': questions_data,
+    })

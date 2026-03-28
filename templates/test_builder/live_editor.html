@@ -443,6 +443,67 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
     font-size: 12px; color: #475569; max-width: 480px; line-height: 1.5;
 }
 
+/* ── Copy-from-test picker ──────────────────── */
+.le-copy-panel { width: 100%; }
+.le-copy-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.le-copy-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: none; border-radius: 8px; background: #7c3aed; color: white;
+    padding: 9px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
+    transition: background 0.2s;
+}
+.le-copy-btn:hover { background: #6d28d9; }
+.le-copy-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+/* Modal styles for copy picker */
+#copySourceModal .modal-dialog { max-width: 760px; }
+#copySourceModal .cpm-search {
+    border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 12px;
+    font-size: 13px; width: 100%; margin-bottom: 12px; outline: none;
+}
+#copySourceModal .cpm-search:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.15); }
+#copySourceModal .cpm-test-list { max-height: 420px; overflow-y: auto; }
+#copySourceModal .cpm-test-item {
+    border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; overflow: hidden;
+}
+#copySourceModal .cpm-test-header {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    background: #f8fafc; cursor: pointer; user-select: none;
+    transition: background 0.15s;
+}
+#copySourceModal .cpm-test-header:hover { background: #eff6ff; }
+#copySourceModal .cpm-test-name { font-size: 13px; font-weight: 700; color: #1e293b; flex: 1; }
+#copySourceModal .cpm-badge {
+    font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 700; white-space: nowrap;
+}
+#copySourceModal .cpm-badge-published { background: #dcfce7; color: #166534; }
+#copySourceModal .cpm-badge-draft { background: #fef3c7; color: #92400e; }
+#copySourceModal .cpm-badge-inactive { background: #fee2e2; color: #991b1b; }
+#copySourceModal .cpm-series { font-size: 11px; color: #64748b; }
+#copySourceModal .cpm-chevron { color: #94a3b8; transition: transform 0.2s; font-size: 11px; }
+#copySourceModal .cpm-test-item.open .cpm-chevron { transform: rotate(180deg); }
+#copySourceModal .cpm-sections { padding: 0 14px 10px; display: none; }
+#copySourceModal .cpm-test-item.open .cpm-sections { display: block; }
+#copySourceModal .cpm-section-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+    border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 6px;
+    background: #fff; cursor: pointer; transition: border-color 0.15s;
+}
+#copySourceModal .cpm-section-row:hover { border-color: #7c3aed; background: #faf5ff; }
+#copySourceModal .cpm-section-row.selected { border-color: #7c3aed; background: #ede9fe; }
+#copySourceModal .cpm-section-name { font-size: 13px; color: #334155; flex: 1; }
+#copySourceModal .cpm-q-count { font-size: 11px; color: #94a3b8; white-space: nowrap; }
+/* Question preview list inside modal */
+#copySourceModal .cpm-q-list { padding-left: 0; margin: 6px 0 0 0; list-style: none; }
+#copySourceModal .cpm-q-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 5px 0; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155;
+}
+#copySourceModal .cpm-q-list li:last-child { border-bottom: none; }
+#copySourceModal .cpm-q-checkbox { margin-top: 1px; accent-color: #7c3aed; width: 14px; height: 14px; flex-shrink: 0; }
+#copySourceModal .cpm-q-sel-all { font-size: 12px; color: #7c3aed; cursor: pointer; margin-bottom: 4px; display: inline-block; }
+#copySourceModal .cpm-loading { text-align: center; color: #94a3b8; font-size: 13px; padding: 20px 0; }
+.cpm-no-results { text-align: center; color: #94a3b8; font-size: 13px; padding: 20px 0; }
+
 /* ── Inline alerts ──────────────────────────── */
 .le-alerts {
     padding: 12px 16px 0; background: #f8fafc; flex-shrink: 0;
@@ -492,6 +553,9 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
         <button type="button" class="le-import-tab" id="importTabJson" onclick="switchImportTab('json')">
             <i class="fas fa-code"></i> Paste JSON
         </button>
+        <button type="button" class="le-import-tab" id="importTabCopy" onclick="switchImportTab('copy')">
+            <i class="fas fa-copy"></i> Copy from Test
+        </button>
     </div>
 
     <!-- PDF panel (shown by default) -->
@@ -535,6 +599,24 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
         </form>
         <div class="le-import-note">
             Paste the JSON array from ChatGPT (or any tool). Each item needs <code>question_text</code>, <code>solution_text</code>, and <code>options</code> — an array of objects with <code>option_text</code> and <code>is_correct</code> (exactly one <code>true</code>). Questions go into drafts for manual review before publishing.
+        </div>
+    </div>
+
+    <!-- Copy-from-test panel (hidden by default) -->
+    <div class="le-import-panel le-copy-panel" id="importCopyPanel" style="display:none;">
+        <div class="le-copy-row">
+            <select id="copyTargetSection" class="le-import-select">
+                <option value="">↳ Into which section?</option>
+                {% for section in sections_for_import %}
+                    <option value="{{ section.id }}">{{ section.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="button" class="le-copy-btn" id="openCopyPickerBtn" onclick="openCopyPicker()">
+                <i class="fas fa-search"></i> Browse &amp; Pick Questions
+            </button>
+        </div>
+        <div class="le-import-note">
+            Reuse questions from any other published or draft test. Select the destination section above, then browse and tick the questions you want to copy. Images and solutions are included. Copied questions are independent — editing them won't affect the original.
         </div>
     </div>
 </div>
@@ -682,6 +764,35 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
 
 <!-- ── Modals ──────────────────────────────────── -->
 
+<!-- Copy from Test — source picker modal -->
+<div class="modal fade" id="copySourceModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#5b21b6,#7c3aed);color:white;">
+                <h5 class="modal-title"><i class="fas fa-copy"></i> Copy Questions from Existing Test</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding:16px 20px;">
+                <input type="text" id="cpmSearch" class="cpm-search" placeholder="🔍  Search tests or series…" oninput="filterCpmTests(this.value)">
+                <div id="cpmTestList" class="cpm-test-list">
+                    <div class="cpm-loading"><i class="fas fa-spinner fa-spin"></i> Loading tests…</div>
+                </div>
+            </div>
+            <div class="modal-footer" style="justify-content:space-between;align-items:center;">
+                <span id="cpmSelCount" style="font-size:13px;color:#475569;">0 questions selected</span>
+                <div style="display:flex;gap:8px;">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-sm" id="confirmCopyBtn"
+                        style="background:#7c3aed;color:white;font-weight:700;"
+                        onclick="executeCopy()" disabled>
+                        <i class="fas fa-copy"></i> Copy Selected into Draft
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Add Section Modal -->
 <div class="modal fade" id="addSectionModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered" style="max-width:360px;">
@@ -782,8 +893,10 @@ shuffleCheckbox.addEventListener('change', async () => {
 function switchImportTab(tab) {
     document.getElementById('importPdfPanel').style.display = tab === 'pdf' ? '' : 'none';
     document.getElementById('importJsonPanel').style.display = tab === 'json' ? '' : 'none';
+    document.getElementById('importCopyPanel').style.display = tab === 'copy' ? '' : 'none';
     document.getElementById('importTabPdf').classList.toggle('active', tab === 'pdf');
     document.getElementById('importTabJson').classList.toggle('active', tab === 'json');
+    document.getElementById('importTabCopy').classList.toggle('active', tab === 'copy');
 }
 
 // ── State ──────────────────────────────────────────────
@@ -1623,5 +1736,320 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ══════════════════════════════════════════════════════════════════════
+//  COPY-FROM-TEST PICKER
+// ══════════════════════════════════════════════════════════════════════
+
+let _cpmSources = [];          // all source tests, fetched once
+let _cpmFiltered = [];         // after search filter
+// Map: source_type+sectionId → { selected: Set<questionId|'all'> }
+// We store 'all' in the set when "Select all" was clicked and questions not yet loaded.
+// Once questions are loaded they are replaced with real ids.
+let _cpmSelection = {};        // key: `${sourceType}:${sectionId}` → { ids: Set }
+let _cpmLoadedSections = {};   // key: `${sourceType}:${sectionId}` → [question objects]
+let _cpmFetchedSources = false;
+
+function _cpmSelKey(sourceType, sectionId) { return `${sourceType}:${sectionId}`; }
+
+// Open the modal and fetch source list (once)
+async function openCopyPicker() {
+    const targetSec = document.getElementById('copyTargetSection').value;
+    if (!targetSec) {
+        showToast('Please choose a destination section first.', 'warning');
+        return;
+    }
+    _cpmSelection = {};
+    document.getElementById('cpmSelCount').textContent = '0 questions selected';
+    document.getElementById('confirmCopyBtn').disabled = true;
+    getModal('copySourceModal').show();
+
+    if (_cpmFetchedSources) {
+        _cpmFiltered = _cpmSources;
+        renderCpmList();
+        return;
+    }
+
+    document.getElementById('cpmTestList').innerHTML =
+        '<div class="cpm-loading"><i class="fas fa-spinner fa-spin"></i> Loading tests…</div>';
+
+    try {
+        const resp = await fetch(`/builder/${DRAFT_ID}/api/copy-source-list/`, {
+            headers: { 'X-CSRFToken': CSRF },
+        });
+        const data = await resp.json();
+        _cpmSources = data.sources || [];
+        _cpmFiltered = _cpmSources;
+        _cpmFetchedSources = true;
+        renderCpmList();
+    } catch {
+        document.getElementById('cpmTestList').innerHTML =
+            '<div class="cpm-no-results">Failed to load tests. Please refresh and try again.</div>';
+    }
+}
+
+function filterCpmTests(q) {
+    q = q.trim().toLowerCase();
+    if (!q) {
+        _cpmFiltered = _cpmSources;
+    } else {
+        _cpmFiltered = _cpmSources.filter(t =>
+            t.name.toLowerCase().includes(q) ||
+            t.series_name.toLowerCase().includes(q)
+        );
+    }
+    renderCpmList();
+}
+
+function renderCpmList() {
+    const container = document.getElementById('cpmTestList');
+    if (_cpmFiltered.length === 0) {
+        container.innerHTML = '<div class="cpm-no-results">No matching tests found.</div>';
+        return;
+    }
+    container.innerHTML = '';
+    _cpmFiltered.forEach(test => {
+        const item = document.createElement('div');
+        item.className = 'cpm-test-item';
+        item.dataset.testId = test.id;
+        item.dataset.sourceType = test.source_type;
+
+        // Determine badge
+        let badgeClass = 'cpm-badge-published';
+        let badgeText = 'Published';
+        if (test.source_type === 'draft') {
+            badgeClass = 'cpm-badge-draft';
+            badgeText = test.is_published ? 'Draft (published)' : 'Draft';
+        } else if (!test.is_active) {
+            badgeClass = 'cpm-badge-inactive';
+            badgeText = 'Inactive';
+        }
+
+        const header = document.createElement('div');
+        header.className = 'cpm-test-header';
+        header.innerHTML = `
+            <span class="cpm-test-name">${escHtml(test.name)}</span>
+            <span class="cpm-series">${escHtml(test.series_name)}</span>
+            <span class="cpm-badge ${badgeClass}">${badgeText}</span>
+            <i class="fas fa-chevron-down cpm-chevron"></i>
+        `;
+        header.addEventListener('click', () => {
+            item.classList.toggle('open');
+            if (item.classList.contains('open')) {
+                renderCpmSections(item, test.sections, test.source_type);
+            }
+        });
+        item.appendChild(header);
+
+        const sectionsDiv = document.createElement('div');
+        sectionsDiv.className = 'cpm-sections';
+        item.appendChild(sectionsDiv);
+
+        container.appendChild(item);
+    });
+}
+
+function renderCpmSections(testItem, sections, sourceType) {
+    const container = testItem.querySelector('.cpm-sections');
+    if (container.dataset.rendered) return;   // already built
+    container.dataset.rendered = '1';
+    container.innerHTML = '';
+
+    if (!sections || sections.length === 0) {
+        container.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:6px 0;">No sections with questions.</div>';
+        return;
+    }
+
+    sections.forEach(sec => {
+        const key = _cpmSelKey(sourceType, sec.id);
+        const row = document.createElement('div');
+        row.className = 'cpm-section-row';
+        row.dataset.key = key;
+        row.innerHTML = `
+            <span class="cpm-section-name">${escHtml(sec.name)}</span>
+            <span class="cpm-q-count">${sec.question_count} Q</span>
+            <i class="fas fa-chevron-right" style="font-size:11px;color:#94a3b8;"></i>
+        `;
+
+        const qContainer = document.createElement('div');
+        qContainer.style.display = 'none';
+
+        row.addEventListener('click', () => {
+            const isOpen = qContainer.style.display !== 'none';
+            if (isOpen) {
+                qContainer.style.display = 'none';
+                row.querySelector('.fa-chevron-right, .fa-chevron-down').className = 'fas fa-chevron-right';
+                return;
+            }
+            row.querySelector('.fa-chevron-right, .fa-chevron-down').className = 'fas fa-chevron-down';
+            qContainer.style.display = 'block';
+            if (!_cpmLoadedSections[key]) {
+                loadCpmQuestions(qContainer, sourceType, sec.id, key);
+            }
+        });
+
+        const wrapper = document.createElement('div');
+        wrapper.appendChild(row);
+        wrapper.appendChild(qContainer);
+        container.appendChild(wrapper);
+    });
+}
+
+async function loadCpmQuestions(container, sourceType, sectionId, key) {
+    container.innerHTML = '<div class="cpm-loading" style="padding:8px 0;font-size:12px;"><i class="fas fa-spinner fa-spin"></i> Loading…</div>';
+    try {
+        const url = `/builder/${DRAFT_ID}/api/copy-source-list/?section_questions=1&source_type=${encodeURIComponent(sourceType)}&section_id=${sectionId}`;
+        const resp = await fetch(url, { headers: { 'X-CSRFToken': CSRF } });
+        const data = await resp.json();
+        const questions = data.questions || [];
+        _cpmLoadedSections[key] = questions;
+        renderCpmQuestions(container, questions, key);
+    } catch {
+        container.innerHTML = '<div class="cpm-loading" style="font-size:12px;color:#ef4444;">Failed to load questions.</div>';
+    }
+}
+
+function renderCpmQuestions(container, questions, key) {
+    if (!questions.length) {
+        container.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:4px 0;">No questions in this section.</div>';
+        return;
+    }
+    const sel = _cpmSelection[key] || { ids: new Set() };
+    _cpmSelection[key] = sel;
+
+    const selAll = document.createElement('span');
+    selAll.className = 'cpm-q-sel-all';
+    selAll.textContent = sel.ids.size === questions.length ? '☑ Deselect all' : '☐ Select all';
+    selAll.addEventListener('click', () => {
+        if (sel.ids.size === questions.length) {
+            sel.ids.clear();
+        } else {
+            questions.forEach(q => sel.ids.add(q.id));
+        }
+        selAll.textContent = sel.ids.size === questions.length ? '☑ Deselect all' : '☐ Select all';
+        // Sync checkboxes
+        container.querySelectorAll('.cpm-q-checkbox').forEach(cb => {
+            cb.checked = sel.ids.has(parseInt(cb.dataset.qid));
+        });
+        updateCpmSelCount();
+    });
+
+    const ul = document.createElement('ul');
+    ul.className = 'cpm-q-list';
+    questions.forEach((q, idx) => {
+        const li = document.createElement('li');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'cpm-q-checkbox';
+        cb.dataset.qid = q.id;
+        cb.checked = sel.ids.has(q.id);
+        cb.addEventListener('change', () => {
+            if (cb.checked) sel.ids.add(q.id); else sel.ids.delete(q.id);
+            selAll.textContent = sel.ids.size === questions.length ? '☑ Deselect all' : '☐ Select all';
+            updateCpmSelCount();
+        });
+
+        const preview = document.createElement('span');
+        const snippet = (q.question_text || '').slice(0, 100) + (q.question_text && q.question_text.length > 100 ? '…' : '');
+        const correct = (q.options || []).find(o => o.is_correct);
+        preview.innerHTML = `<strong>Q${idx + 1}.</strong> ${escHtml(snippet) || '<em style="color:#94a3b8;">[image only]</em>'}` +
+            (correct ? ` <span style="color:#16a34a;font-size:11px;">(✓ ${escHtml(correct.text.slice(0,30))})</span>` : '');
+
+        li.appendChild(cb);
+        li.appendChild(preview);
+        ul.appendChild(li);
+    });
+
+    container.innerHTML = '';
+    container.appendChild(selAll);
+    container.appendChild(ul);
+}
+
+function updateCpmSelCount() {
+    let total = 0;
+    Object.values(_cpmSelection).forEach(sel => { total += sel.ids.size; });
+    document.getElementById('cpmSelCount').textContent =
+        total === 0 ? '0 questions selected' : `${total} question${total !== 1 ? 's' : ''} selected`;
+    document.getElementById('confirmCopyBtn').disabled = total === 0;
+}
+
+async function executeCopy() {
+    const targetSectionId = document.getElementById('copyTargetSection').value;
+    if (!targetSectionId) {
+        showToast('Please choose a destination section first (close this modal, select it, then reopen).', 'warning', 5000);
+        return;
+    }
+
+    // Build per-source-section copy calls
+    const jobs = [];
+    for (const [key, sel] of Object.entries(_cpmSelection)) {
+        if (sel.ids.size === 0) continue;
+        const [sourceType, sectionIdStr] = key.split(':');
+        jobs.push({ sourceType, sourceSectionId: parseInt(sectionIdStr), questionIds: [...sel.ids] });
+    }
+
+    if (jobs.length === 0) {
+        showToast('Select at least one question first.', 'warning');
+        return;
+    }
+
+    const btn = document.getElementById('confirmCopyBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Copying…';
+
+    getModal('copySourceModal').hide();
+
+    let totalCopied = 0;
+    let totalSkipped = 0;
+    let lastSectionData = null;
+
+    try {
+        for (const job of jobs) {
+            const fd = new FormData();
+            fd.append('csrfmiddlewaretoken', CSRF);
+            fd.append('target_section_id', targetSectionId);
+            fd.append('source_type', job.sourceType);
+            fd.append('source_section_id', job.sourceSectionId);
+            fd.append('question_ids', job.questionIds.join(','));
+
+            const resp = await fetch(`/builder/${DRAFT_ID}/api/copy-questions/`, { method: 'POST', body: fd });
+            const data = await resp.json();
+            if (!data.success) {
+                showToast(`Copy failed: ${data.error}`, 'danger', 6000);
+                break;
+            }
+            totalCopied += data.copied;
+            totalSkipped += data.skipped;
+            lastSectionData = { sectionId: data.section_id, questions: data.questions };
+        }
+
+        if (totalCopied > 0 && lastSectionData) {
+            // Merge copied questions into the editor's live `sections` state
+            const sec = sections.find(s => s.id === lastSectionData.sectionId);
+            if (sec) {
+                sec.questions = lastSectionData.questions;
+            }
+            renderPalette();
+            renderSectionTabs();
+            showToast(
+                `✓ Copied ${totalCopied} question${totalCopied !== 1 ? 's' : ''}` +
+                (totalSkipped ? ` (${totalSkipped} skipped — invalid)` : ''),
+                'success', 5000
+            );
+        } else if (totalCopied === 0) {
+            showToast('No questions were copied. They may have been invalid.', 'warning');
+        }
+    } catch {
+        showToast('Copy failed unexpectedly. Please try again.', 'danger');
+    }
+
+    btn.innerHTML = '<i class="fas fa-copy"></i> Copy Selected into Draft';
+    btn.disabled = false;
+}
+
+function escHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 </script>
 {% endblock %}
