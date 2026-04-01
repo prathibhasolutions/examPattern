@@ -4,6 +4,13 @@ from .models import Question, Option
 
 
 class OptionSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
+    def get_image(self, obj):
+        if obj.image:
+            return obj.image.url
+        return None
+
     class Meta:
         model = Option
         fields = ['id', 'text', 'image', 'is_math', 'order']
@@ -13,6 +20,12 @@ class OptionSerializer(serializers.ModelSerializer):
 class QuestionSerializer(serializers.ModelSerializer):
     options = OptionSerializer(many=True, read_only=True)
     section = serializers.IntegerField(source='section_id', read_only=True)
+    image = serializers.SerializerMethodField()
+
+    def get_image(self, obj):
+        if obj.image:
+            return obj.image.url
+        return None
 
     class Meta:
         model = Question
