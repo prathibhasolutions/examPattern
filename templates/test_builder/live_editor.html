@@ -1293,6 +1293,8 @@ async function saveQuestion() {
             const q = data.question;
             pendingImageFiles['q'] = null;
             pendingImageFiles['sol'] = null;
+            // DEBUG: show what image_url the server returned
+            showToast(q.image_url ? `Image saved: ${q.image_url}` : 'No image_url in response', q.image_url ? 'success' : 'danger', 5000);
             if (isNewQuestion) { sec.questions.push(q); isNewQuestion = false; }
             else { const idx = sec.questions.findIndex(x => x.id === q.id); if (idx !== -1) sec.questions[idx] = q; }
             activeQuestionId = q.id; isDirty = false;
