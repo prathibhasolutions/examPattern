@@ -1084,6 +1084,10 @@ function loadEditor(questionData) {
     document.getElementById('emptyState').style.display = 'none';
     document.getElementById('questionEditor').style.display = 'block';
 
+    // Reset any pending image files from the previous question
+    pendingImageFiles['q'] = null;
+    pendingImageFiles['sol'] = null;
+
     const sec = activeSection();
     if (questionData) {
         document.getElementById('qHeaderLabel').textContent = `Question ${questionData.order}`;
@@ -1260,12 +1264,12 @@ async function saveQuestion() {
 
     // Question image
     const qImg = document.getElementById('qImgInput');
-    if (qImg.files[0]) { fd.append('question_image', qImg.files[0]); }
+    if (pendingImageFiles['q']) { fd.append('question_image', pendingImageFiles['q']); }
     else if (document.getElementById('qImgPreview').dataset.cleared === '1') { fd.append('clear_question_image', '1'); }
 
     // Solution image
     const solImg = document.getElementById('solImgInput');
-    if (solImg.files[0]) { fd.append('solution_image', solImg.files[0]); }
+    if (pendingImageFiles['sol']) { fd.append('solution_image', pendingImageFiles['sol']); }
     else if (document.getElementById('solImgPreview').dataset.cleared === '1') { fd.append('clear_solution_image', '1'); }
 
     // Options
@@ -1286,6 +1290,8 @@ async function saveQuestion() {
         const data = await resp.json();
         if (data.success) {
             const q = data.question;
+            pendingImageFiles['q'] = null;
+            pendingImageFiles['sol'] = null;
             if (isNewQuestion) { sec.questions.push(q); isNewQuestion = false; }
             else { const idx = sec.questions.findIndex(x => x.id === q.id); if (idx !== -1) sec.questions[idx] = q; }
             activeQuestionId = q.id; isDirty = false;
@@ -1676,6 +1682,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Image upload & clear for question + solution
+    // pendingImageFiles holds the actual File object so clearing input.value doesn't lose it
+    const pendingImageFiles = { q: null, sol: null };
+
     ['q', 'sol'].forEach(prefix => {
         const box = document.getElementById(`${prefix}ImgBox`);
         const input = document.getElementById(`${prefix}ImgInput`);
@@ -1686,15 +1695,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!clearBtn.contains(e.target)) input.click();
         });
         input.addEventListener('change', e => {
-            if (e.target.files[0]) {
+            const file = e.target.files[0];
+            if (file) {
+                pendingImageFiles[prefix] = file;
                 const reader = new FileReader();
                 reader.onload = ev => { setImagePreview(prefix, ev.target.result); };
-                reader.readAsDataURL(e.target.files[0]);
+                reader.readAsDataURL(file);
                 isDirty = true;
             }
         });
         clearBtn.addEventListener('click', e => {
             e.stopPropagation();
+            pendingImageFiles[prefix] = null;
             setImagePreview(prefix, null);
             preview.dataset.cleared = '1';
             isDirty = true;
