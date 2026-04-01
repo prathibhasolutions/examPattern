@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 db.sqlite3
 .env
+venv/
 *.log
 # Elastic Beanstalk Files
 .elasticbeanstalk/*
