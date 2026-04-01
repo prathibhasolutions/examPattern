@@ -12,3 +12,7 @@ venv/
 
 staticfiles/
 media/
+
+media/
+*.jpg
+*.png
