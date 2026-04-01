@@ -905,6 +905,7 @@ let activeQuestionId = null;   // existing question id, or null
 let isNewQuestion = false;     // true while composing a new (unsaved) question
 let isDirty = false;           // editor has unsaved edits
 let pendingAction = null;      // { type, ... } deferred after save/discard
+const pendingImageFiles = { q: null, sol: null }; // holds File objects across setImagePreview clearing input.value
 
 // validationErrors: { sectionId: { sectionError: null|string, questionErrors: { questionId: string } } }
 let validationErrors = {};
@@ -1682,9 +1683,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Image upload & clear for question + solution
-    // pendingImageFiles holds the actual File object so clearing input.value doesn't lose it
-    const pendingImageFiles = { q: null, sol: null };
-
     ['q', 'sol'].forEach(prefix => {
         const box = document.getElementById(`${prefix}ImgBox`);
         const input = document.getElementById(`${prefix}ImgInput`);
