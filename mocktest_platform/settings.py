@@ -204,6 +204,17 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
+
+# Reverse-proxy / HTTPS support
+# On Lightsail (and Elastic Beanstalk) nginx terminates SSL and forwards requests
+# as HTTP internally.  Django must be told to trust the X-Forwarded-Proto header
+# so it generates https:// URLs (required for Google OAuth redirect URIs).
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_X_FORWARDED_HOST = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
 # Authentication backends (standard + allauth)
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
