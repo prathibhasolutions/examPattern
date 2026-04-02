@@ -617,8 +617,8 @@
     .right-sidebar {
       position: fixed;
       right: 0;
-      top: 0;
-      height: 100vh;
+      top: var(--navbar-height, 0px);
+      height: calc(100dvh - var(--navbar-height, 0px) - 60px);
       z-index: 1000;
       box-shadow: -4px 0 12px rgba(0, 0, 0, 0.2);
       width: min(85vw, 300px);
@@ -1082,6 +1082,16 @@
     return false;
   });
 
+  // Track navbar height so mobile sidebar starts below it
+  function updateNavbarHeight() {
+    const navbar = document.querySelector('.top-navbar');
+    if (navbar) {
+      document.documentElement.style.setProperty('--navbar-height', navbar.offsetHeight + 'px');
+    }
+  }
+  updateNavbarHeight();
+  window.addEventListener('resize', updateNavbarHeight);
+
   // Mobile palette toggle
   const paletteToggle = document.getElementById('paletteToggle');
   const rightSidebar = document.querySelector('.right-sidebar');
@@ -1125,21 +1135,15 @@
         console.error('Error attempting to enable fullscreen:', err);
       });
     } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      }
+      document.exitFullscreen();
     }
   });
 
   // Update fullscreen icon when fullscreen state changes
   document.addEventListener('fullscreenchange', function() {
     const btn = document.getElementById('fullscreenBtn');
+    if (!btn) return;
     if (document.fullscreenElement) {
-      btn.innerHTML = `<svg fill="currentColor" viewBox="0 0 16 16">
-        <path d="M5.5 0a.5.5 0 0 1 .5.5v4A1.5 1.5 0 0 1 4.5 6h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5zm5 0a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 10 4.5v-4a.5.5 0 0 1 .5-.5zM0 10.5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 6 11.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5zm10 1a1.5 1.5 0 0 1 1.5-1.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4z"/>
-      </svg>`;
-      btn.title = 'Exit Fullscreen';
-    } else {
       btn.innerHTML = `<svg fill="currentColor" viewBox="0 0 16 16">
         <path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1h-4zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5zM.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5zm15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5z"/>
       </svg>`;

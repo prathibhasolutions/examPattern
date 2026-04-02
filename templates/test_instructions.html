@@ -258,6 +258,58 @@
         .note-box li {
             font-size: 13px;
         }
+
+        /* Responsive fixes for mobile */
+        @media (max-width: 600px) {
+            body {
+                padding: 8px;
+                align-items: flex-start;
+            }
+
+            .instructions-container {
+                max-height: 100dvh;
+                border-radius: 0;
+            }
+
+            /* Make table horizontally scrollable instead of overflowing */
+            .exam-table-wrap {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                margin-top: 15px;
+            }
+            .exam-table {
+                margin-top: 0;
+                min-width: 420px;
+            }
+
+            /* Footer stacks vertically on small screens */
+            .instructions-footer {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+                padding: 12px 16px;
+            }
+
+            .form-check {
+                justify-content: flex-start;
+            }
+
+            /* Row with page indicator + buttons fills full width */
+            .instructions-footer > div {
+                margin-left: 0 !important;
+                width: 100%;
+            }
+
+            .nav-buttons {
+                flex-wrap: wrap;
+            }
+
+            .btn-nav {
+                flex: 1;
+                justify-content: center;
+                min-width: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -342,6 +394,7 @@
                 <p><strong>Total Duration:</strong> {{ test_duration_minutes }} minutes | <strong>Total Questions:</strong> {{ total_questions }} | <strong>Total Marks:</strong> {{ total_marks }}</p>
             {% endif %}
 
+            <div class="exam-table-wrap">
             <table class="exam-table">
                 <thead>
                     <tr>
@@ -380,6 +433,7 @@
                     </tr>
                 </tbody>
             </table>
+            </div>
 
             <div class="note-box">
                 <p><strong>📝 Key Points:</strong></p>
@@ -507,6 +561,7 @@
 
                 const attempt = await response.json();
                 window.location.href = `/test/${testId}/?attempt_id=${attempt.id}`;
+
             } catch (error) {
                 alert('Error: ' + error.message);
             }

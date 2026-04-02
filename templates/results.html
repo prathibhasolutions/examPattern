@@ -181,126 +181,119 @@
     }
   }
 
-  /* Performance Summary Cards */
+  /* Exam Header */
+  .exam-header {
+    text-align: center;
+    margin-bottom: 1.25rem;
+    padding: 1rem 1rem 0.75rem;
+    border-bottom: 2px solid #e8ecf4;
+  }
+
+  .exam-series-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #6c757d;
+    margin-bottom: 0.3rem;
+  }
+
+  .exam-test-name {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #1e3c72;
+    margin: 0;
+    line-height: 1.3;
+  }
+
+  @media (max-width: 768px) {
+    .exam-test-name { font-size: 1.1rem; }
+    .exam-series-name { font-size: 0.72rem; }
+  }
+
+  /* Performance Summary */
   .performance-summary {
     background: white;
-    padding: 1.5rem;
+    padding: 1.25rem 1.5rem 1.5rem;
     border-radius: 1rem;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
     margin-bottom: 1.5rem;
   }
 
   .summary-title {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 700;
     color: #1e3c72;
-    margin-bottom: 1.5rem;
-    text-align: center;
+    margin-bottom: 1rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
 
   .metrics-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.75rem;
   }
 
   .metric-card {
     text-align: center;
-    padding: 1rem;
+    padding: 0.875rem 0.4rem;
     background: linear-gradient(135deg, #f5f7fa 0%, #e3e7f0 100%);
     border-radius: 0.75rem;
     border: 2px solid #e0e4eb;
     transition: transform 0.2s;
   }
 
-  .metric-card:hover {
-    transform: translateY(-3px);
-  }
+  .metric-card:hover { transform: translateY(-3px); }
 
   .metric-icon {
-    width: 45px;
-    height: 45px;
-    margin: 0 auto 0.75rem;
+    width: 38px;
+    height: 38px;
+    margin: 0 auto 0.5rem;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.3rem;
+    font-size: 1.1rem;
   }
 
-  .rank-icon {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  }
-
-  .score-icon {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  }
-
-  .percentile-icon {
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  }
-
-  .accuracy-icon {
-    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-  }
-
-  .attempted-icon {
-    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-  }
+  .rank-icon       { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+  .score-icon      { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+  .marks-icon      { background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%); }
+  .percentile-icon { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+  .accuracy-icon   { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+  .attempted-icon  { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+  .time-icon       { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
 
   .metric-value {
-    font-size: 1.35rem;
+    font-size: 1.05rem;
     font-weight: 700;
     color: #1e3c72;
-    margin: 0.25rem 0;
+    margin: 0.2rem 0;
+    word-break: break-word;
   }
 
   .metric-label {
     color: #6c757d;
-    font-size: 0.75rem;
+    font-size: 0.62rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
   }
 
-  /* Score Performance Box */
-  .score-performance {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 1.5rem;
-    border-radius: 1rem;
-    text-align: center;
-    margin-bottom: 1.5rem;
-    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  @media (max-width: 1200px) {
+    .metrics-grid { grid-template-columns: repeat(4, 1fr); }
   }
 
-  .test-breadcrumb {
-    font-size: 0.85rem;
-    opacity: 0.85;
-    margin-bottom: 0.5rem;
-    letter-spacing: 0.3px;
+  @media (max-width: 768px) {
+    .metrics-grid { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+    .metric-card  { padding: 0.75rem 0.3rem; }
+    .metric-value { font-size: 0.88rem; }
+    .metric-icon  { width: 32px; height: 32px; font-size: 0.95rem; }
   }
 
-  .test-breadcrumb span {
-    display: inline-block;
-    margin: 0 0.3rem;
-  }
-
-  .score-main {
-    font-size: 2.5rem;
-    font-weight: 800;
-    margin: 0.5rem 0;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-  }
-
-  .score-subtitle {
-    font-size: 0.95rem;
-    opacity: 0.9;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+  @media (max-width: 480px) {
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
   }
 
   /* Section Analysis Table */
@@ -328,36 +321,53 @@
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
+    border-radius: 0.75rem;
+    overflow: hidden;
   }
 
+  /* Per-column header colors */
   .custom-table thead th {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 0.65rem;
-    font-weight: 600;
+    padding: 0.75rem 0.6rem;
+    font-weight: 700;
     text-align: center;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.6px;
+    color: white;
+    border-right: 1px solid rgba(255,255,255,0.15);
   }
 
-  .custom-table thead th:first-child {
-    border-top-left-radius: 0.5rem;
-  }
+  .custom-table thead th:last-child { border-right: none; }
 
-  .custom-table thead th:last-child {
-    border-top-right-radius: 0.5rem;
-  }
+  /* Section */
+  .custom-table thead th:nth-child(1) { background: #1e3c72; text-align: left; }
+  /* Score */
+  .custom-table thead th:nth-child(2) { background: #6c5ce7; }
+  /* Correct */
+  .custom-table thead th:nth-child(3) { background: #00b894; }
+  /* Incorrect */
+  .custom-table thead th:nth-child(4) { background: #d63031; }
+  /* Unanswered */
+  .custom-table thead th:nth-child(5) { background: #636e72; }
+  /* Accuracy */
+  .custom-table thead th:nth-child(6) { background: #0984e3; }
+  /* Time Spent */
+  .custom-table thead th:nth-child(7) { background: #e17055; }
 
   .custom-table tbody td {
-    padding: 0.65rem;
+    padding: 0.7rem 0.6rem;
     text-align: center;
-    border-bottom: 1px solid #e9ecef;
+    border-bottom: 1px solid #eef0f5;
     font-size: 0.85rem;
+    background: white;
   }
 
-  .custom-table tbody tr:hover {
-    background: #f8f9fa;
+  .custom-table tbody tr:nth-child(even) td {
+    background: #f7f9fc;
+  }
+
+  .custom-table tbody tr:hover td {
+    background: #edf2ff;
   }
 
   .custom-table tbody tr:last-child td {
@@ -366,62 +376,42 @@
 
   .section-name-cell {
     text-align: left !important;
-    font-weight: 600;
+    font-weight: 700;
     color: #1e3c72;
+    padding-left: 0.9rem !important;
+    border-left: 4px solid #1e3c72;
   }
 
+  /* Score badges — vivid filled */
   .score-badge {
     display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 0.25rem;
-    font-weight: 600;
-    font-size: 1.1rem;
+    padding: 0.25rem 0.7rem;
+    border-radius: 0.4rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: white;
   }
 
-  .score-excellent {
-    background: #d4edda;
-    color: #155724;
-  }
+  .score-excellent { background: #00b894; }
+  .score-good      { background: #0984e3; }
+  .score-average   { background: #fdcb6e; color: #2d3436; }
+  .score-poor      { background: #d63031; }
 
-  .score-good {
-    background: #d1ecf1;
-    color: #0c5460;
-  }
-
-  .score-average {
-    background: #fff3cd;
-    color: #856404;
-  }
-
-  .score-poor {
-    background: #f8d7da;
-    color: #721c24;
-  }
-
+  /* Stat badges — vivid filled */
   .stat-badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
-    font-size: 0.875rem;
-    font-weight: 600;
+    gap: 0.3rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 0.4rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: white;
   }
 
-  .correct-badge {
-    background: #d4edda;
-    color: #155724;
-  }
-
-  .incorrect-badge {
-    background: #f8d7da;
-    color: #721c24;
-  }
-
-  .unanswered-badge {
-    background: #e2e3e5;
-    color: #383d41;
-  }
+  .correct-badge    { background: #00b894; }
+  .incorrect-badge  { background: #d63031; }
+  .unanswered-badge { background: #b2bec3; color: #2d3436; }
 
   /* Top Rankers */
   .top-rankers {
@@ -875,7 +865,7 @@
 <div class="results-container">
   <!-- Success Message (shown after submission) -->
   {% if request.GET.submitted %}
-  <div class="alert alert-success alert-dismissible fade show" role="alert">
+  <div class="alert alert-success alert-dismissible fade show" id="submitSuccessAlert" role="alert">
     <h4 class="alert-heading">
       <i class="fas fa-check-circle me-2"></i>Test Submitted Successfully!
     </h4>
@@ -890,30 +880,85 @@
   </div>
   {% else %}
   
-  <!-- Second Attempt Disclaimer -->
-  {% if is_second_attempt %}
-  <div class="alert alert-info alert-dismissible fade show" role="alert">
-    <h5 class="alert-heading">
-      <i class="fas fa-info-circle me-2"></i>Practice Attempt (Attempt #{{ attempt.attempt_number }})
-    </h5>
-    <p class="mb-2"><strong>This is not your first attempt.</strong> To ensure fairness and prevent any advantage from memorizing questions:</p>
-    <ul class="mb-0" style="padding-left: 1.5rem;">
-      <li>This attempt is <strong>not included in rankings or percentile calculations</strong></li>
-      <li>Only first attempts count towards competitive rankings</li>
-      <li>Your score is saved and you can review all solutions</li>
-      <li>Use this as practice to improve your understanding</li>
-    </ul>
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  <!-- Exam Header -->
+  <div class="exam-header">
+    {% if attempt.test.series %}
+    <div class="exam-series-name">{{ attempt.test.series.name }}</div>
+    {% endif %}
+    <h1 class="exam-test-name">{{ attempt.test.name }}</h1>
   </div>
-  {% endif %}
-  
-  <!-- Score Performance Box -->
-  <div class="score-performance">
-    <div class="test-breadcrumb">
-      <span>📚 {% if attempt.test.series %}{{ attempt.test.series.name }} -{% endif %}</span>
-      <span>📝 {{ attempt.test.name }}</span>
+
+  <!-- Performance Summary: 7 metric cards in one row -->
+  <div class="performance-summary">
+    <h3 class="summary-title">Performance Summary</h3>
+    <div class="metrics-grid">
+
+      <!-- 1. Marks -->
+      <div class="metric-card">
+        <div class="metric-icon marks-icon">
+          <i class="fas fa-star" style="color: white;"></i>
+        </div>
+        <div class="metric-value">{{ evaluation.total_score|floatformat:2 }}/{% if evaluation.max_marks %}{{ evaluation.max_marks|floatformat:0 }}{% else %}100{% endif %}</div>
+        <div class="metric-label">Marks</div>
+      </div>
+
+      {% if not is_second_attempt %}
+      <!-- 2. Rank -->
+      <div class="metric-card">
+        <div class="metric-icon rank-icon">
+          <i class="fas fa-trophy" style="color: white;"></i>
+        </div>
+        <div class="metric-value">{{ evaluation.rank|default:"—" }}/{{ evaluation.total_attempts|default:"—" }}</div>
+        <div class="metric-label">Your Rank</div>
+      </div>
+
+      <!-- 3. Percentile -->
+      <div class="metric-card">
+        <div class="metric-icon percentile-icon">
+          <i class="fas fa-chart-line" style="color: white;"></i>
+        </div>
+        <div class="metric-value">{{ evaluation.percentile|floatformat:2|default:"—" }}%</div>
+        <div class="metric-label">Percentile</div>
+      </div>
+      {% endif %}
+
+      <!-- 4. Attempted -->
+      <div class="metric-card">
+        <div class="metric-icon attempted-icon">
+          <i class="fas fa-check-circle" style="color: white;"></i>
+        </div>
+        <div class="metric-value">{{ evaluation.attempted_count|default:"—" }}/{{ evaluation.total_questions|default:"—" }}</div>
+        <div class="metric-label">Attempted</div>
+      </div>
+
+      <!-- 5. Accuracy -->
+      <div class="metric-card">
+        <div class="metric-icon accuracy-icon">
+          <i class="fas fa-bullseye" style="color: white;"></i>
+        </div>
+        <div class="metric-value">{{ evaluation.accuracy|floatformat:2|default:"—" }}%</div>
+        <div class="metric-label">Accuracy</div>
+      </div>
+
+      <!-- 6. Score % -->
+      <div class="metric-card">
+        <div class="metric-icon score-icon">
+          <i class="fas fa-percentage" style="color: white;"></i>
+        </div>
+        <div class="metric-value">{{ evaluation.percentage|floatformat:2|default:"—" }}%</div>
+        <div class="metric-label">Score %</div>
+      </div>
+
+      <!-- 7. Time Spent -->
+      <div class="metric-card">
+        <div class="metric-icon time-icon">
+          <i class="fas fa-hourglass-end" style="color: white;"></i>
+        </div>
+        <div class="metric-value" id="timeSpentMetric">--:--</div>
+        <div class="metric-label">Time Spent</div>
+      </div>
+
     </div>
-    <div class="score-main">{{ evaluation.total_score|floatformat:2 }}/{% if evaluation.max_marks %}{{ evaluation.max_marks|floatformat:0 }}{% else %}100{% endif %}</div>
   </div>
 
   <!-- Quick Actions -->
@@ -942,62 +987,6 @@
         <i class="fas fa-home"></i>
         Back to Tests
       </a>
-    </div>
-  </div>
-
-  <!-- Performance Summary Metrics -->
-  <div class="performance-summary">
-    <h3 class="summary-title">Performance Summary</h3>
-    <div class="metrics-grid">
-      {% if not is_second_attempt %}
-      <div class="metric-card">
-        <div class="metric-icon rank-icon">
-          <i class="fas fa-trophy" style="color: white;"></i>
-        </div>
-        <div class="metric-value">{{ evaluation.rank|default:"—" }}/{{ evaluation.total_attempts|default:"—" }}</div>
-        <div class="metric-label">Your Rank</div>
-      </div>
-
-      <div class="metric-card">
-        <div class="metric-icon percentile-icon">
-          <i class="fas fa-chart-line" style="color: white;"></i>
-        </div>
-        <div class="metric-value">{{ evaluation.percentile|floatformat:2|default:"—" }}%</div>
-        <div class="metric-label">Percentile</div>
-      </div>
-      {% endif %}
-
-      <div class="metric-card">
-        <div class="metric-icon attempted-icon">
-          <i class="fas fa-check-circle" style="color: white;"></i>
-        </div>
-        <div class="metric-value">{{ evaluation.attempted_count|default:"—" }}/{{ evaluation.total_questions|default:"—" }}</div>
-        <div class="metric-label">Attempted</div>
-      </div>
-
-      <div class="metric-card">
-        <div class="metric-icon accuracy-icon">
-          <i class="fas fa-bullseye" style="color: white;"></i>
-        </div>
-        <div class="metric-value">{{ evaluation.accuracy|floatformat:2|default:"—" }}%</div>
-        <div class="metric-label">Accuracy</div>
-      </div>
-
-      <div class="metric-card">
-        <div class="metric-icon score-icon">
-          <i class="fas fa-percentage" style="color: white;"></i>
-        </div>
-        <div class="metric-value">{{ evaluation.percentage|floatformat:2|default:"—" }}%</div>
-        <div class="metric-label">Score Percentage</div>
-      </div>
-
-      <div class="metric-card">
-        <div class="metric-icon attempted-icon">
-          <i class="fas fa-hourglass-end" style="color: white;"></i>
-        </div>
-        <div class="metric-value" id="timeSpentMetric" style="font-size: 0.95rem; word-break: break-word;">--:--/--:--</div>
-        <div class="metric-label">Time Spent</div>
-      </div>
     </div>
   </div>
 
@@ -1054,7 +1043,15 @@
                   </span>
                 </td>
                 <td>
-                    <strong>{{ data.accuracy|floatformat:2|default:"0.00" }}%</strong>
+                    {% if data.accuracy >= 75 %}
+                      <strong style="color:#00b894;">{{ data.accuracy|floatformat:2|default:"0.00" }}%</strong>
+                    {% elif data.accuracy >= 50 %}
+                      <strong style="color:#0984e3;">{{ data.accuracy|floatformat:2|default:"0.00" }}%</strong>
+                    {% elif data.accuracy >= 25 %}
+                      <strong style="color:#fdcb6e;">{{ data.accuracy|floatformat:2|default:"0.00" }}%</strong>
+                    {% else %}
+                      <strong style="color:#d63031;">{{ data.accuracy|floatformat:2|default:"0.00" }}%</strong>
+                    {% endif %}
                 </td>
                 <td class="section-time" data-section-id="{{ section_id }}">--:--</td>
               </tr>
@@ -1255,5 +1252,14 @@ if (downloadPdfBtn) {
     if (e.key === 'Escape') { box.style.display = 'none'; box.innerHTML = ''; }
   });
 })();
+
+  // Auto-dismiss the "Test Submitted Successfully" alert after 3 seconds
+  const _submitAlert = document.getElementById('submitSuccessAlert');
+  if (_submitAlert) {
+    setTimeout(function() {
+      const bsAlert = bootstrap.Alert.getOrCreateInstance(_submitAlert);
+      bsAlert.close();
+    }, 3000);
+  }
 </script>{% endblock %}
 {% block footer %}{% endblock %}

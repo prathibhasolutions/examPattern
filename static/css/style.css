@@ -449,3 +449,57 @@ header.navbar-brand {
   }
 }
 
+/* ── Compact footer: 3 equal columns, links in 2 sub-columns ── */
+.footer-custom {
+  padding: 24px 0 12px !important;
+  margin-top: 40px !important;
+}
+.footer-content {
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 24px !important;
+  margin-bottom: 16px !important;
+  align-items: start !important;
+}
+/* Show Quick Links as a 2-column internal grid so they don't stack tall */
+.footer-links {
+  display: grid !important;
+  grid-template-columns: auto auto !important;
+  align-items: start !important;
+  gap: 4px 20px !important;
+}
+/* Heading spans both link sub-columns */
+.footer-links h6 {
+  grid-column: 1 / -1 !important;
+  margin-bottom: 4px !important;
+}
+.footer-contact {
+  gap: 6px !important;
+}
+.footer-bottom {
+  padding-top: 10px !important;
+}
+.footer-bottom p {
+  margin: 2px 0 !important;
+}
+@media (max-width: 768px) {
+  .footer-custom {
+    padding: 20px 0 10px !important;
+  }
+  .footer-content {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 16px !important;
+  }
+  .footer-logo-section {
+    grid-column: 1 / -1 !important;
+    text-align: center !important;
+  }
+}
+@media (max-width: 480px) {
+  .footer-content {
+    grid-template-columns: 1fr !important;
+  }
+  .footer-links {
+    grid-template-columns: auto auto !important;
+  }
+}
+
