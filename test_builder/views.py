@@ -757,11 +757,16 @@ def publish_test(request, draft_id):
         return redirect('builder_dashboard')
 
     # ── Phase 1: Pre-publish validation (no DB writes) ──────────────────
-    # All validation runs before touching the database so that:
-    # (a) partial-write corruption inside the atomic block cannot occur, and
-    # (b) admins are always redirected back to the live editor with a clear message.
+    # Prefetch everything in 3 queries (sections → questions → options) to avoid
+    # N+1 queries that would time out on large tests (160+ questions).
+    all_sections = list(
+        draft.sections
+        .prefetch_related('questions__options')
+        .all()
+    )
+
     section_names_seen = {}
-    for section_draft in draft.sections.all():
+    for section_draft in all_sections:
         name = section_draft.name.strip()
         if not name:
             messages.error(request, "❌ A section has an empty name. Please name all sections before publishing.")
@@ -872,7 +877,8 @@ def publish_test(request, draft_id):
 
             # Create sections — use sequential index (1, 2, 3…) instead of draft.order to
             # guarantee uniqueness against uq_section_order_within_test even if draft orders drifted.
-            for seq_order, section_draft in enumerate(draft.sections.all(), start=1):
+            # Reuse all_sections (already prefetched above) — no extra DB queries needed.
+            for seq_order, section_draft in enumerate(all_sections, start=1):
                 section_time_seconds = 0
                 if draft.use_sectional_timing and section_draft.time_limit_minutes:
                     section_time_seconds = section_draft.time_limit_minutes * 60
