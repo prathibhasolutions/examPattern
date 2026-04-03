@@ -799,14 +799,10 @@ def publish_test(request, draft_id):
                     messages.error(request, f"❌ Cannot publish: An option in '{name}' has no text or image.")
                     return redirect('live_editor', draft_id=draft_id)
 
-    # ── Phase 2: DB writes (all validation passed above) ────────────────
-    # NOTE: transaction.atomic() is used as a context manager (not a decorator) so
-    # that catching a DatabaseError in the except clauses below does NOT operate on
-    # a poisoned transaction.  With the old @transaction.atomic decorator the entire
-    # function — including the messages/session writes in except — ran inside one
-    # transaction; any DB error caught inside would mark the transaction as needing
-    # rollback and the subsequent session write for messages.error() would raise
-    # TransactionManagementError → 500.
+    # ── Phase 2: DB writes — bulk_create for speed ──────────────────────
+    # Using bulk_create reduces 800+ individual INSERTs down to 3 batch
+    # INSERTs (one per model), completing in well under a second.
+    # PostgreSQL returns the PKs from bulk_create so foreign-key chaining works.
     try:
         with transaction.atomic():
             series_section = draft.series_section
@@ -830,13 +826,12 @@ def publish_test(request, draft_id):
             if draft.published_test_id:
                 try:
                     published_test = Test.objects.get(id=draft.published_test_id)
-                    # Delete old sections (this will cascade delete questions and options)
+                    # Delete old sections (cascades to questions and options)
                     published_test.sections.all().delete()
                 except Test.DoesNotExist:
                     published_test = None
 
             if published_test:
-                # Republishing: Update existing test
                 published_test.name = draft.name
                 published_test.description = draft.description
                 published_test.series_section = series_section
@@ -850,12 +845,9 @@ def publish_test(request, draft_id):
                 published_test.save()
                 test = published_test
             else:
-                # First time publishing: Create new test
-                # Use a unique slug to avoid conflicts with old deactivated tests
                 base_slug = slugify(draft.name)
                 slug = base_slug
                 counter = 1
-
                 while Test.objects.filter(series=draft.series, slug=slug).exists():
                     slug = f"{base_slug}-v{counter}"
                     counter += 1
@@ -875,46 +867,58 @@ def publish_test(request, draft_id):
                     is_active=True
                 )
 
-            # Create sections — use sequential index (1, 2, 3…) instead of draft.order to
-            # guarantee uniqueness against uq_section_order_within_test even if draft orders drifted.
-            # Reuse all_sections (already prefetched above) — no extra DB queries needed.
-            for seq_order, section_draft in enumerate(all_sections, start=1):
-                section_time_seconds = 0
-                if draft.use_sectional_timing and section_draft.time_limit_minutes:
-                    section_time_seconds = section_draft.time_limit_minutes * 60
-
-                section = Section.objects.create(
+            # ── Batch INSERT 1: Sections (3 rows) ───────────────────────
+            section_objs = Section.objects.bulk_create([
+                Section(
                     test=test,
-                    name=section_draft.name,
+                    name=sd.name,
                     order=seq_order,
-                    time_limit_seconds=section_time_seconds
+                    time_limit_seconds=(sd.time_limit_minutes * 60
+                                        if draft.use_sectional_timing and sd.time_limit_minutes
+                                        else 0),
                 )
+                for seq_order, sd in enumerate(all_sections, start=1)
+            ])
+            # section_objs[i] corresponds to all_sections[i]
 
-                for question_draft in section_draft.questions.all():
-                    question = Question.objects.create(
-                        section=section,
-                        text=question_draft.question_text,
-                        image=question_draft.question_image,
-                        explanation=question_draft.solution_text,
-                        solution_image=question_draft.solution_image
-                    )
+            # ── Batch INSERT 2: Questions (160 rows) ─────────────────────
+            # Build flat list of (section_obj, question_draft) pairs
+            section_question_pairs = [
+                (section_objs[i], qd)
+                for i, sd in enumerate(all_sections)
+                for qd in sd.questions.all()
+            ]
+            question_objs = Question.objects.bulk_create([
+                Question(
+                    section=sec,
+                    text=qd.question_text,
+                    image=qd.question_image,
+                    explanation=qd.solution_text,
+                    solution_image=qd.solution_image,
+                )
+                for sec, qd in section_question_pairs
+            ])
+            # question_objs[i] corresponds to section_question_pairs[i]
 
-                    for option_draft in question_draft.options.all():
-                        Option.objects.create(
-                            question=question,
-                            text=option_draft.option_text,
-                            image=option_draft.option_image,
-                            is_correct=option_draft.is_correct,
-                            order=option_draft.order
-                        )
+            # ── Batch INSERT 3: Options (640 rows) ───────────────────────
+            Option.objects.bulk_create([
+                Option(
+                    question=question_objs[qi],
+                    text=od.option_text,
+                    image=od.option_image,
+                    is_correct=od.is_correct,
+                    order=od.order,
+                )
+                for qi, (_, qd) in enumerate(section_question_pairs)
+                for od in qd.options.all()
+            ])
 
-            # Mark draft as published and store the published test ID
+            # Mark draft as published
             draft.is_published = True
             draft.published_test_id = test.id
-            draft.release_lock()  # Release lock after successful publish
+            draft.release_lock()
             draft.save()
 
-        # transaction committed — safe to read test/published_test outside the block
         action_type = "updated" if published_test else "published"
         messages.success(request, f"Test '{test.name}' {action_type} successfully! Students can now take this test.")
         return redirect('builder_dashboard')
