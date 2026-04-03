@@ -6,12 +6,15 @@ from django.utils.text import slugify
 from django.http import HttpResponseForbidden
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
+import logging
 
 from .models import TestDraft, SectionDraft, QuestionDraft, OptionDraft, PDFImportJob
 from .services.pdf_import import import_pdf_into_section
 from .services.json_import import import_json_into_section
 from testseries.models import TestSeries, TestSeriesExamSection, TestSeriesHighlight, Test, Section, SeriesSection, SeriesSubsection
 from questions.models import Question, Option
+
+logger = logging.getLogger(__name__)
 
 
 # Permission check: Only staff users can access builder
@@ -911,9 +914,11 @@ def publish_test(request, draft_id):
         return redirect('builder_dashboard')
 
     except IntegrityError as e:
+        logger.exception("IntegrityError in publish_test for draft_id=%s user=%s", draft_id, request.user)
         messages.error(request, f"❌ Database conflict during publish — likely a duplicate section name or ordering issue. Details: {e}")
         return redirect('live_editor', draft_id=draft_id)
     except Exception as e:
+        logger.exception("Unexpected error in publish_test for draft_id=%s user=%s", draft_id, request.user)
         messages.error(request, f"❌ An unexpected error occurred while publishing: {e}")
         return redirect('live_editor', draft_id=draft_id)
 
