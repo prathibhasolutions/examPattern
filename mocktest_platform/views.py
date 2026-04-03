@@ -308,7 +308,11 @@ def test_results_analysis(request, test_id):
 @require_http_methods(["GET"])
 def attempt_results(request, attempt_id):
     """Display test results and analysis."""
-    attempt = get_object_or_404(TestAttempt, id=attempt_id, user=request.user)
+    if request.user.is_staff or request.user.is_superuser:
+        attempt = get_object_or_404(TestAttempt, id=attempt_id)
+    else:
+        attempt = get_object_or_404(TestAttempt, id=attempt_id, user=request.user)
+    viewing_as_admin = request.user != attempt.user
     
     # Get evaluation results
     evaluation = None
@@ -437,10 +441,10 @@ def attempt_results(request, attempt_id):
             .order_by('-total_score', 'evaluated_at')[:10]
         )
     
-    # Get all user's attempts for this test (for attempt switcher)
+    # Get all attempts for this test by the attempt owner (for attempt switcher)
     all_attempts = (
         TestAttempt.objects
-        .filter(user=request.user, test=attempt.test, status=TestAttempt.STATUS_SUBMITTED)
+        .filter(user=attempt.user, test=attempt.test, status=TestAttempt.STATUS_SUBMITTED)
         .order_by('-attempt_number')
     )
     
@@ -476,6 +480,7 @@ def attempt_results(request, attempt_id):
         'all_attempts': all_attempts,
         'max_marks': evaluation.max_marks if evaluation else 0,
         'timing_data': timing_data,
+        'viewing_as_admin': viewing_as_admin,
     })
 
 
@@ -495,8 +500,11 @@ def download_result_pdf(request, attempt_id):
         print(error_msg)
         return HttpResponse(error_msg, status=503)
     
-    attempt = get_object_or_404(TestAttempt, id=attempt_id, user=request.user)
-    
+    if request.user.is_staff or request.user.is_superuser:
+        attempt = get_object_or_404(TestAttempt, id=attempt_id)
+    else:
+        attempt = get_object_or_404(TestAttempt, id=attempt_id, user=request.user)
+
     # Get evaluation results
     evaluation = None
     try:
@@ -564,7 +572,11 @@ def download_result_pdf(request, attempt_id):
 @require_http_methods(["GET"])
 def review_solutions(request, attempt_id):
     """Display test review with solutions after submission."""
-    attempt = get_object_or_404(TestAttempt, id=attempt_id, user=request.user)
+    if request.user.is_staff or request.user.is_superuser:
+        attempt = get_object_or_404(TestAttempt, id=attempt_id)
+    else:
+        attempt = get_object_or_404(TestAttempt, id=attempt_id, user=request.user)
+    viewing_as_admin = request.user != attempt.user
     
     # Verify attempt is submitted
     if attempt.status != TestAttempt.STATUS_SUBMITTED:
@@ -674,7 +686,7 @@ def review_solutions(request, attempt_id):
     }
 
     all_attempts = TestAttempt.objects.filter(
-        user=request.user,
+        user=attempt.user,
         test=attempt.test,
         status=TestAttempt.STATUS_SUBMITTED,
     ).order_by('attempt_number')
@@ -684,6 +696,7 @@ def review_solutions(request, attempt_id):
         'review_payload': review_payload,
         'all_attempts': all_attempts,
         'max_marks': max_marks,
+        'viewing_as_admin': viewing_as_admin,
     })
 
 

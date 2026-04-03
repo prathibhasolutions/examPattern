@@ -47,6 +47,7 @@ urlpatterns = [
     path('terms-of-service/', terms_of_service, name='terms_of_service'),
     path('builder/', include('test_builder.urls')),
     path('superadmin/', include('superadmin.urls')),
+    path('monitor/', include('monitor.urls')),
     path('api/v1/', include([
         path('', include('testseries.urls')),
         path('', include('attempts.urls')),

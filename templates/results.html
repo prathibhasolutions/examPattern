@@ -863,6 +863,23 @@
 </nav>
 
 <div class="results-container">
+  <!-- Admin viewing banner -->
+  {% if viewing_as_admin %}
+  <div style="background:linear-gradient(135deg,#1e3c72,#2a5298); color:white; padding:0.65rem 1.25rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; margin-bottom:0;">
+    <span style="font-size:0.88rem;">
+      <i class="fas fa-eye me-2"></i>
+      <strong>Admin View</strong> — Viewing results for
+      <strong>{{ attempt.user.get_full_name|default:attempt.user.username }}</strong>
+      <span style="opacity:0.75;"> ({{ attempt.user.email }})</span>
+    </span>
+    <a href="/monitor/?test={{ attempt.test.id }}"
+       style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.18); color:white; text-decoration:none; padding:0.3rem 0.9rem; border-radius:20px; font-size:0.8rem; font-weight:600; transition:background 0.2s;"
+       onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.18)'">
+      <i class="fas fa-arrow-left"></i> Back to Student List
+    </a>
+  </div>
+  {% endif %}
+
   <!-- Success Message (shown after submission) -->
   {% if request.GET.submitted %}
   <div class="alert alert-success alert-dismissible fade show" id="submitSuccessAlert" role="alert">

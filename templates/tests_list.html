@@ -93,6 +93,23 @@
         border-radius: 50%;
         object-fit: cover;
     }
+    .profile-combined {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        text-decoration: none;
+    }
+    .profile-name {
+        color: rgba(255,255,255,0.9);
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1;
+        max-width: 60px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
     .navbar-custom .nav-link {
         color: rgba(255,255,255,0.9) !important;
         font-weight: 500;
@@ -384,19 +401,22 @@
 
         <div class="navbar-profile ms-auto">
             {% if user.is_authenticated %}
-                <a href="{% url 'profile' %}" class="text-decoration-none">
-                    <div class="profile-avatar" title="{{ user.get_full_name|default:user.username }}">
+                <a href="{% url 'profile' %}" class="profile-combined" title="{{ user.get_full_name|default:user.username }}">
+                    <div class="profile-avatar">
                         {% if user.photo %}
                             <img src="{{ user.photo.url }}" alt="{{ user.username }}">
                         {% else %}
                             {{ user.username|first|upper }}
                         {% endif %}
                     </div>
+                    <span class="profile-name">{{ user.username }}</span>
                 </a>
-                <a href="{% url 'profile' %}" class="nav-link">{{ user.username }}</a>
                 {% if user.is_staff %}
                     <a href="/builder/" class="nav-link" style="color: #ffc107 !important;">
                         <i class="fas fa-tools"></i> Builder
+                    </a>
+                    <a href="/monitor/" class="btn btn-login" style="background:rgba(0,184,148,0.85);margin-left:4px;">
+                        <i class="fas fa-chart-bar"></i> Student Results
                     </a>
                 {% endif %}
                 {% if user.is_superuser %}

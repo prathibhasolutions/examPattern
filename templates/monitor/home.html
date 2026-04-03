@@ -1,0 +1,350 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Student Results Monitor — examPattern</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2f8; color:#2d3436; min-height:100vh; }
+
+/* ── Top Bar ── */
+.mon-topbar {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white; padding: 0 1.5rem;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 60px; position: sticky; top: 0; z-index: 200;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+}
+.mon-topbar .brand {
+  display: flex; align-items: center; gap: 0.75rem;
+  font-weight: 800; font-size: 1.1rem; text-decoration: none; color: white;
+}
+.mon-topbar .brand img { height: 36px; background: transparent; }
+.mon-topbar .topbar-right { display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; }
+.tb-chip { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; text-decoration: none; }
+.tb-user { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.95); }
+.tb-site { background: rgba(0,184,148,0.85); color: #fff; }
+.tb-site:hover { background: #00b894; color: #fff; }
+.tb-sa { background: rgba(109,40,217,0.85); color: #fff; }
+.tb-sa:hover { background: rgba(109,40,217,1); color: #fff; }
+.tb-logout { background: rgba(214,48,49,0.85); color: #fff; }
+.tb-logout:hover { background: #d63031; color: #fff; }
+
+/* ── Layout ── */
+.mon-shell { display: flex; min-height: calc(100vh - 60px); }
+
+/* ── Sidebar ── */
+.mon-sidebar {
+  width: 280px; background: #1a2744; color: white;
+  padding: 1rem 0; position: sticky; top: 60px;
+  height: calc(100vh - 60px); overflow-y: auto; flex-shrink: 0;
+}
+.mon-sidebar .sidebar-search {
+  padding: 0.75rem 1rem 0.5rem;
+}
+.mon-sidebar .sidebar-search input {
+  width: 100%; border: none; border-radius: 8px;
+  padding: 0.45rem 0.75rem; font-size: 0.82rem;
+  background: rgba(255,255,255,0.1); color: white;
+  outline: none;
+}
+.mon-sidebar .sidebar-search input::placeholder { color: rgba(255,255,255,0.45); }
+.mon-sidebar .sidebar-search input:focus { background: rgba(255,255,255,0.18); }
+.series-group { border-bottom: 1px solid rgba(255,255,255,0.07); }
+.series-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.65rem 1rem; cursor: pointer;
+  font-size: 0.82rem; font-weight: 700; letter-spacing: 0.4px;
+  color: rgba(255,255,255,0.6); text-transform: uppercase;
+  user-select: none; transition: color 0.2s;
+}
+.series-toggle:hover { color: rgba(255,255,255,0.9); }
+.series-toggle .arrow { font-size: 0.65rem; transition: transform 0.2s; }
+.series-toggle.open .arrow { transform: rotate(90deg); }
+.test-list { display: none; padding: 0 0 0.4rem; }
+.test-list.open { display: block; }
+.test-link {
+  display: block; padding: 0.45rem 1rem 0.45rem 1.75rem;
+  font-size: 0.82rem; color: rgba(255,255,255,0.65);
+  text-decoration: none; border-left: 3px solid transparent;
+  transition: all 0.2s; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis;
+}
+.test-link:hover { color: white; background: rgba(255,255,255,0.06); border-left-color: #4facfe; }
+.test-link.active { color: white; background: rgba(79,172,254,0.12); border-left-color: #4facfe; font-weight: 600; }
+
+/* ── Main content ── */
+.mon-main { flex: 1; padding: 1.75rem; overflow-x: hidden; }
+
+/* ── Empty state ── */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 5rem 2rem; color: #aaa; text-align: center;
+}
+.empty-state i { font-size: 4rem; margin-bottom: 1rem; color: #c8d1e0; }
+.empty-state h3 { font-size: 1.2rem; color: #6c757d; margin-bottom: 0.5rem; }
+
+/* ── Test header ── */
+.test-heading {
+  background: white; border-radius: 12px;
+  padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+}
+.test-heading .badge-series {
+  background: #e8ecf8; color: #1e3c72; font-size: 0.72rem;
+  font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase;
+}
+.test-heading h2 { margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e3c72; }
+.test-heading .stats-pill {
+  margin-left: auto; background: #f0f2f8; border-radius: 8px;
+  padding: 0.4rem 1rem; font-size: 0.82rem; color: #6c757d; white-space: nowrap;
+}
+.test-heading .stats-pill strong { color: #1e3c72; }
+
+/* ── Search bar ── */
+.table-toolbar {
+  margin-bottom: 1rem; display: flex; gap: 0.75rem; align-items: center;
+}
+.table-toolbar input {
+  border: 1.5px solid #dee2e6; border-radius: 8px; padding: 0.45rem 0.85rem;
+  font-size: 0.85rem; outline: none; width: 280px; transition: border-color 0.2s;
+}
+.table-toolbar input:focus { border-color: #2a5298; }
+
+/* ── Table ── */
+.mon-table-wrap { background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); overflow: hidden; }
+.mon-table { width: 100%; border-collapse: collapse; }
+.mon-table thead th {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white; padding: 0.75rem 1rem; font-size: 0.8rem;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.mon-table tbody tr { border-bottom: 1px solid #f0f2f8; transition: background 0.15s; }
+.mon-table tbody tr:last-child { border-bottom: none; }
+.mon-table tbody tr:hover { background: #f7f9ff; }
+.mon-table tbody td { padding: 0.75rem 1rem; font-size: 0.86rem; vertical-align: middle; }
+.user-cell { display: flex; align-items: center; gap: 0.65rem; }
+.user-avatar {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px; color: white;
+}
+.user-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.user-name { font-weight: 600; color: #2d3436; }
+.user-email { font-size: 0.75rem; color: #6c757d; }
+.att-number { display: inline-block; background: #e8ecf8; color: #1e3c72; font-weight: 700; font-size: 0.75rem; padding: 2px 9px; border-radius: 12px; }
+.score-val { font-weight: 700; color: #1e3c72; }
+.score-pct { font-size: 0.75rem; color: #6c757d; }
+.date-val { font-size: 0.82rem; color: #525c6e; }
+.action-btns { display: flex; gap: 0.5rem; flex-wrap: nowrap; }
+.act-btn {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.3rem 0.7rem; border-radius: 8px; font-size: 0.77rem;
+  font-weight: 600; text-decoration: none; white-space: nowrap; transition: all 0.2s;
+}
+.act-results { background: #e8ecf8; color: #1e3c72; }
+.act-results:hover { background: #1e3c72; color: white; }
+.act-solutions { background: #e6f7f3; color: #00896b; }
+.act-solutions:hover { background: #00896b; color: white; }
+
+/* ── No rows ── */
+.no-rows td { text-align: center; color: #aaa; padding: 2.5rem; font-size: 0.9rem; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .mon-sidebar { display: none; }
+  .mon-main { padding: 1rem; }
+  .test-heading { flex-direction: column; align-items: flex-start; }
+  .test-heading .stats-pill { margin-left: 0; }
+  .table-toolbar input { width: 100%; }
+  .action-btns { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<header class="mon-topbar">
+  <a class="brand" href="{% url 'monitor:home' %}">
+    <img src="{% static 'examPattern.png' %}" alt="examPattern">
+    <span>Student Monitor</span>
+  </a>
+  <div class="topbar-right">
+    <span class="tb-chip tb-user"><i class="fas fa-user-shield"></i> {{ request.user.username }}</span>
+    <a href="{% url 'tests_list' %}" class="tb-chip tb-site"><i class="fas fa-external-link-alt"></i> View Site</a>
+    {% if request.user.is_superuser %}
+    <a href="/superadmin/" class="tb-chip tb-sa"><i class="fas fa-shield-alt"></i> Admin Panel</a>
+    {% endif %}
+    <a href="{% url 'logout' %}" class="tb-chip tb-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+  </div>
+</header>
+
+<div class="mon-shell">
+
+  <!-- Sidebar: series → tests tree -->
+  <aside class="mon-sidebar">
+    <div class="sidebar-search">
+      <input type="text" id="sidebarSearch" placeholder="Search tests..." autocomplete="off">
+    </div>
+
+    {% for series in series_list %}
+    <div class="series-group" data-series="{{ series.name|lower }}">
+      <div class="series-toggle {% if selected_test and selected_test.series_id == series.id %}open{% endif %}"
+           onclick="toggleSeries(this)">
+        <span>{{ series.name }}</span>
+        <i class="fas fa-chevron-right arrow"></i>
+      </div>
+      <div class="test-list {% if selected_test and selected_test.series_id == series.id %}open{% endif %}">
+        {% for test in series.tests.all %}
+        <a href="?test={{ test.id }}"
+           class="test-link {% if selected_test and selected_test.id == test.id %}active{% endif %}"
+           data-name="{{ test.name|lower }}">
+          {{ test.name }}
+        </a>
+        {% empty %}
+        <span class="test-link" style="color:rgba(255,255,255,0.3); font-style:italic; cursor:default;">No tests</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </aside>
+
+  <!-- Main content -->
+  <main class="mon-main">
+    {% if not selected_test %}
+    <div class="empty-state">
+      <i class="fas fa-chart-bar"></i>
+      <h3>Select a test from the left panel</h3>
+      <p>Choose any test series → test to view all student attempts.</p>
+    </div>
+
+    {% else %}
+    <!-- Test Heading -->
+    <div class="test-heading">
+      <div>
+        <div class="badge-series">{{ selected_test.series.name }}</div>
+        <h2>{{ selected_test.name }}</h2>
+      </div>
+      <div class="stats-pill">
+        <strong>{{ student_rows|length }}</strong> attempt{{ student_rows|length|pluralize }}
+      </div>
+    </div>
+
+    <!-- Search / filter -->
+    <div class="table-toolbar">
+      <input type="text" id="studentSearch" placeholder="Search by name or email…" oninput="filterStudents(this.value)">
+    </div>
+
+    <!-- Attempts table -->
+    <div class="mon-table-wrap">
+      <table class="mon-table" id="attemptsTable">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Attempt</th>
+            <th>Score</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in student_rows %}
+          <tr data-search="{{ row.user.username|lower }} {{ row.user.email|lower }} {{ row.user.get_full_name|lower }}">
+            <td>
+              <div class="user-cell">
+                <div class="user-avatar">
+                  {% if row.user.photo %}
+                    <img src="{{ row.user.photo.url }}" alt="{{ row.user.username }}">
+                  {% else %}
+                    {{ row.user.username|first|upper }}
+                  {% endif %}
+                </div>
+                <div>
+                  <div class="user-name">{{ row.user.get_full_name|default:row.user.username }}</div>
+                  <div class="user-email">{{ row.user.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="att-number">Attempt {{ row.attempt_number }}</span></td>
+            <td>
+              {% with eval=row.evaluation %}
+              {% if eval %}
+                <div class="score-val">{{ eval.total_score|floatformat:2 }}</div>
+                <div class="score-pct">
+                  {% if eval.percentage %}{{ eval.percentage|floatformat:1 }}%{% endif %}
+                </div>
+              {% else %}
+                <span class="text-muted" style="font-size:0.78rem;">Pending</span>
+              {% endif %}
+              {% endwith %}
+            </td>
+            <td>
+              <div class="date-val">
+                {% if row.submitted_at %}
+                  {{ row.submitted_at|date:"d M Y" }}<br>
+                  <span style="font-size:0.75rem; color:#aaa;">{{ row.submitted_at|date:"H:i" }}</span>
+                {% else %}—{% endif %}
+              </div>
+            </td>
+            <td>
+              <div class="action-btns">
+                <a href="{% url 'results_page' row.id %}" class="act-btn act-results" target="_blank">
+                  <i class="fas fa-chart-pie"></i> Results
+                </a>
+                <a href="{% url 'review_solutions' row.id %}" class="act-btn act-solutions" target="_blank">
+                  <i class="fas fa-book-open"></i> Solutions
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr class="no-rows"><td colspan="5">No submitted attempts yet for this test.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </main>
+</div>
+
+<script>
+function toggleSeries(el) {
+  el.classList.toggle('open');
+  el.nextElementSibling.classList.toggle('open');
+}
+
+function filterStudents(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('#attemptsTable tbody tr:not(.no-rows)').forEach(tr => {
+    tr.style.display = tr.dataset.search.includes(q) ? '' : 'none';
+  });
+}
+
+// Sidebar search
+document.getElementById('sidebarSearch').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('.series-group').forEach(group => {
+    let anyVisible = false;
+    group.querySelectorAll('.test-link[data-name]').forEach(link => {
+      const match = link.dataset.name.includes(q) || group.dataset.series.includes(q);
+      link.style.display = match ? '' : 'none';
+      if (match) anyVisible = true;
+    });
+    group.style.display = anyVisible || !q ? '' : 'none';
+    if (q && anyVisible) {
+      group.querySelector('.series-toggle').classList.add('open');
+      group.querySelector('.test-list').classList.add('open');
+    }
+  });
+});
+</script>
+
+</body>
+</html>
