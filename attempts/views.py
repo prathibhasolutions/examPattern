@@ -128,7 +128,17 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
         attempt.time_remaining_seconds = None
         attempt.save()
 
-        evaluation = evaluate_attempt(attempt)
+        # Evaluate — if this crashes the submission is already committed, so
+        # catch the error, log it, and still return 200 so the client redirects
+        # to the results page.  The admin can re-trigger evaluation later.
+        import logging
+        logger = logging.getLogger(__name__)
+        try:
+            evaluation = evaluate_attempt(attempt)
+        except Exception:
+            logger.exception('evaluate_attempt failed for attempt %s', attempt.id)
+            serializer = self.get_serializer(attempt)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
         serializer = self.get_serializer(attempt)
         return Response(

@@ -534,26 +534,38 @@ const testApp = {
         OfflineQueue.clearPendingSubmission();
         window.location.replace(`/results/${ATTEMPT_ID}/?submitted=true`);
       } catch (submitError) {
-        // Submit failed (likely offline) — persist full state to localStorage
-        // and set a flag to auto-submit the moment internet returns
-        OfflineQueue.savePendingSubmission(ATTEMPT_ID, UI.answers, Timer.remainingSeconds);
-        testApp.pendingSubmitOnReconnect = true;
-        testApp.isSubmitting = false;
+        // TypeError means a true network failure (fetch couldn't reach the server).
+        // Any other error means the server responded with a non-2xx status, which
+        // can include 400 "already submitted" or 500 from an evaluation crash —
+        // in both cases the submission was likely saved; redirect to results.
+        const isNetworkError = submitError instanceof TypeError;
 
-        // Remove any "submitting" state so the page stays usable
-        const existing = document.getElementById('pending-submit-toast');
-        if (existing) existing.remove();
+        if (isNetworkError) {
+          // Truly offline — queue for auto-retry on reconnect
+          OfflineQueue.savePendingSubmission(ATTEMPT_ID, UI.answers, Timer.remainingSeconds);
+          testApp.pendingSubmitOnReconnect = true;
+          testApp.isSubmitting = false;
 
-        const pendingToast = document.createElement('div');
-        pendingToast.id = 'pending-submit-toast';
-        pendingToast.className = 'alert alert-warning position-fixed bottom-0 start-50 translate-middle-x mb-3';
-        pendingToast.style.zIndex = '9999';
-        pendingToast.style.maxWidth = '500px';
-        pendingToast.style.fontSize = '14px';
-        pendingToast.innerHTML =
-          '<i class="fas fa-cloud-upload-alt me-2"></i>' +
-          '<strong>No internet.</strong> Your answers are saved on this device and will be submitted automatically once you\'re back online.';
-        document.body.appendChild(pendingToast);
+          const existing = document.getElementById('pending-submit-toast');
+          if (existing) existing.remove();
+
+          const pendingToast = document.createElement('div');
+          pendingToast.id = 'pending-submit-toast';
+          pendingToast.className = 'alert alert-warning position-fixed bottom-0 start-50 translate-middle-x mb-3';
+          pendingToast.style.zIndex = '9999';
+          pendingToast.style.maxWidth = '500px';
+          pendingToast.style.fontSize = '14px';
+          pendingToast.innerHTML =
+            '<i class="fas fa-cloud-upload-alt me-2"></i>' +
+            '<strong>No internet.</strong> Your answers are saved on this device and will be submitted automatically once you\'re back online.';
+          document.body.appendChild(pendingToast);
+        } else {
+          // Server responded with an error — the attempt status was most likely
+          // already saved as submitted on the backend.  Redirect to results so
+          // the student isn't stuck on a dead test page.
+          OfflineQueue.clearPendingSubmission();
+          window.location.replace(`/results/${ATTEMPT_ID}/?submitted=true`);
+        }
       }
     } catch (error) {
       console.error('Failed to submit:', error);
