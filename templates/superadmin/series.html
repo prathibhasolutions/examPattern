@@ -1,0 +1,117 @@
+{% extends "superadmin/base.html" %}
+{% block title %}Test Series{% endblock %}
+
+{% block content %}
+<div class="sa-page-header">
+  <h1><i class="fas fa-layer-group"></i> Test Series</h1>
+  <p>Publish or hide series from students. Deleting a series removes all its tests and questions.</p>
+</div>
+
+<div class="sa-card">
+  <div class="sa-toolbar">
+    <div class="sa-search">
+      <i class="fas fa-search"></i>
+      <input type="text" id="seriesSearch" placeholder="Filter by name…" oninput="filterSeries()">
+    </div>
+    <span id="seriesCount" style="font-size:0.8rem; color:#636e72; margin-left:auto;"></span>
+  </div>
+
+  <div class="sa-card-body" style="overflow-x:auto;">
+    <table class="sa-table" id="seriesTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Series Name</th>
+          <th>Slug</th>
+          <th>Tests</th>
+          <th>Visibility</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="seriesTableBody">
+        {% for s in series %}
+        <tr data-search="{{ s.name|lower }}">
+          <td style="color:#b2bec3; font-size:0.78rem;">{{ forloop.counter }}</td>
+          <td style="font-weight:700; color:#1e3c72;">{{ s.name }}</td>
+          <td style="font-family:monospace; font-size:0.78rem; color:#636e72;">{{ s.slug }}</td>
+          <td style="text-align:center;">
+            <span style="background:#e8f4fd; color:#0984e3; padding:0.2rem 0.65rem; border-radius:20px; font-size:0.78rem; font-weight:700;">
+              {{ s.test_count }}
+            </span>
+          </td>
+          <td>
+            {% if s.is_active %}
+              <span class="status-pill status-active"><i class="fas fa-eye" style="font-size:0.7rem;"></i> Published</span>
+            {% else %}
+              <span class="status-pill status-inactive"><i class="fas fa-eye-slash" style="font-size:0.7rem;"></i> Hidden</span>
+            {% endif %}
+          </td>
+          <td style="font-size:0.78rem; color:#636e72; white-space:nowrap;">{{ s.created_at|date:"d M Y" }}</td>
+          <td>
+            <div class="btn-actions">
+              <button class="sa-btn sa-btn-sm {% if s.is_active %}sa-btn-warning{% else %}sa-btn-success{% endif %}"
+                      onclick="toggleSeries({{ s.id }}, this)"
+                      title="{% if s.is_active %}Hide from students{% else %}Publish to students{% endif %}">
+                <i class="fas {% if s.is_active %}fa-eye-slash{% else %}fa-eye{% endif %}"></i>
+                {% if s.is_active %}Hide{% else %}Publish{% endif %}
+              </button>
+              <a class="sa-btn sa-btn-primary sa-btn-sm" href="/tests/series/{{ s.slug }}/" target="_blank" title="View on site">
+                <i class="fas fa-external-link-alt"></i>
+              </a>
+              <button class="sa-btn sa-btn-danger sa-btn-sm"
+                      onclick="confirmDeleteSeries({{ s.id }}, '{{ s.name|escapejs }}')"
+                      title="Delete series and all its tests">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" style="text-align:center; color:#b2bec3; padding:2rem;">No test series found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterSeries() {
+  const q = document.getElementById('seriesSearch').value.toLowerCase();
+  const rows = document.querySelectorAll('#seriesTableBody tr[data-search]');
+  let shown = 0;
+  rows.forEach(r => {
+    const match = r.dataset.search.includes(q);
+    r.style.display = match ? '' : 'none';
+    if (match) shown++;
+  });
+  document.getElementById('seriesCount').textContent = shown + ' series shown';
+}
+filterSeries();
+
+function toggleSeries(id, btn) {
+  const action = btn.classList.contains('sa-btn-warning') ? 'hide' : 'publish';
+  if (!confirm(`${action === 'hide' ? 'Hide this series from students?' : 'Publish this series to students?'}`)) return;
+  postJSON(`/superadmin/series/${id}/toggle/`, {},
+    () => location.reload(),
+    err => alert('Error: ' + err)
+  );
+}
+
+function confirmDeleteSeries(id, name) {
+  openDeleteModal(
+    'Delete Test Series',
+    `You are about to permanently delete "${name}" and ALL its tests, sections, and questions.`,
+    name,
+    () => {
+      postJSON(`/superadmin/series/${id}/delete/`, { final_confirm: 'yes' },
+        data => { alert(`"${data.deleted}" deleted.`); location.reload(); },
+        err => alert('Error: ' + err)
+      );
+    }
+  );
+}
+</script>
+{% endblock %}

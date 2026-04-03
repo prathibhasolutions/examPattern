@@ -1,0 +1,94 @@
+{% extends "superadmin/base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="sa-page-header">
+  <h1><i class="fas fa-chart-pie"></i> Dashboard</h1>
+  <p>Welcome back, {{ request.user.username }}. Here's a snapshot of your platform.</p>
+</div>
+
+<!-- Stat Cards -->
+<div class="sa-stats-grid">
+  <div class="sa-stat-card" style="--accent:#6c5ce7;--icon-bg:#ede8ff;">
+    <div class="stat-icon"><i class="fas fa-users"></i></div>
+    <div class="stat-body">
+      <div class="stat-value">{{ stats.total_users }}</div>
+      <div class="stat-label">Total Users</div>
+    </div>
+  </div>
+  <div class="sa-stat-card" style="--accent:#d63031;--icon-bg:#ffd6d6;">
+    <div class="stat-icon"><i class="fas fa-user-shield"></i></div>
+    <div class="stat-body">
+      <div class="stat-value">{{ stats.superusers }}</div>
+      <div class="stat-label">Superusers</div>
+    </div>
+  </div>
+  <div class="sa-stat-card" style="--accent:#0984e3;--icon-bg:#d6eeff;">
+    <div class="stat-icon"><i class="fas fa-user-cog"></i></div>
+    <div class="stat-body">
+      <div class="stat-value">{{ stats.staff_users }}</div>
+      <div class="stat-label">Staff (Builders)</div>
+    </div>
+  </div>
+  <div class="sa-stat-card" style="--accent:#00b894;--icon-bg:#d4f5e9;">
+    <div class="stat-icon"><i class="fas fa-user"></i></div>
+    <div class="stat-body">
+      <div class="stat-value">{{ stats.regular_users }}</div>
+      <div class="stat-label">Regular Users</div>
+    </div>
+  </div>
+  <div class="sa-stat-card" style="--accent:#e17055;--icon-bg:#ffe8e2;">
+    <div class="stat-icon"><i class="fas fa-layer-group"></i></div>
+    <div class="stat-body">
+      <div class="stat-value">{{ stats.total_series }}</div>
+      <div class="stat-label">Test Series</div>
+    </div>
+  </div>
+  <div class="sa-stat-card" style="--accent:#fdcb6e;--icon-bg:#fff8e1;">
+    <div class="stat-icon"><i class="fas fa-file-alt"></i></div>
+    <div class="stat-body">
+      <div class="stat-value">{{ stats.total_tests }}</div>
+      <div class="stat-label">Total Tests</div>
+    </div>
+  </div>
+  <div class="sa-stat-card" style="--accent:#4facfe;--icon-bg:#e8f4fd;">
+    <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+    <div class="stat-body">
+      <div class="stat-value">{{ stats.active_tests }}</div>
+      <div class="stat-label">Active Tests</div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Shortcuts -->
+<div class="sa-page-header" style="margin-bottom:0.75rem;">
+  <h1 style="font-size:1.05rem;">Quick Actions</h1>
+</div>
+<div class="sa-shortcuts">
+  <a class="sa-shortcut" href="{% url 'superadmin:user_list' %}" style="--accent:#6c5ce7;">
+    <div class="sc-icon">👥</div>
+    <div class="sc-label">Manage Users</div>
+    <div class="sc-sub">View, promote, delete users</div>
+  </a>
+  <a class="sa-shortcut" href="{% url 'superadmin:series_list' %}" style="--accent:#e17055;">
+    <div class="sc-icon">📚</div>
+    <div class="sc-label">Test Series</div>
+    <div class="sc-sub">Publish, hide, delete series</div>
+  </a>
+  <a class="sa-shortcut" href="{% url 'superadmin:test_list' %}" style="--accent:#fdcb6e;">
+    <div class="sc-icon">📝</div>
+    <div class="sc-label">Tests</div>
+    <div class="sc-sub">Publish, hide, delete tests</div>
+  </a>
+  <a class="sa-shortcut" href="/builder/" style="--accent:#00b894;">
+    <div class="sc-icon">🔧</div>
+    <div class="sc-label">Test Builder</div>
+    <div class="sc-sub">Create and edit questions</div>
+  </a>
+  <a class="sa-shortcut" href="/admin/" target="_blank" style="--accent:#636e72;">
+    <div class="sc-icon">⚙️</div>
+    <div class="sc-label">Django Admin</div>
+    <div class="sc-sub">Low-level data management</div>
+  </a>
+</div>
+{% endblock %}

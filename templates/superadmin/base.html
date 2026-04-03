@@ -1,0 +1,304 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{% block title %}Superadmin{% endblock %} — examPattern</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<style>
+/* ── Layout ── */
+*, *::before, *::after { box-sizing: border-box; }
+body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2f8; color:#2d3436; min-height:100vh; display:flex; flex-direction:column; }
+
+/* ── Top Bar ── */
+.sa-topbar {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color:white; padding:0 1.5rem;
+  display:flex; align-items:center; justify-content:space-between;
+  height:60px; position:sticky; top:0; z-index:200;
+  box-shadow:0 2px 12px rgba(0,0,0,0.2);
+}
+.sa-topbar .brand { display:flex; align-items:center; gap:0.75rem; font-weight:800; font-size:1.1rem; text-decoration:none; color:white; }
+.sa-topbar .brand .badge-god { background:#d63031; font-size:0.6rem; padding:2px 7px; border-radius:20px; text-transform:uppercase; letter-spacing:1px; font-weight:700; }
+.sa-topbar .topbar-right { display:flex; align-items:center; gap:0.75rem; font-size:0.85rem; }
+.sa-topbar .topbar-right a { text-decoration:none; transition:all 0.2s; }
+.tb-chip { display:inline-flex; align-items:center; gap:0.4rem; padding:0.3rem 0.8rem; border-radius:20px; font-size:0.8rem; font-weight:600; }
+.tb-user { background:rgba(255,255,255,0.15); color:rgba(255,255,255,0.95); }
+.tb-site { background:rgba(0,184,148,0.85); color:#fff; }
+.tb-site:hover { background:#00b894 !important; color:#fff; }
+.tb-logout { background:rgba(214,48,49,0.85); color:#fff; }
+.tb-logout:hover { background:#d63031 !important; color:#fff; }
+
+/* ── Shell ── */
+.sa-shell { display:flex; flex:1; }
+
+/* ── Sidebar ── */
+.sa-sidebar {
+  width:220px; background:#1a2744; color:white;
+  display:flex; flex-direction:column; padding:1.5rem 0;
+  position:sticky; top:60px; height:calc(100vh - 60px);
+  overflow-y:auto; flex-shrink:0;
+}
+.sa-sidebar .nav-section-label {
+  font-size:0.65rem; font-weight:700; letter-spacing:1.5px;
+  text-transform:uppercase; color:rgba(255,255,255,0.35);
+  padding:1rem 1.25rem 0.4rem;
+}
+.sa-sidebar a {
+  display:flex; align-items:center; gap:0.75rem;
+  padding:0.6rem 1.25rem; color:rgba(255,255,255,0.7);
+  text-decoration:none; font-size:0.88rem; font-weight:500;
+  border-left:3px solid transparent; transition:all 0.2s;
+}
+.sa-sidebar a:hover, .sa-sidebar a.active {
+  color:white; background:rgba(255,255,255,0.08); border-left-color:#4facfe;
+}
+.sa-sidebar a .fa, .sa-sidebar a .fas, .sa-sidebar a .far { width:18px; text-align:center; }
+
+/* ── Main Content ── */
+.sa-main { flex:1; padding:1.75rem; overflow-x:hidden; }
+
+/* ── Page Header ── */
+.sa-page-header { margin-bottom:1.5rem; }
+.sa-page-header h1 { font-size:1.4rem; font-weight:800; color:#1e3c72; margin:0 0 0.2rem; }
+.sa-page-header p  { color:#636e72; margin:0; font-size:0.88rem; }
+
+/* ── Stat Cards ── */
+.sa-stats-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:1rem; margin-bottom:1.75rem; }
+.sa-stat-card {
+  background:white; border-radius:0.875rem; padding:1.1rem 1rem;
+  display:flex; align-items:center; gap:0.875rem;
+  box-shadow:0 2px 10px rgba(0,0,0,0.07);
+  border-left:4px solid var(--accent, #4facfe);
+}
+.sa-stat-card .stat-icon { width:44px; height:44px; border-radius:0.75rem; display:flex; align-items:center; justify-content:center; font-size:1.2rem; background:var(--icon-bg, #e8f4fd); color:var(--accent, #4facfe); flex-shrink:0; }
+.sa-stat-card .stat-body .stat-value { font-size:1.5rem; font-weight:800; color:#1e3c72; line-height:1; }
+.sa-stat-card .stat-body .stat-label { font-size:0.72rem; color:#636e72; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; }
+
+/* ── Card ── */
+.sa-card { background:white; border-radius:0.875rem; box-shadow:0 2px 10px rgba(0,0,0,0.07); margin-bottom:1.5rem; overflow:hidden; }
+.sa-card-header { padding:1rem 1.25rem; border-bottom:1px solid #eef0f5; display:flex; align-items:center; justify-content:space-between; }
+.sa-card-header h2 { font-size:1rem; font-weight:700; color:#1e3c72; margin:0; display:flex; align-items:center; gap:0.5rem; }
+.sa-card-body { padding:0; }
+
+/* ── Table ── */
+.sa-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+.sa-table thead th { background:#f7f9fc; color:#6c757d; font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; padding:0.65rem 1rem; border-bottom:2px solid #eef0f5; white-space:nowrap; }
+.sa-table tbody td { padding:0.7rem 1rem; border-bottom:1px solid #f1f3f8; vertical-align:middle; }
+.sa-table tbody tr:last-child td { border-bottom:none; }
+.sa-table tbody tr:hover td { background:#fafbff; }
+
+/* ── Badges / Tags ── */
+.role-badge { display:inline-flex; align-items:center; gap:0.3rem; padding:0.2rem 0.65rem; border-radius:20px; font-size:0.72rem; font-weight:700; white-space:nowrap; }
+.role-superuser { background:#ffeaa7; color:#6c4f00; }
+.role-staff     { background:#dfe6fd; color:#1e3c72; }
+.role-regular   { background:#f1f3f8; color:#636e72; }
+.role-inactive  { background:#ffd6d6; color:#c0392b; }
+
+.status-pill { display:inline-flex; align-items:center; gap:0.3rem; padding:0.2rem 0.7rem; border-radius:20px; font-size:0.72rem; font-weight:700; }
+.status-active   { background:#d4f5e9; color:#00664d; }
+.status-inactive { background:#ffd6d6; color:#c0392b; }
+
+/* ── Action Buttons ── */
+.sa-btn { display:inline-flex; align-items:center; gap:0.3rem; padding:0.3rem 0.75rem; border-radius:0.4rem; border:none; font-size:0.78rem; font-weight:600; cursor:pointer; transition:all 0.2s; text-decoration:none; }
+.sa-btn-primary { background:#1e3c72; color:white; }
+.sa-btn-primary:hover { background:#16305e; }
+.sa-btn-warning { background:#fdcb6e; color:#2d3436; }
+.sa-btn-warning:hover { background:#e6b84a; }
+.sa-btn-success { background:#00b894; color:white; }
+.sa-btn-success:hover { background:#009d7f; }
+.sa-btn-danger  { background:#d63031; color:white; }
+.sa-btn-danger:hover { background:#b71c1c; }
+.sa-btn-ghost   { background:#f1f3f8; color:#2d3436; }
+.sa-btn-ghost:hover { background:#e1e4ec; }
+.sa-btn-sm { padding:0.2rem 0.55rem; font-size:0.73rem; }
+
+.btn-actions { display:flex; gap:0.4rem; flex-wrap:wrap; }
+
+/* ── Search / Filter bar ── */
+.sa-toolbar { display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap; padding:0.875rem 1.25rem; background:#fafbff; border-bottom:1px solid #eef0f5; }
+.sa-search { flex:1; min-width:180px; max-width:340px; display:flex; align-items:center; background:white; border:1.5px solid #d9dde8; border-radius:0.5rem; padding:0.3rem 0.75rem; gap:0.4rem; }
+.sa-search input { border:none; outline:none; flex:1; font-size:0.85rem; background:transparent; }
+.sa-search i { color:#b2bec3; font-size:0.85rem; }
+
+/* ── Quick shortcuts on dashboard ── */
+.sa-shortcuts { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; margin-bottom:1.5rem; }
+.sa-shortcut {
+  background:white; border-radius:0.875rem; padding:1.25rem 1rem;
+  text-align:center; text-decoration:none; color:#2d3436;
+  box-shadow:0 2px 10px rgba(0,0,0,0.07);
+  transition:transform 0.18s, box-shadow 0.18s;
+  border-top:4px solid var(--accent, #4facfe);
+}
+.sa-shortcut:hover { transform:translateY(-3px); box-shadow:0 6px 20px rgba(0,0,0,0.12); color:#2d3436; }
+.sa-shortcut .sc-icon { font-size:2rem; margin-bottom:0.5rem; }
+.sa-shortcut .sc-label { font-weight:700; font-size:0.9rem; }
+.sa-shortcut .sc-sub { font-size:0.75rem; color:#636e72; margin-top:0.2rem; }
+
+/* ── Modal ── */
+.sa-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:500; align-items:center; justify-content:center; }
+.sa-modal-overlay.open { display:flex; }
+.sa-modal { background:white; border-radius:1rem; padding:2rem; max-width:440px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,0.2); }
+.sa-modal h3 { margin:0 0 0.5rem; color:#d63031; font-size:1.1rem; }
+.sa-modal p  { margin:0 0 1rem; color:#636e72; font-size:0.88rem; line-height:1.5; }
+.sa-modal .warning-box { background:#fff3cd; border:1px solid #ffc107; border-radius:0.5rem; padding:0.75rem; margin-bottom:1rem; font-size:0.82rem; color:#856404; }
+.sa-modal input[type=text] { width:100%; padding:0.5rem 0.75rem; border:1.5px solid #d9dde8; border-radius:0.4rem; font-size:0.9rem; margin-bottom:1rem; outline:none; }
+.sa-modal input[type=text]:focus { border-color:#d63031; }
+.sa-modal .modal-actions { display:flex; gap:0.75rem; justify-content:flex-end; }
+
+/* ── Responsive ── */
+@media (max-width:900px) {
+  .sa-sidebar { width:180px; }
+}
+@media (max-width:700px) {
+  .sa-sidebar { display:none; }
+  .sa-main { padding:1rem; }
+  .sa-stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+{% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- Top Bar -->
+<header class="sa-topbar">
+  <a class="brand" href="{% url 'superadmin:dashboard' %}">
+    <img src="{% static 'examPattern.png' %}" alt="examPattern" height="36" style="background:transparent;">
+    <span class="badge-god">GOD MODE</span>
+  </a>
+  <div class="topbar-right">
+    <span class="tb-chip tb-user"><i class="fas fa-user-shield"></i> {{ request.user.username }}</span>
+    <a href="{% url 'tests_list' %}" class="tb-chip tb-site"><i class="fas fa-external-link-alt"></i> View Site</a>
+    <a href="{% url 'logout' %}" class="tb-chip tb-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+  </div>
+</header>
+
+<div class="sa-shell">
+  <!-- Sidebar Navigation -->
+  <nav class="sa-sidebar">
+    <div class="nav-section-label">Overview</div>
+    <a href="{% url 'superadmin:dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>
+      <i class="fas fa-chart-pie"></i> Dashboard
+    </a>
+
+    <div class="nav-section-label">Manage</div>
+    <a href="{% url 'superadmin:user_list' %}" {% if 'user' in request.resolver_match.url_name %}class="active"{% endif %}>
+      <i class="fas fa-users"></i> Users
+    </a>
+    <a href="{% url 'superadmin:series_list' %}" {% if 'series' in request.resolver_match.url_name %}class="active"{% endif %}>
+      <i class="fas fa-layer-group"></i> Test Series
+    </a>
+    <a href="{% url 'superadmin:test_list' %}" {% if 'test_list' == request.resolver_match.url_name %}class="active"{% endif %}>
+      <i class="fas fa-file-alt"></i> Tests
+    </a>
+
+    <div class="nav-section-label">Tools</div>
+    <a href="/admin/" target="_blank">
+      <i class="fas fa-cog"></i> Django Admin
+    </a>
+    <a href="/builder/">
+      <i class="fas fa-tools"></i> Test Builder
+    </a>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="sa-main">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+<!-- ── Delete Confirmation Modal (shared) ── -->
+<div class="sa-modal-overlay" id="deleteModal">
+  <div class="sa-modal">
+    <h3><i class="fas fa-exclamation-triangle"></i> <span id="modalTitle">Delete?</span></h3>
+    <p id="modalDesc"></p>
+    <div class="warning-box" id="modalStep1">
+      <strong>Step 1 of 3:</strong> Are you absolutely sure you want to delete this? This action is <strong>irreversible</strong>.
+    </div>
+    <div class="warning-box" id="modalStep2" style="display:none">
+      <strong>Step 2 of 3:</strong> All related data (tests, questions, attempts) will also be permanently deleted.
+    </div>
+    <div id="modalStep3Wrap" style="display:none">
+      <div class="warning-box"><strong>Step 3 of 3:</strong> Type <code id="modalConfirmWord"></code> below to confirm deletion.</div>
+      <input type="text" id="modalConfirmInput" placeholder="Type name here…">
+    </div>
+    <div class="modal-actions">
+      <button class="sa-btn sa-btn-ghost" id="modalCancelBtn" onclick="closeDeleteModal()">Cancel</button>
+      <button class="sa-btn sa-btn-danger" id="modalNextBtn" onclick="modalNext()">I understand, continue</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Modal state ──────────────────────────────────────────────────────────────
+let _modalStep = 1;
+let _modalAction = null; // function to call on final confirm
+
+function openDeleteModal(title, desc, confirmWord, actionFn) {
+  _modalStep = 1;
+  _modalAction = actionFn;
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalDesc').textContent = desc;
+  document.getElementById('modalConfirmWord').textContent = confirmWord;
+  document.getElementById('modalConfirmInput').value = '';
+  document.getElementById('modalStep1').style.display = '';
+  document.getElementById('modalStep2').style.display = 'none';
+  document.getElementById('modalStep3Wrap').style.display = 'none';
+  document.getElementById('modalNextBtn').textContent = 'I understand, continue';
+  document.getElementById('deleteModal').classList.add('open');
+}
+
+function closeDeleteModal() {
+  document.getElementById('deleteModal').classList.remove('open');
+  _modalStep = 1;
+  _modalAction = null;
+}
+
+function modalNext() {
+  if (_modalStep === 1) {
+    _modalStep = 2;
+    document.getElementById('modalStep1').style.display = 'none';
+    document.getElementById('modalStep2').style.display = '';
+    document.getElementById('modalNextBtn').textContent = 'Yes, I understand the consequences';
+  } else if (_modalStep === 2) {
+    _modalStep = 3;
+    document.getElementById('modalStep2').style.display = 'none';
+    document.getElementById('modalStep3Wrap').style.display = '';
+    document.getElementById('modalNextBtn').textContent = 'Delete permanently';
+  } else if (_modalStep === 3) {
+    const typed = document.getElementById('modalConfirmInput').value.trim();
+    const expected = document.getElementById('modalConfirmWord').textContent.trim();
+    if (typed !== expected) {
+      document.getElementById('modalConfirmInput').style.borderColor = '#d63031';
+      document.getElementById('modalConfirmInput').placeholder = 'Name does not match — try again';
+      return;
+    }
+    closeDeleteModal();
+    if (_modalAction) _modalAction();
+  }
+}
+
+// Close on overlay click
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+  if (e.target === this) closeDeleteModal();
+});
+
+// ── CSRF helper ──────────────────────────────────────────────────────────────
+function getCsrf() {
+  return document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
+function postJSON(url, data, onSuccess, onError) {
+  const body = new URLSearchParams(data);
+  body.append('csrfmiddlewaretoken', getCsrf());
+  fetch(url, { method:'POST', body, headers:{'X-Requested-With':'XMLHttpRequest'} })
+    .then(r => r.json())
+    .then(d => { if (d.success) onSuccess(d); else onError(d.error || 'Error'); })
+    .catch(() => onError('Network error'));
+}
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

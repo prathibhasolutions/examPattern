@@ -1,0 +1,142 @@
+{% extends "superadmin/base.html" %}
+{% block title %}Tests{% endblock %}
+
+{% block content %}
+<div class="sa-page-header">
+  <h1><i class="fas fa-file-alt"></i> Tests</h1>
+  <p>Tests are grouped by their series. Hidden tests are not accessible to students.</p>
+</div>
+
+<div class="sa-toolbar" style="background:white; border-radius:0.875rem; box-shadow:0 2px 10px rgba(0,0,0,0.07); margin-bottom:1rem; border:none;">
+  <div class="sa-search">
+    <i class="fas fa-search"></i>
+    <input type="text" id="testSearch" placeholder="Filter by test name…" oninput="filterTests()">
+  </div>
+  <span id="testCount" style="font-size:0.8rem; color:#636e72; margin-left:auto;"></span>
+</div>
+
+{% for s in series_qs %}
+<div class="sa-card series-group" data-series="{{ s.name|lower }}">
+  <div class="sa-card-header">
+    <h2>
+      <i class="fas fa-layer-group" style="color:#e17055;"></i>
+      {{ s.name }}
+      <span style="font-size:0.72rem; background:#e8f4fd; color:#0984e3; padding:2px 8px; border-radius:20px; margin-left:0.5rem; font-weight:700;">
+        {{ s.test_count }} test{{ s.test_count|pluralize }}
+      </span>
+    </h2>
+    <div class="btn-actions">
+      {% if s.is_active %}
+        <span class="status-pill status-active" style="font-size:0.72rem;"><i class="fas fa-eye" style="font-size:0.6rem;"></i> Series Published</span>
+      {% else %}
+        <span class="status-pill status-inactive" style="font-size:0.72rem;"><i class="fas fa-eye-slash" style="font-size:0.6rem;"></i> Series Hidden</span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if s.tests.all %}
+  <div class="sa-card-body" style="overflow-x:auto;">
+    <table class="sa-table">
+      <thead>
+        <tr>
+          <th>Test Name</th>
+          <th>Duration</th>
+          <th>Marks/Q</th>
+          <th>Visibility</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in s.tests.all %}
+        <tr class="test-row" data-name="{{ t.name|lower }}">
+          <td style="font-weight:600;">{{ t.name }}</td>
+          <td style="font-size:0.8rem; color:#636e72; white-space:nowrap;">
+            {% if t.duration_seconds %}
+              {{ t.duration_seconds|floatformat:0 }}s
+            {% else %}
+              Unlimited
+            {% endif %}
+          </td>
+          <td style="font-size:0.8rem; color:#636e72;">{{ t.marks_per_question }}</td>
+          <td>
+            {% if t.is_active %}
+              <span class="status-pill status-active"><i class="fas fa-eye" style="font-size:0.6rem;"></i> Published</span>
+            {% else %}
+              <span class="status-pill status-inactive"><i class="fas fa-eye-slash" style="font-size:0.6rem;"></i> Hidden</span>
+            {% endif %}
+          </td>
+          <td style="font-size:0.78rem; color:#636e72; white-space:nowrap;">{{ t.created_at|date:"d M Y" }}</td>
+          <td>
+            <div class="btn-actions">
+              <button class="sa-btn sa-btn-sm {% if t.is_active %}sa-btn-warning{% else %}sa-btn-success{% endif %}"
+                      onclick="toggleTest({{ t.id }}, this)">
+                <i class="fas {% if t.is_active %}fa-eye-slash{% else %}fa-eye{% endif %}"></i>
+                {% if t.is_active %}Hide{% else %}Publish{% endif %}
+              </button>
+              <button class="sa-btn sa-btn-danger sa-btn-sm"
+                      onclick="confirmDeleteTest({{ t.id }}, '{{ t.name|escapejs }}')">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="padding:1rem 1.25rem; color:#b2bec3; font-size:0.85rem; font-style:italic;">
+    No tests in this series yet.
+  </div>
+  {% endif %}
+</div>
+{% empty %}
+<div class="sa-card">
+  <div style="padding:2rem; text-align:center; color:#b2bec3;">No test series found.</div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterTests() {
+  const q = document.getElementById('testSearch').value.toLowerCase();
+  let total = 0;
+  document.querySelectorAll('.test-row').forEach(r => {
+    const match = !q || r.dataset.name.includes(q);
+    r.style.display = match ? '' : 'none';
+    if (match) total++;
+  });
+  // Hide entire series cards with no visible rows
+  document.querySelectorAll('.series-group').forEach(card => {
+    const visible = card.querySelectorAll('.test-row:not([style*="none"])').length;
+    card.style.display = (!q || visible > 0) ? '' : 'none';
+  });
+  document.getElementById('testCount').textContent = q ? total + ' test(s) match' : '';
+}
+
+function toggleTest(id, btn) {
+  const action = btn.classList.contains('sa-btn-warning') ? 'hide' : 'publish';
+  if (!confirm(action === 'hide' ? 'Hide this test from students?' : 'Publish this test to students?')) return;
+  postJSON(`/superadmin/tests/${id}/toggle/`, {},
+    () => location.reload(),
+    err => alert('Error: ' + err)
+  );
+}
+
+function confirmDeleteTest(id, name) {
+  openDeleteModal(
+    'Delete Test',
+    `You are about to permanently delete the test "${name}" and all its questions and student attempts.`,
+    name,
+    () => {
+      postJSON(`/superadmin/tests/${id}/delete/`, { final_confirm: 'yes' },
+        data => { alert(`Test "${data.deleted}" deleted.`); location.reload(); },
+        err => alert('Error: ' + err)
+      );
+    }
+  );
+}
+</script>
+{% endblock %}

@@ -1,0 +1,175 @@
+{% extends "superadmin/base.html" %}
+{% block title %}Users{% endblock %}
+
+{% block content %}
+<div class="sa-page-header">
+  <h1><i class="fas fa-users"></i> User Management</h1>
+  <p>View and manage all registered users. Role changes take effect immediately.</p>
+</div>
+
+<!-- Legend -->
+<div class="sa-card" style="margin-bottom:1rem;">
+  <div class="sa-card-body" style="padding:0.875rem 1.25rem; display:flex; gap:1rem; flex-wrap:wrap; align-items:center;">
+    <strong style="font-size:0.8rem; color:#636e72;">ROLE LEGEND:</strong>
+    <span class="role-badge role-superuser"><i class="fas fa-crown"></i> Superuser — full access, can do everything</span>
+    <span class="role-badge role-staff"><i class="fas fa-tools"></i> Staff (Builder) — can create and manage tests</span>
+    <span class="role-badge role-regular"><i class="fas fa-user"></i> Regular — student, no admin access</span>
+    <span class="role-badge role-inactive"><i class="fas fa-ban"></i> Inactive — account disabled, cannot log in</span>
+  </div>
+</div>
+
+<div class="sa-card">
+  <!-- Toolbar -->
+  <div class="sa-toolbar">
+    <div class="sa-search">
+      <i class="fas fa-search"></i>
+      <input type="text" id="userSearch" placeholder="Filter by name, email or UID…" oninput="filterUsers()">
+    </div>
+    <div style="margin-left:auto; font-size:0.8rem; color:#636e72;">
+      <span id="userCount"></span> users shown
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="sa-card-body" style="overflow-x:auto;">
+    <table class="sa-table" id="userTable">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>UID</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Joined</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="userTableBody">
+        {% for u in users %}
+        <tr data-search="{{ u.username|lower }} {{ u.email|lower }} {{ u.uid|lower }} {{ u.first_name|lower }} {{ u.last_name|lower }}">
+          <td>
+            <div style="font-weight:600;">{{ u.username }}</div>
+            {% if u.first_name or u.last_name %}
+            <div style="font-size:0.75rem; color:#636e72;">{{ u.first_name }} {{ u.last_name }}</div>
+            {% endif %}
+          </td>
+          <td style="font-family:monospace; font-size:0.78rem; color:#636e72;">{{ u.uid|default:"—" }}</td>
+          <td style="font-size:0.82rem;">{{ u.email }}</td>
+          <td>
+            {% if u.is_superuser %}
+              <span class="role-badge role-superuser"><i class="fas fa-crown"></i> Superuser</span>
+            {% elif u.is_staff %}
+              <span class="role-badge role-staff"><i class="fas fa-tools"></i> Staff</span>
+            {% else %}
+              <span class="role-badge role-regular"><i class="fas fa-user"></i> Regular</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.is_active %}
+              <span class="status-pill status-active"><i class="fas fa-circle" style="font-size:0.5rem;"></i> Active</span>
+            {% else %}
+              <span class="status-pill status-inactive"><i class="fas fa-circle" style="font-size:0.5rem;"></i> Inactive</span>
+            {% endif %}
+          </td>
+          <td style="font-size:0.78rem; color:#636e72; white-space:nowrap;">{{ u.date_joined|date:"d M Y" }}</td>
+          <td>
+            {% if u.id != request.user.id %}
+            <div class="btn-actions">
+              <!-- Role selector -->
+              <select class="sa-btn sa-btn-ghost sa-btn-sm" style="padding:0.2rem 0.4rem;" onchange="changeRole({{ u.id }}, this.value, this)" title="Change role">
+                <option value="" disabled {% if not u.is_superuser and not u.is_staff %}selected{% endif %}>Role…</option>
+                <option value="superuser" {% if u.is_superuser %}selected{% endif %}>Superuser</option>
+                <option value="staff"     {% if u.is_staff and not u.is_superuser %}selected{% endif %}>Staff</option>
+                <option value="regular"   {% if not u.is_staff and not u.is_superuser %}selected{% endif %}>Regular</option>
+              </select>
+              <!-- Toggle active -->
+              <button class="sa-btn sa-btn-sm {% if u.is_active %}sa-btn-warning{% else %}sa-btn-success{% endif %}"
+                      onclick="toggleUser({{ u.id }}, this)"
+                      title="{% if u.is_active %}Disable account{% else %}Enable account{% endif %}">
+                <i class="fas {% if u.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+              </button>
+              <!-- Delete -->
+              <button class="sa-btn sa-btn-danger sa-btn-sm"
+                      onclick="confirmDeleteUser({{ u.id }}, '{{ u.username|escapejs }}')"
+                      title="Delete user">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+            {% else %}
+            <span style="font-size:0.75rem; color:#b2bec3; font-style:italic;">That's you</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" style="text-align:center; color:#b2bec3; padding:2rem;">No users found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Filter ────────────────────────────────────────────────────────────────────
+function filterUsers() {
+  const q = document.getElementById('userSearch').value.toLowerCase();
+  const rows = document.querySelectorAll('#userTableBody tr[data-search]');
+  let shown = 0;
+  rows.forEach(r => {
+    const match = r.dataset.search.includes(q);
+    r.style.display = match ? '' : 'none';
+    if (match) shown++;
+  });
+  document.getElementById('userCount').textContent = shown;
+}
+// Init count
+filterUsers();
+
+// ── Role change ───────────────────────────────────────────────────────────────
+function changeRole(userId, role, selectEl) {
+  if (!role) return;
+  const label = { superuser:'Superuser', staff:'Staff (Builder)', regular:'Regular User' }[role];
+  if (!confirm(`Change this user's role to "${label}"?`)) {
+    selectEl.value = selectEl.dataset.prev || '';
+    return;
+  }
+  postJSON(`/superadmin/users/${userId}/role/`, { role },
+    data => {
+      selectEl.dataset.prev = role;
+      location.reload(); // reload to refresh role badges
+    },
+    err => alert('Error: ' + err)
+  );
+}
+
+// ── Toggle active/inactive ────────────────────────────────────────────────────
+function toggleUser(userId, btn) {
+  const action = btn.classList.contains('sa-btn-warning') ? 'disable' : 'enable';
+  if (!confirm(`Are you sure you want to ${action} this account?`)) return;
+  postJSON(`/superadmin/users/${userId}/toggle-active/`, {},
+    data => location.reload(),
+    err => alert('Error: ' + err)
+  );
+}
+
+// ── Delete user ───────────────────────────────────────────────────────────────
+function confirmDeleteUser(userId, username) {
+  openDeleteModal(
+    'Delete User',
+    `You are about to permanently delete the user "${username}". All their test attempts and data will be lost.`,
+    username,
+    () => {
+      postJSON(`/superadmin/users/${userId}/delete/`, { final_confirm: 'yes' },
+        data => {
+          alert(`User "${data.deleted}" has been deleted.`);
+          location.reload();
+        },
+        err => alert('Error: ' + err)
+      );
+    }
+  );
+}
+</script>
+{% endblock %}

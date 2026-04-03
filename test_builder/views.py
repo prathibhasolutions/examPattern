@@ -737,7 +737,6 @@ def manage_questions(request, draft_id, section_id):
 
 @admin_required
 @login_required
-@transaction.atomic
 def publish_test(request, draft_id):
     """Convert draft to actual test or update existing published test"""
     from django.db import IntegrityError
@@ -793,111 +792,120 @@ def publish_test(request, draft_id):
                     return redirect('live_editor', draft_id=draft_id)
 
     # ── Phase 2: DB writes (all validation passed above) ────────────────
+    # NOTE: transaction.atomic() is used as a context manager (not a decorator) so
+    # that catching a DatabaseError in the except clauses below does NOT operate on
+    # a poisoned transaction.  With the old @transaction.atomic decorator the entire
+    # function — including the messages/session writes in except — ran inside one
+    # transaction; any DB error caught inside would mark the transaction as needing
+    # rollback and the subsequent session write for messages.error() would raise
+    # TransactionManagementError → 500.
     try:
-        series_section = draft.series_section
-        if not series_section:
-            series_section, _ = SeriesSection.objects.get_or_create(
-                series=draft.series,
-                name="All Tests",
-                defaults={
-                    "slug": slugify("all-tests"),
-                    "order": 1,
-                    "is_active": True,
-                },
-            )
-
-        series_subsection = draft.series_subsection
-        if series_subsection and series_subsection.section != series_section:
-            series_subsection = None
-
-        # Check if this draft has a published test from before (republishing case)
-        published_test = None
-        if draft.published_test_id:
-            try:
-                published_test = Test.objects.get(id=draft.published_test_id)
-                # Delete old sections (this will cascade delete questions and options)
-                published_test.sections.all().delete()
-            except Test.DoesNotExist:
-                published_test = None
-
-        if published_test:
-            # Republishing: Update existing test
-            published_test.name = draft.name
-            published_test.description = draft.description
-            published_test.series_section = series_section
-            published_test.series_subsection = series_subsection
-            published_test.duration_seconds = draft.duration_minutes * 60
-            published_test.marks_per_question = draft.marks_per_question
-            published_test.negative_marks_per_question = draft.negative_marks
-            published_test.use_sectional_timing = draft.use_sectional_timing
-            published_test.shuffle_questions = draft.shuffle_questions
-            published_test.is_active = True
-            published_test.save()
-            test = published_test
-        else:
-            # First time publishing: Create new test
-            # Use a unique slug to avoid conflicts with old deactivated tests
-            base_slug = slugify(draft.name)
-            slug = base_slug
-            counter = 1
-
-            while Test.objects.filter(series=draft.series, slug=slug).exists():
-                slug = f"{base_slug}-v{counter}"
-                counter += 1
-
-            test = Test.objects.create(
-                series=draft.series,
-                series_section=series_section,
-                series_subsection=series_subsection,
-                name=draft.name,
-                slug=slug,
-                description=draft.description,
-                duration_seconds=draft.duration_minutes * 60,
-                marks_per_question=draft.marks_per_question,
-                negative_marks_per_question=draft.negative_marks,
-                use_sectional_timing=draft.use_sectional_timing,
-                shuffle_questions=draft.shuffle_questions,
-                is_active=True
-            )
-
-        # Create sections — use sequential index (1, 2, 3…) instead of draft.order to
-        # guarantee uniqueness against uq_section_order_within_test even if draft orders drifted.
-        for seq_order, section_draft in enumerate(draft.sections.all(), start=1):
-            section_time_seconds = 0
-            if draft.use_sectional_timing and section_draft.time_limit_minutes:
-                section_time_seconds = section_draft.time_limit_minutes * 60
-
-            section = Section.objects.create(
-                test=test,
-                name=section_draft.name,
-                order=seq_order,
-                time_limit_seconds=section_time_seconds
-            )
-
-            for question_draft in section_draft.questions.all():
-                question = Question.objects.create(
-                    section=section,
-                    text=question_draft.question_text,
-                    image=question_draft.question_image,
-                    explanation=question_draft.solution_text,
-                    solution_image=question_draft.solution_image
+        with transaction.atomic():
+            series_section = draft.series_section
+            if not series_section:
+                series_section, _ = SeriesSection.objects.get_or_create(
+                    series=draft.series,
+                    name="All Tests",
+                    defaults={
+                        "slug": slugify("all-tests"),
+                        "order": 1,
+                        "is_active": True,
+                    },
                 )
 
-                for option_draft in question_draft.options.all():
-                    Option.objects.create(
-                        question=question,
-                        text=option_draft.option_text,
-                        image=option_draft.option_image,
-                        is_correct=option_draft.is_correct,
-                        order=option_draft.order
+            series_subsection = draft.series_subsection
+            if series_subsection and series_subsection.section != series_section:
+                series_subsection = None
+
+            # Check if this draft has a published test from before (republishing case)
+            published_test = None
+            if draft.published_test_id:
+                try:
+                    published_test = Test.objects.get(id=draft.published_test_id)
+                    # Delete old sections (this will cascade delete questions and options)
+                    published_test.sections.all().delete()
+                except Test.DoesNotExist:
+                    published_test = None
+
+            if published_test:
+                # Republishing: Update existing test
+                published_test.name = draft.name
+                published_test.description = draft.description
+                published_test.series_section = series_section
+                published_test.series_subsection = series_subsection
+                published_test.duration_seconds = draft.duration_minutes * 60
+                published_test.marks_per_question = draft.marks_per_question
+                published_test.negative_marks_per_question = draft.negative_marks
+                published_test.use_sectional_timing = draft.use_sectional_timing
+                published_test.shuffle_questions = draft.shuffle_questions
+                published_test.is_active = True
+                published_test.save()
+                test = published_test
+            else:
+                # First time publishing: Create new test
+                # Use a unique slug to avoid conflicts with old deactivated tests
+                base_slug = slugify(draft.name)
+                slug = base_slug
+                counter = 1
+
+                while Test.objects.filter(series=draft.series, slug=slug).exists():
+                    slug = f"{base_slug}-v{counter}"
+                    counter += 1
+
+                test = Test.objects.create(
+                    series=draft.series,
+                    series_section=series_section,
+                    series_subsection=series_subsection,
+                    name=draft.name,
+                    slug=slug,
+                    description=draft.description,
+                    duration_seconds=draft.duration_minutes * 60,
+                    marks_per_question=draft.marks_per_question,
+                    negative_marks_per_question=draft.negative_marks,
+                    use_sectional_timing=draft.use_sectional_timing,
+                    shuffle_questions=draft.shuffle_questions,
+                    is_active=True
+                )
+
+            # Create sections — use sequential index (1, 2, 3…) instead of draft.order to
+            # guarantee uniqueness against uq_section_order_within_test even if draft orders drifted.
+            for seq_order, section_draft in enumerate(draft.sections.all(), start=1):
+                section_time_seconds = 0
+                if draft.use_sectional_timing and section_draft.time_limit_minutes:
+                    section_time_seconds = section_draft.time_limit_minutes * 60
+
+                section = Section.objects.create(
+                    test=test,
+                    name=section_draft.name,
+                    order=seq_order,
+                    time_limit_seconds=section_time_seconds
+                )
+
+                for question_draft in section_draft.questions.all():
+                    question = Question.objects.create(
+                        section=section,
+                        text=question_draft.question_text,
+                        image=question_draft.question_image,
+                        explanation=question_draft.solution_text,
+                        solution_image=question_draft.solution_image
                     )
 
-        # Mark draft as published and store the published test ID
-        draft.is_published = True
-        draft.published_test_id = test.id
-        draft.release_lock()  # Release lock after successful publish
-        draft.save()
+                    for option_draft in question_draft.options.all():
+                        Option.objects.create(
+                            question=question,
+                            text=option_draft.option_text,
+                            image=option_draft.option_image,
+                            is_correct=option_draft.is_correct,
+                            order=option_draft.order
+                        )
 
+            # Mark draft as published and store the published test ID
+            draft.is_published = True
+            draft.published_test_id = test.id
+            draft.release_lock()  # Release lock after successful publish
+            draft.save()
+
+        # transaction committed — safe to read test/published_test outside the block
         action_type = "updated" if published_test else "published"
         messages.success(request, f"Test '{test.name}' {action_type} successfully! Students can now take this test.")
         return redirect('builder_dashboard')
