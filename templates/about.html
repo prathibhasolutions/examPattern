@@ -25,6 +25,35 @@
         margin-right: -50vw !important;
     }
     .navbar-custom .navbar-brand img { height: 45px; width: auto; }
+    .navbar-search {
+        flex: 1;
+        max-width: 500px;
+        margin: 0 30px;
+        position: relative;
+    }
+    .navbar-search .form-control {
+        border-radius: 25px;
+        border: 2px solid rgba(255,255,255,0.3);
+        background: rgba(255,255,255,0.95);
+        padding: 10px 20px 10px 40px;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    .navbar-search-icon {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #aaa;
+        font-size: 14px;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .navbar-search .form-control:focus {
+        border-color: #fff;
+        box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
+        background: white;
+    }
     .navbar-profile { display: flex; align-items: center; gap: 15px; margin-left: auto; }
     .profile-avatar {
         width: 40px; height: 40px; border-radius: 50%;
@@ -220,9 +249,19 @@
 <!-- ═══ NAVBAR ═══ -->
 <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
     <div class="container-fluid" style="padding-left:20px;padding-right:20px;">
-        <a class="navbar-brand" href="{% url 'tests_list' %}">
+        <a class="navbar-brand" href="{% url 'tests_list' %}" style="flex: 0 0 25%;">
             <img src="{% static 'examPattern.png' %}" alt="examPattern">
         </a>
+
+        <!-- Search Bar -->
+        <div class="navbar-search">
+            <i class="fas fa-search navbar-search-icon"></i>
+            <input type="text" class="form-control" placeholder="🔍 Search test series..." id="navbarSearch" autocomplete="off">
+            <div id="navbarSuggestBox" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0;
+                 background:#fff; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.15);
+                 z-index:2000; max-height:300px; overflow-y:auto;"></div>
+        </div>
+
         <div class="navbar-profile">
             {% if user.is_authenticated %}
                 <a href="{% url 'profile' %}" class="text-decoration-none">
@@ -395,5 +434,38 @@
         </div>
     </div>
 </footer>
+
+<script>
+(function() {
+  var inp = document.getElementById('navbarSearch');
+  var box = document.getElementById('navbarSuggestBox');
+  if (!inp || !box) return;
+  var timer;
+  inp.addEventListener('input', function() {
+    clearTimeout(timer);
+    var q = this.value.trim();
+    if (!q) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    timer = setTimeout(function() {
+      fetch('/api/v1/series-suggest/?q=' + encodeURIComponent(q))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.length) {
+            box.innerHTML = '<div class="search-no-results">No matching series found</div>';
+          } else {
+            box.innerHTML = data.map(function(s) {
+              return '<a href="/tests/series/' + s.slug + '/about/" class="search-suggestion-item">'
+                   + '<i class="fas fa-search"></i>' + s.name + '</a>';
+            }).join('');
+          }
+          box.style.display = 'block';
+        })
+        .catch(function() { box.style.display = 'none'; });
+    }, 180);
+  });
+  document.addEventListener('click', function(e) {
+    if (!inp.contains(e.target) && !box.contains(e.target)) box.style.display = 'none';
+  });
+})();
+</script>
 
 {% endblock %}

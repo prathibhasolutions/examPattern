@@ -8,6 +8,8 @@
 <!-- Custom navbar for series tests page -->
 {% endblock %}
 
+{% block footer %}{% endblock %}
+
 {% block content %}
 <style>
     main.container-fluid {
@@ -50,6 +52,7 @@
         flex: 1;
         max-width: 500px;
         margin: 0 30px;
+        position: relative;
     }
 
     .navbar-search .form-control {
@@ -141,63 +144,70 @@
         box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
     }
     .series-container {
-        padding: 30px 20px 60px;
-        background: #f6f8fb;
+        padding: 24px 24px 48px;
+        background: #f0f2f7;
         min-height: 100vh;
     }
     .series-header {
-        background: white;
-        border-radius: 14px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-        padding: 20px 24px;
-        margin-bottom: 24px;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(30,60,114,0.18);
+        padding: 28px 32px;
+        margin-bottom: 18px;
+        text-align: center;
     }
     .series-header h1 {
-        font-size: 28px;
+        font-size: 26px;
         font-weight: 800;
-        color: #1e3c72;
-        margin-bottom: 6px;
+        color: #fff;
+        margin-bottom: 8px;
+        letter-spacing: 0.01em;
     }
     .series-header p {
-        color: #666;
+        color: rgba(255,255,255,0.78);
+        font-size: 14px;
         margin-bottom: 0;
+        line-height: 1.6;
+        max-width: 700px;
+        margin-left: auto;
+        margin-right: auto;
     }
     .section-card {
         background: white;
-        border-radius: 14px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.07);
         padding: 18px 22px;
-        margin-bottom: 22px;
+        margin-bottom: 16px;
     }
     .section-title {
-        font-size: 18px;
+        font-size: 14px;
         font-weight: 700;
         color: #1e3c72;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
         display: flex;
         align-items: center;
         gap: 8px;
     }
     .test-card {
         border: 1px solid #eef1f5;
-        border-radius: 12px;
+        border-radius: 8px;
         overflow: hidden;
-        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+        box-shadow: 0 1px 6px rgba(0,0,0,0.05);
     }
 
     /* Nav Pills Styling */
     .nav-pills-container {
         max-width: 1200px;
-        margin: 0 auto 30px;
+        margin: 0 auto 18px;
         background: white;
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        padding: 14px 20px;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.07);
     }
 
     .custom-nav-pills {
         display: flex;
-        gap: 15px;
+        gap: 10px;
         flex-wrap: wrap;
         border: none;
     }
@@ -205,45 +215,44 @@
     .custom-nav-pills .nav-link {
         background: #f0f2f5;
         color: #495057;
-        border: 2px solid transparent;
-        border-radius: 25px;
-        padding: 12px 30px;
+        border: 1.5px solid transparent;
+        border-radius: 22px;
+        padding: 8px 22px;
         font-weight: 600;
-        font-size: 15px;
-        transition: all 0.3s ease;
+        font-size: 14px;
+        transition: all 0.2s ease;
         cursor: pointer;
     }
 
     .custom-nav-pills .nav-link:hover {
         background: #e3e7f0;
-        transform: translateY(-2px);
     }
 
     .custom-nav-pills .nav-link.active {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border-color: transparent;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 3px 10px rgba(102, 126, 234, 0.35);
     }
 
     .sub-nav-pills {
         display: flex;
-        gap: 12px;
+        gap: 8px;
         flex-wrap: wrap;
-        margin-top: 20px;
-        padding-top: 20px;
-        border-top: 2px solid #f0f2f5;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #f0f2f5;
     }
 
     .sub-nav-pills .nav-link {
         background: #f8f9fa;
         color: #6c757d;
-        border: 2px solid #e9ecef;
-        border-radius: 20px;
-        padding: 8px 20px;
+        border: 1.5px solid #e9ecef;
+        border-radius: 18px;
+        padding: 6px 16px;
         font-weight: 600;
-        font-size: 14px;
-        transition: all 0.3s ease;
+        font-size: 13px;
+        transition: all 0.2s ease;
     }
 
     .sub-nav-pills .nav-link:hover {
@@ -256,7 +265,7 @@
         background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
         color: white;
         border-color: transparent;
-        box-shadow: 0 3px 10px rgba(30, 60, 114, 0.3);
+        box-shadow: 0 2px 8px rgba(30, 60, 114, 0.25);
     }
 
     .tab-pane {
@@ -272,42 +281,56 @@
 
     .subsection-group {
         background: white;
-        border-radius: 15px;
-        padding: 25px;
-        margin-bottom: 25px;
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        padding: 18px 22px;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.07);
     }
 
     .subsection-header h2 {
-        font-size: 22px;
+        font-size: 12px;
         font-weight: 700;
-        color: #1e3c72;
-        margin: 0 0 20px;
-        padding-bottom: 15px;
-        border-bottom: 3px solid #667eea;
+        color: #7c8db5;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin: 0 0 14px;
+        padding-bottom: 10px;
+        border-bottom: 1.5px solid #eef1f5;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .subsection-header h2::before {
+        content: '';
+        display: inline-block;
+        width: 3px;
+        height: 14px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 2px;
+        flex-shrink: 0;
     }
 
     .tests-list {
         display: flex;
         flex-direction: column;
-        gap: 15px;
+        gap: 8px;
     }
 
     .test-item {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 20px;
-        background: linear-gradient(135deg, #f5f7fa 0%, #e3e7f0 100%);
-        border-radius: 12px;
-        transition: all 0.3s ease;
-        border: 2px solid transparent;
+        padding: 13px 16px;
+        background: #fafafc;
+        border-radius: 10px;
+        transition: background 0.18s ease, box-shadow 0.18s ease;
+        border: 1px solid #eef1f5;
     }
 
     .test-item:hover {
-        transform: translateX(5px);
-        border-color: #667eea;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+        background: #f0f3ff;
+        border-color: #c5cdf6;
+        box-shadow: 0 2px 10px rgba(102, 126, 234, 0.13);
     }
 
     .test-info {
@@ -315,68 +338,96 @@
     }
 
     .test-name {
-        font-size: 17px;
-        font-weight: 700;
+        font-size: 15px;
+        font-weight: 650;
         color: #1e3c72;
-        margin-bottom: 8px;
+        margin-bottom: 5px;
     }
 
     .test-meta {
         display: flex;
-        gap: 20px;
+        gap: 16px;
         flex-wrap: wrap;
     }
 
     .meta-item {
         display: flex;
         align-items: center;
-        gap: 6px;
-        color: #666;
-        font-size: 14px;
+        gap: 4px;
+        color: #7a8499;
+        font-size: 13px;
         font-weight: 500;
     }
 
     .meta-icon {
-        font-size: 16px;
+        font-size: 13px;
     }
 
     .test-action {
         flex-shrink: 0;
-        margin-left: 20px;
+        margin-left: 14px;
+        display: flex;
+        gap: 6px;
+        align-items: center;
     }
 
     .attempt-btn {
-        background: #667eea !important;
         color: white !important;
         border: none;
-        padding: 12px 28px;
-        border-radius: 25px;
+        padding: 7px 18px !important;
+        border-radius: 18px;
         font-weight: 600;
-        font-size: 14px;
+        font-size: 13px !important;
         text-decoration: none;
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        transition: all 0.3s;
+        gap: 6px;
+        transition: all 0.2s;
         cursor: pointer;
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        white-space: nowrap;
     }
 
-    .attempt-btn:hover {
+    .attempt-btn.btn-primary {
+        background: #667eea !important;
+        box-shadow: 0 2px 6px rgba(102,126,234,0.3);
+    }
+    .attempt-btn.btn-primary:hover {
         background: #5568d3 !important;
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.5);
-        color: white !important;
+        box-shadow: 0 3px 10px rgba(102,126,234,0.4);
+    }
+    .attempt-btn.btn-warning {
+        background: #f59e0b !important;
+        box-shadow: 0 2px 6px rgba(245,158,11,0.3);
+    }
+    .attempt-btn.btn-warning:hover {
+        background: #d97706 !important;
+    }
+    .attempt-btn.btn-success {
+        background: #22c55e !important;
+        box-shadow: 0 2px 6px rgba(34,197,94,0.3);
+    }
+    .attempt-btn.btn-success:hover {
+        background: #16a34a !important;
+    }
+    .attempt-btn.btn-outline-secondary {
+        background: transparent !important;
+        color: #6c757d !important;
+        border: 1.5px solid #adb5bd !important;
+        box-shadow: none;
+    }
+    .attempt-btn.btn-outline-secondary:hover {
+        background: #f8f9fa !important;
+        border-color: #6c757d !important;
     }
 
     .card-footer {
-        margin-top: 10px;
+        margin-top: 0;
     }
 
     .card-footer .btn {
-        font-size: 14px;
-        padding: 10px 20px;
-        border-radius: 20px;
+        font-size: 13px;
+        padding: 7px 16px;
+        border-radius: 18px;
         font-weight: 600;
     }
 
@@ -391,21 +442,127 @@
         .test-action {
             width: 100%;
             margin-left: 0;
-            margin-top: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+            margin-top: 10px;
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 6px;
         }
 
         .attempt-btn {
-            width: 100%;
+            flex: 1;
             justify-content: center;
         }
 
         .custom-nav-pills .nav-link {
             flex: 1;
-            min-width: 140px;
+            min-width: 120px;
             text-align: center;
+        }
+    }
+
+    /* Footer */
+    .footer-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        padding: 40px 0 20px;
+        margin-top: 60px;
+    }
+    .footer-content {
+        display: grid;
+        grid-template-columns: 1fr 2fr 1fr;
+        gap: 30px;
+        margin-bottom: 30px;
+    }
+    .footer-logo-section {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    .footer-logo-section img {
+        width: 180px;
+        max-width: 25vw;
+        height: auto;
+        object-fit: contain;
+    }
+    .footer-logo-section p {
+        color: rgba(255,255,255,0.85);
+        font-size: 14px;
+        margin: 0;
+    }
+    .footer-links {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .footer-links h6 {
+        font-weight: 700;
+        font-size: 16px;
+        margin-bottom: 10px;
+        color: white;
+    }
+    .footer-links a {
+        color: rgba(255,255,255,0.8);
+        text-decoration: none;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    .footer-links a:hover {
+        color: white;
+        padding-left: 5px;
+    }
+    .footer-contact {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .footer-contact h6 {
+        font-weight: 700;
+        font-size: 16px;
+        margin-bottom: 10px;
+        color: white;
+    }
+    .footer-contact p {
+        color: rgba(255,255,255,0.8);
+        font-size: 14px;
+        margin: 0;
+    }
+    .footer-bottom {
+        border-top: 1px solid rgba(255,255,255,0.2);
+        padding-top: 20px;
+        text-align: center;
+    }
+    .footer-bottom p {
+        margin: 5px 0;
+        font-size: 13px;
+        color: rgba(255,255,255,0.75);
+    }
+    .footer-credit {
+        font-size: 12px;
+        color: rgba(255,255,255,0.6);
+        margin-top: 10px;
+    }
+    .footer-credit a {
+        color: #ffc107;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    .footer-credit a:hover {
+        color: #ffdd57;
+        text-decoration: underline;
+    }
+    @media (max-width: 768px) {
+        .footer-content {
+            grid-template-columns: 1fr;
+            gap: 25px;
+            text-align: center;
+        }
+        .footer-logo-section img {
+            margin: 0 auto;
+        }
+        .footer-custom .container-fluid {
+            padding-left: 20px !important;
+            padding-right: 20px !important;
         }
     }
 </style>
@@ -454,7 +611,7 @@
 
 
     <div class="series-container">
-        <div class="series-header">
+        <div class="series-header" style="max-width:1200px; margin-left:auto; margin-right:auto; margin-bottom:18px;">
             <h1>{{ series.name }}</h1>
             <p>{{ series.description|default:"No description available." }}</p>
         </div>
@@ -470,7 +627,7 @@
             <ul class="nav sub-nav-pills" id="subNavContainer" style="display: none;"></ul>
         </div>
 
-        <div id="sectionContent">
+        <div id="sectionContent" style="max-width:1200px; margin:0 auto;">
             {% for data in sectional_data %}
             <div class="section-card section-content" id="section-{{ data.section.id }}-content" style="{% if not forloop.first %}display: none;{% endif %}">
                 {% if data.subsections %}
@@ -508,11 +665,17 @@
                                                     <i class="fas fa-play"></i> Resume Test
                                                 </a>
                                                 {% if info.latest_submitted_id %}
+                                                <a href="{% url 'results_page' info.latest_submitted_id %}" class="btn btn-primary attempt-btn">
+                                                    <i class="fas fa-chart-bar"></i> View Results
+                                                </a>
                                                 <a href="{% url 'review_solutions' info.latest_submitted_id %}" class="btn btn-outline-secondary attempt-btn">
                                                     <i class="fas fa-eye"></i> Review Solutions
                                                 </a>
                                                 {% endif %}
                                               {% elif info.submitted_count >= 2 %}
+                                                <a href="{% url 'results_page' info.latest_submitted_id %}" class="btn btn-primary attempt-btn">
+                                                    <i class="fas fa-chart-bar"></i> View Results
+                                                </a>
                                                 <a href="{% url 'review_solutions' info.latest_submitted_id %}" class="btn btn-success attempt-btn">
                                                     <i class="fas fa-eye"></i> Review Solutions
                                                 </a>
@@ -522,6 +685,9 @@
                                                 </a>
                                                 {% endif %}
                                               {% elif info.submitted_count == 1 %}
+                                                <a href="{% url 'results_page' info.latest_submitted_id %}" class="btn btn-primary attempt-btn">
+                                                    <i class="fas fa-chart-bar"></i> View Results
+                                                </a>
                                                 <a href="{% url 'review_solutions' info.latest_submitted_id %}" class="btn btn-success attempt-btn">
                                                     <i class="fas fa-eye"></i> Review Solutions
                                                 </a>
@@ -582,11 +748,17 @@
                                             <i class="fas fa-play"></i> Resume Test
                                         </a>
                                         {% if info.latest_submitted_id %}
+                                        <a href="{% url 'results_page' info.latest_submitted_id %}" class="btn btn-primary attempt-btn">
+                                            <i class="fas fa-chart-bar"></i> View Results
+                                        </a>
                                         <a href="{% url 'review_solutions' info.latest_submitted_id %}" class="btn btn-outline-secondary attempt-btn">
                                             <i class="fas fa-eye"></i> Review Solutions
                                         </a>
                                         {% endif %}
                                       {% elif info.submitted_count >= 2 %}
+                                        <a href="{% url 'results_page' info.latest_submitted_id %}" class="btn btn-primary attempt-btn">
+                                            <i class="fas fa-chart-bar"></i> View Results
+                                        </a>
                                         <a href="{% url 'review_solutions' info.latest_submitted_id %}" class="btn btn-success attempt-btn">
                                             <i class="fas fa-eye"></i> Review Solutions
                                         </a>
@@ -596,6 +768,9 @@
                                         </a>
                                         {% endif %}
                                       {% elif info.submitted_count == 1 %}
+                                        <a href="{% url 'results_page' info.latest_submitted_id %}" class="btn btn-primary attempt-btn">
+                                            <i class="fas fa-chart-bar"></i> View Results
+                                        </a>
                                         <a href="{% url 'review_solutions' info.latest_submitted_id %}" class="btn btn-success attempt-btn">
                                             <i class="fas fa-eye"></i> Review Solutions
                                         </a>
@@ -626,8 +801,39 @@
             {% endfor %}
         </div>
     </div>
+</div>
 
-
+<footer class="footer-custom">
+    <div class="container-fluid" style="padding-left: 60px; padding-right: 60px;">
+        <div class="footer-content">
+            <div class="footer-logo-section">
+                <img src="{% static 'examPattern.png' %}" alt="examPattern">
+                <p>Learn. Thrive. Succeed.</p>
+            </div>
+            <div class="footer-links">
+                <h6>Quick Links</h6>
+                <a href="{% url 'tests_list' %}"><i class="fas fa-home"></i> Home</a>
+                <a href="{% url 'about' %}"><i class="fas fa-info-circle"></i> About</a>
+                <a href="{% url 'profile' %}"><i class="fas fa-user"></i> Profile</a>
+                {% if user.is_staff %}
+                    <a href="/builder/"><i class="fas fa-tools"></i> Test Builder</a>
+                {% endif %}
+                <a href="{% url 'privacy_policy' %}"><i class="fas fa-shield-alt"></i> Privacy Policy</a>
+                <a href="{% url 'terms_of_service' %}"><i class="fas fa-file-contract"></i> Terms of Service</a>
+            </div>
+            <div class="footer-contact">
+                <h6>Contact Us</h6>
+                <p><i class="fas fa-envelope"></i> prathibhainstitutions@gmail.com</p>
+                <p><i class="fas fa-phone"></i> +91 9030941099</p>
+                <p><i class="fas fa-map-marker-alt"></i> Beside Bank of Maharashtra, Namdevwada, Nizamabad</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 examPattern. All rights reserved.</p>
+            <p class="footer-credit">Made by <a href="https://www.prathibhasolutions.com" target="_blank" rel="noopener noreferrer">Prathibha Solutions</a></p>
+        </div>
+    </div>
+</footer>
 
 <!-- Place all JavaScript inside a script block at the end -->
 <script>
