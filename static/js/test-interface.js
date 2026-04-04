@@ -285,9 +285,17 @@ const testApp = {
 
       // Attach event listeners
       testApp.attachEventListeners();
+
+      // All done — hide the page-load overlay
+      const pageLoadOverlay = document.getElementById('page-load-overlay');
+      if (pageLoadOverlay) pageLoadOverlay.style.display = 'none';
     } catch (error) {
       console.error('Failed to initialize test:', error);
-      
+
+      // Hide page-load overlay so the error toast is visible
+      const pageLoadOverlay = document.getElementById('page-load-overlay');
+      if (pageLoadOverlay) pageLoadOverlay.style.display = 'none';
+
       // Show error toast instead of alert
       const errorToast = document.createElement('div');
       errorToast.className = 'alert alert-danger position-fixed top-0 start-50 translate-middle-x mt-3';
@@ -503,6 +511,10 @@ const testApp = {
       // Mark as submitting to prevent beforeunload warning
       testApp.isSubmitting = true;
 
+      // Show full-screen overlay so users know submission is in progress
+      const submitOverlay = document.getElementById('submit-overlay');
+      if (submitOverlay) submitOverlay.style.display = 'flex';
+
       // Record and sync time tracker before submitting
       if (window.TimeTracker && typeof window.TimeTracker.recordCurrentQuestion === 'function') {
         TimeTracker.recordCurrentQuestion();
@@ -545,6 +557,7 @@ const testApp = {
           OfflineQueue.savePendingSubmission(ATTEMPT_ID, UI.answers, Timer.remainingSeconds);
           testApp.pendingSubmitOnReconnect = true;
           testApp.isSubmitting = false;
+          if (submitOverlay) submitOverlay.style.display = 'none';
 
           const existing = document.getElementById('pending-submit-toast');
           if (existing) existing.remove();
@@ -570,6 +583,8 @@ const testApp = {
     } catch (error) {
       console.error('Failed to submit:', error);
       testApp.isSubmitting = false;
+      const submitOverlayEl = document.getElementById('submit-overlay');
+      if (submitOverlayEl) submitOverlayEl.style.display = 'none';
 
       const errorToast = document.createElement('div');
       errorToast.className = 'alert alert-danger position-fixed top-0 start-50 translate-middle-x mt-3';

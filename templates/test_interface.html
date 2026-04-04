@@ -808,6 +808,26 @@
   #offline-banner.visible {
     display: block;
   }
+
+  /* Page load and submit overlays */
+  #page-load-overlay,
+  #submit-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 30, 70, 0.93);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  #submit-overlay {
+    display: none;
+  }
 </style>
 {% endblock %}
 
@@ -1064,6 +1084,20 @@
       <i class="fas fa-play me-2"></i>Resume Test
     </button>
   </div>
+</div>
+
+<!-- Page Load Overlay -->
+<div id="page-load-overlay">
+  <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;"></div>
+  <p class="mb-1 mt-2" style="font-size: 1.1rem; font-weight: 600;">Loading your test...</p>
+  <p class="mb-0" style="font-size: 0.85rem; opacity: 0.75;">Please wait while we prepare your questions.</p>
+</div>
+
+<!-- Submit Loading Overlay -->
+<div id="submit-overlay">
+  <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;"></div>
+  <p class="mb-1 mt-2" style="font-size: 1.1rem; font-weight: 600;">Submitting your test...</p>
+  <p class="mb-0" style="font-size: 0.85rem; opacity: 0.75;">Please wait, do not close this page.</p>
 </div>
 
 {% endblock %}

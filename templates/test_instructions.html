@@ -230,6 +230,20 @@
             cursor: not-allowed;
             transform: none;
         }
+
+        #start-loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 30, 70, 0.93);
+            z-index: 10000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            gap: 1rem;
+        }
         .page-indicator {
             color: #666;
             font-weight: 600;
@@ -481,6 +495,13 @@
         </div>
     </div>
 
+    <!-- Start Loading Overlay -->
+    <div id="start-loading-overlay">
+        <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;"></div>
+        <p class="mb-1 mt-2" style="font-size: 1.1rem; font-weight: 600;">Starting your test...</p>
+        <p class="mb-0" style="font-size: 0.85rem; opacity: 0.75;">Please wait, do not close this page.</p>
+    </div>
+
     <script>
         let currentPage = 1;
         const totalPages = 2;
@@ -540,6 +561,13 @@
         }
 
         async function startTest() {
+            const startBtn = document.getElementById('startBtn');
+            const overlay = document.getElementById('start-loading-overlay');
+
+            // Show overlay and disable button immediately
+            overlay.style.display = 'flex';
+            startBtn.disabled = true;
+
             try {
                 const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
                                  getCookie('csrftoken');
@@ -555,14 +583,19 @@
 
                 if (!response.ok) {
                     const data = await response.json();
+                    overlay.style.display = 'none';
+                    startBtn.disabled = false;
                     alert(data.error || 'Failed to start test');
                     return;
                 }
 
                 const attempt = await response.json();
+                // Keep overlay visible — it will naturally disappear when the new page loads
                 window.location.href = `/test/${testId}/?attempt_id=${attempt.id}`;
 
             } catch (error) {
+                overlay.style.display = 'none';
+                startBtn.disabled = false;
                 alert('Error: ' + error.message);
             }
         }
