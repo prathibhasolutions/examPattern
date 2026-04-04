@@ -190,6 +190,12 @@ body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2
     <a href="{% url 'superadmin:user_list' %}" {% if 'user' in request.resolver_match.url_name %}class="active"{% endif %}>
       <i class="fas fa-users"></i> Users
     </a>
+    <a href="{% url 'superadmin:password_requests' %}" {% if 'password' in request.resolver_match.url_name %}class="active"{% endif %} style="position:relative;">
+      <i class="fas fa-key"></i> Password Requests
+      {% with pending_count=pending_pw_count %}
+        {% if pending_count %}<span style="background:#e74c3c;color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:1px 7px;margin-left:4px;">{{ pending_count }}</span>{% endif %}
+      {% endwith %}
+    </a>
     <a href="{% url 'superadmin:series_list' %}" {% if 'series' in request.resolver_match.url_name %}class="active"{% endif %}>
       <i class="fas fa-layer-group"></i> Test Series
     </a>
@@ -290,6 +296,8 @@ document.getElementById('deleteModal').addEventListener('click', function(e) {
 
 // ── CSRF helper ──────────────────────────────────────────────────────────────
 function getCsrf() {
+  const el = document.querySelector('[name=csrfmiddlewaretoken]');
+  if (el) return el.value;
   return document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('csrftoken='))?.split('=')[1] || '';
 }
 
@@ -297,11 +305,23 @@ function postJSON(url, data, onSuccess, onError) {
   const body = new URLSearchParams(data);
   body.append('csrfmiddlewaretoken', getCsrf());
   fetch(url, { method:'POST', body, headers:{'X-Requested-With':'XMLHttpRequest'} })
-    .then(r => r.json())
-    .then(d => { if (d.success) onSuccess(d); else onError(d.error || 'Error'); })
-    .catch(() => onError('Network error'));
+    .then(r => {
+      if (!r.ok && r.status !== 400) {
+        onError('Server error ' + r.status + '. Try refreshing the page.');
+        return;
+      }
+      r.json().then(d => {
+        if (d.success) {
+          try { onSuccess(d); } catch(e) { console.error('postJSON onSuccess error:', e); }
+        } else {
+          onError(d.error || 'Unknown error');
+        }
+      }).catch(() => onError('Invalid server response. Try refreshing the page.'));
+    })
+    .catch(() => onError('Could not reach the server. Check your connection.'));
 }
 </script>
 {% block extra_js %}{% endblock %}
+<form id="csrf-form" style="display:none">{% csrf_token %}</form>
 </body>
 </html>

@@ -12,6 +12,10 @@ urlpatterns = [
     path('users/<int:user_id>/toggle-active/', views.user_toggle_active, name='user_toggle_active'),
     path('users/<int:user_id>/delete/', views.user_delete, name='user_delete'),
 
+    # Password reset requests
+    path('password-requests/', views.password_requests, name='password_requests'),
+    path('password-requests/<int:req_id>/resolve/', views.resolve_password_request, name='resolve_password_request'),
+
     # Series
     path('series/', views.series_list, name='series_list'),
     path('series/<int:series_id>/toggle/', views.series_toggle_active, name='series_toggle'),

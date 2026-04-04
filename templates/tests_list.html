@@ -66,11 +66,11 @@
     .navbar-profile {
         display: flex;
         align-items: center;
-        gap: 15px;
+        gap: 8px;
     }
     .profile-avatar {
-        width: 40px;
-        height: 40px;
+        width: 42px;
+        height: 42px;
         border-radius: 50%;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
@@ -78,14 +78,16 @@
         align-items: center;
         justify-content: center;
         font-weight: 700;
-        font-size: 16px;
-        border: 2px solid rgba(255,255,255,0.3);
+        font-size: 17px;
+        border: 2.5px solid rgba(255,255,255,0.4);
         cursor: pointer;
-        transition: all 0.3s;
+        transition: all 0.25s;
+        flex-shrink: 0;
     }
     .profile-avatar:hover {
-        transform: scale(1.1);
+        transform: scale(1.08);
         border-color: white;
+        box-shadow: 0 0 0 4px rgba(255,255,255,0.15);
     }
     .profile-avatar img {
         width: 100%;
@@ -95,20 +97,32 @@
     }
     .profile-combined {
         display: flex;
-        flex-direction: column;
         align-items: center;
-        gap: 3px;
+        gap: 10px;
         text-decoration: none;
+        padding: 5px 10px;
+        border-radius: 24px;
+        transition: background 0.2s;
+    }
+    .profile-combined:hover {
+        background: rgba(255,255,255,0.12);
     }
     .profile-name {
-        color: rgba(255,255,255,0.9);
-        font-size: 11px;
+        color: rgba(255,255,255,0.95);
+        font-size: 13px;
         font-weight: 600;
         line-height: 1;
-        max-width: 60px;
+        max-width: 90px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+    .navbar-divider {
+        width: 1px;
+        height: 32px;
+        background: rgba(255,255,255,0.2);
+        margin: 0 8px;
+        flex-shrink: 0;
     }
     .navbar-custom .nav-link {
         color: rgba(255,255,255,0.9) !important;
@@ -424,6 +438,7 @@
                         <i class="fas fa-shield-alt"></i> Admin Panel
                     </a>
                 {% endif %}
+                <div class="navbar-divider"></div>
                 <a href="{% url 'logout' %}" class="btn btn-logout">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>

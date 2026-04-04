@@ -43,6 +43,6 @@ class RegistrationForm(forms.Form):
 
 
 class LoginForm(forms.Form):
-    email = forms.EmailField()
+    identifier = forms.CharField(label='Email or Username')
     password = forms.CharField(widget=forms.PasswordInput)
 

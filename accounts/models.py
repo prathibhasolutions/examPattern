@@ -78,6 +78,33 @@ class PasswordResetToken(models.Model):
         )
         return token
 
+
+class ForgotPasswordRequest(models.Model):
+    """Tracks user requests to have their password reset by a superadmin."""
+    STATUS_PENDING = 'pending'
+    STATUS_RESOLVED = 'resolved'
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('resolved', 'Resolved'),
+    ]
+
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name='password_requests'
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(
+        CustomUser, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='resolved_password_requests'
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Password request by {self.user.username} ({self.status})"
+
     def is_valid(self):
         """Check if token is still valid"""
         return not self.is_used and timezone.now() < self.expires_at

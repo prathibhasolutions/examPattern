@@ -660,6 +660,40 @@
             </a>
         </div>
 
+        <!-- Change Password -->
+        <div class="profile-info" style="margin-top:24px;">
+            <h3 style="font-size:16px;font-weight:700;color:#2d3748;margin-bottom:18px;display:flex;align-items:center;gap:8px;">
+                <i class="fas fa-lock" style="color:#667eea;"></i> Change Password
+            </h3>
+            {% if user.has_usable_password %}
+                <form method="POST" action="{% url 'change_password' %}">
+                    {% csrf_token %}
+                    <div class="info-item" style="padding:10px 0;">
+                        <label style="font-size:13px;color:#718096;font-weight:600;display:block;margin-bottom:6px;">Current Password</label>
+                        <input type="password" name="current_password" class="form-control" placeholder="Enter your current password" required style="border-radius:10px;border:1.5px solid #e2e8f0;padding:10px 14px;max-width:380px;">
+                    </div>
+                    <div class="info-item" style="padding:10px 0;">
+                        <label style="font-size:13px;color:#718096;font-weight:600;display:block;margin-bottom:6px;">New Password</label>
+                        <input type="password" name="new_password" class="form-control" placeholder="At least 8 characters" required style="border-radius:10px;border:1.5px solid #e2e8f0;padding:10px 14px;max-width:380px;">
+                    </div>
+                    <div class="info-item" style="padding:10px 0;border-bottom:none;">
+                        <label style="font-size:13px;color:#718096;font-weight:600;display:block;margin-bottom:6px;">Confirm New Password</label>
+                        <input type="password" name="confirm_password" class="form-control" placeholder="Repeat new password" required style="border-radius:10px;border:1.5px solid #e2e8f0;padding:10px 14px;max-width:380px;">
+                    </div>
+                    <div style="margin-top:16px;">
+                        <button type="submit" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:10px;padding:10px 26px;font-weight:700;cursor:pointer;font-size:14px;">
+                            <i class="fas fa-key" style="margin-right:6px;"></i>Update Password
+                        </button>
+                    </div>
+                </form>
+            {% else %}
+                <div style="background:#f0f4ff;border-radius:10px;padding:14px 18px;color:#5a6a8a;font-size:14px;">
+                    <i class="fab fa-google" style="color:#4285f4;margin-right:8px;"></i>
+                    Your account uses Google Sign-In — password change is not applicable.
+                </div>
+            {% endif %}
+        </div>
+
         <!-- Attempted Tests Button -->
         <div class="attempted-tests-section">
             {% if attempted_tests %}

@@ -80,6 +80,24 @@
             color: #ffffff;
             outline: none;
         }
+        /* Fix browser autofill overriding dark theme */
+        .form-control:-webkit-autofill,
+        .form-control:-webkit-autofill:hover,
+        .form-control:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 1000px #1e2a40 inset !important;
+            box-shadow: 0 0 0 1000px #1e2a40 inset !important;
+            -webkit-text-fill-color: #ffffff !important;
+            caret-color: #ffffff;
+            border-color: rgba(255,255,255,0.15) !important;
+            transition: background-color 5000s ease-in-out 0s !important;
+        }
+        .form-control:-webkit-autofill:focus {
+            -webkit-box-shadow: 0 0 0 1000px #253146 inset, 0 0 0 3px rgba(242,164,59,0.18) !important;
+            box-shadow: 0 0 0 1000px #253146 inset, 0 0 0 3px rgba(242,164,59,0.18) !important;
+            -webkit-text-fill-color: #ffffff !important;
+            caret-color: #ffffff;
+            border-color: #f2a43b !important;
+        }
         .form-check { margin-bottom: 18px; }
         .form-check-input {
             border: 1.5px solid rgba(255,255,255,0.25);
@@ -135,7 +153,23 @@
             margin-bottom: 16px;
             font-size: 13px;
         }
-        .alert-danger { background: rgba(220,53,69,0.18); color: #f8a0aa; border: 1px solid rgba(220,53,69,0.3); }
+        .alert-danger,
+        .alert-error {
+            background: rgba(220,53,69,0.15);
+            color: #ff8a95;
+            border: 1px solid rgba(220,53,69,0.45) !important;
+            border-left: 4px solid #dc3545 !important;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px 14px;
+            font-size: 13.5px;
+            font-weight: 500;
+        }
+        .alert-danger .alert-icon,
+        .alert-error .alert-icon { flex-shrink: 0; font-size: 15px; margin-top: 1px; }
+        .alert-danger .btn-close,
+        .alert-error .btn-close { filter: invert(1) sepia(1) saturate(5) hue-rotate(300deg); opacity: 0.7; margin-left: auto; }
         .alert-success { background: rgba(25,135,84,0.18); color: #75d19a; border: 1px solid rgba(25,135,84,0.3); }
         .spinner-border { width: 18px; height: 18px; border-width: 2px; }
         .field-error { border-color: #dc3545 !important; }
@@ -284,7 +318,8 @@
         <div class="messages">
             {% for message in messages %}
                 <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
-                    {{ message }}
+                    {% if 'error' in message.tags or 'danger' in message.tags %}<span class="alert-icon"><i class="fas fa-exclamation-circle"></i></span>{% endif %}
+                    <span>{{ message }}</span>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             {% endfor %}
@@ -307,23 +342,24 @@
             {% csrf_token %}
 
             <div class="form-group">
-                <label for="email" class="form-label">Email Address</label>
+                <label for="identifier" class="form-label">Email or Username</label>
                 <input
-                    type="email"
+                    type="text"
                     class="form-control"
-                    id="email"
-                    name="email"
-                    placeholder="your.email@example.com"
-                    value="{{ form.email.value|default:'' }}"
+                    id="identifier"
+                    name="identifier"
+                    placeholder="your@email.com or username"
+                    value="{{ form.identifier.value|default:'' }}"
                     required
-                    autocomplete="email"
+                    autocomplete="username"
+                    autofocus
                 >
             </div>
 
             <div class="form-group">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:7px;">
                     <label for="password" class="form-label" style="margin-bottom:0;">Password</label>
-                    <a href="{% url 'account_reset_password' %}" class="forgot-link">Forgot password?</a>
+                    <a href="{% url 'forgot_password' %}" class="forgot-link">Forgot password?</a>
                 </div>
                 <div class="password-wrapper">
                     <input

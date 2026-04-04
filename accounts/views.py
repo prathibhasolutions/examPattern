@@ -1,15 +1,15 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth import login, logout, authenticate, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.core.files.storage import default_storage
 from PIL import Image
 from io import BytesIO
 from django.core.files.base import ContentFile
 import os
 import re
-from .models import CustomUser
+from .models import CustomUser, ForgotPasswordRequest
 from .forms import RegistrationForm, LoginForm
 
 
@@ -24,12 +24,15 @@ def login_view(request):
     if request.method == 'POST':
         form = LoginForm(request.POST)
         if form.is_valid():
-            email = form.cleaned_data['email'].lower()
+            identifier = form.cleaned_data['identifier'].strip()
             password = form.cleaned_data['password']
-            try:
-                user_obj = CustomUser.objects.get(email=email)
-            except CustomUser.DoesNotExist:
-                user_obj = None
+
+            # Try email first, then username
+            user_obj = None
+            if '@' in identifier:
+                user_obj = CustomUser.objects.filter(email__iexact=identifier).first()
+            if user_obj is None:
+                user_obj = CustomUser.objects.filter(username__iexact=identifier).first()
 
             if user_obj is not None:
                 user = authenticate(request, username=user_obj.username, password=password)
@@ -40,7 +43,7 @@ def login_view(request):
                 login(request, user, backend='django.contrib.auth.backends.ModelBackend')
                 return redirect(request.GET.get('next') or 'tests_list')
             else:
-                messages.error(request, 'Invalid email or password.')
+                messages.error(request, 'Invalid username/email or password.')
 
     return render(request, 'accounts/login.html', {'form': form})
 
@@ -167,6 +170,86 @@ def logout_view(request):
     logout(request)
     messages.success(request, "You have been logged out successfully.")
     return redirect('tests_list')
+
+
+@require_http_methods(["GET", "POST"])
+def forgot_password(request):
+    """2-step forgot password flow: identify user → confirm → create ForgotPasswordRequest."""
+    if request.user.is_authenticated:
+        return redirect('profile')
+
+    context = {}
+
+    if request.method == 'POST':
+        step = request.POST.get('step', '1')
+
+        if step == '1':
+            email = request.POST.get('email', '').strip().lower()
+            context['submitted_email'] = email
+            try:
+                target = CustomUser.objects.get(email=email)
+                if not target.has_usable_password():
+                    context['error'] = 'This account uses Google Sign-In — no password reset needed.'
+                else:
+                    context['show_confirm'] = True
+                    context['confirm_email'] = email
+                    context['target_username'] = target.username
+            except CustomUser.DoesNotExist:
+                context['error'] = 'No account found with that email address.'
+
+        elif step == '2':
+            email = request.POST.get('email', '').strip().lower()
+            try:
+                target = CustomUser.objects.get(email=email)
+                if target.has_usable_password():
+                    # Remove any existing request and create a fresh pending one
+                    ForgotPasswordRequest.objects.filter(user=target, status='pending').delete()
+                    ForgotPasswordRequest.objects.create(user=target)
+                    context['request_sent'] = True
+                    context['target_username'] = target.username
+                else:
+                    context['error'] = 'This account uses Google Sign-In.'
+            except CustomUser.DoesNotExist:
+                context['error'] = 'Invalid request. Please try again.'
+
+    return render(request, 'accounts/forgot_password.html', context)
+
+
+@login_required(login_url='login')
+@require_POST
+def change_password(request):
+    """Allow a logged-in user with a manual password to change it."""
+    user = request.user
+
+    if not user.has_usable_password():
+        messages.error(request, 'Your account uses Google Sign-In. Password change is not applicable.')
+        return redirect('profile')
+
+    current = request.POST.get('current_password', '').strip()
+    new_pw = request.POST.get('new_password', '').strip()
+    confirm = request.POST.get('confirm_password', '').strip()
+
+    if not current or not new_pw or not confirm:
+        messages.error(request, 'All password fields are required.')
+        return redirect('profile')
+
+    if not user.check_password(current):
+        messages.error(request, 'Current password is incorrect.')
+        return redirect('profile')
+
+    if new_pw != confirm:
+        messages.error(request, 'New passwords do not match.')
+        return redirect('profile')
+
+    if len(new_pw) < 8:
+        messages.error(request, 'New password must be at least 8 characters.')
+        return redirect('profile')
+
+    user.set_password(new_pw)
+    user.save()
+    update_session_auth_hash(request, user)  # keep the user logged in
+    messages.success(request, 'Password changed successfully.')
+    return redirect('profile')
 
 
 def check_username_availability(request):

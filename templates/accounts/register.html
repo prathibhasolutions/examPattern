@@ -79,6 +79,24 @@
             color: #ffffff;
             outline: none;
         }
+        /* Fix browser autofill overriding dark theme */
+        .form-control:-webkit-autofill,
+        .form-control:-webkit-autofill:hover,
+        .form-control:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 1000px #1e2a40 inset !important;
+            box-shadow: 0 0 0 1000px #1e2a40 inset !important;
+            -webkit-text-fill-color: #ffffff !important;
+            caret-color: #ffffff;
+            border-color: rgba(255,255,255,0.15) !important;
+            transition: background-color 5000s ease-in-out 0s !important;
+        }
+        .form-control:-webkit-autofill:focus {
+            -webkit-box-shadow: 0 0 0 1000px #253146 inset, 0 0 0 3px rgba(242,164,59,0.18) !important;
+            box-shadow: 0 0 0 1000px #253146 inset, 0 0 0 3px rgba(242,164,59,0.18) !important;
+            -webkit-text-fill-color: #ffffff !important;
+            caret-color: #ffffff;
+            border-color: #f2a43b !important;
+        }
         .form-text { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 4px; }
         .availability-check {
             font-size: 12px;

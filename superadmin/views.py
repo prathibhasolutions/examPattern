@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.db.models import Count, Q
 from django.utils import timezone
 
-from accounts.models import CustomUser
+from accounts.models import CustomUser, ForgotPasswordRequest
 from testseries.models import TestSeries, Test
 
 
@@ -24,6 +24,7 @@ def superuser_required(view_func):
 @superuser_required
 def dashboard(request):
     """Main superadmin dashboard with stats overview."""
+    pending_pw_requests = ForgotPasswordRequest.objects.filter(status='pending').count()
     stats = {
         'total_users': CustomUser.objects.count(),
         'superusers': CustomUser.objects.filter(is_superuser=True).count(),
@@ -34,7 +35,10 @@ def dashboard(request):
         'total_tests': Test.objects.count(),
         'active_tests': Test.objects.filter(is_active=True).count(),
     }
-    return render(request, 'superadmin/dashboard.html', {'stats': stats})
+    return render(request, 'superadmin/dashboard.html', {
+        'stats': stats,
+        'pending_pw_requests': pending_pw_requests,
+    })
 
 
 # ─── USER MANAGEMENT ─────────────────────────────────────────────────────────
@@ -101,6 +105,36 @@ def user_delete(request, user_id):
     username = target.username
     target.delete()
     return JsonResponse({'success': True, 'deleted': username})
+
+
+# ─── PASSWORD RESET REQUESTS ─────────────────────────────────────────────────
+
+@superuser_required
+def password_requests(request):
+    """List all forgot-password requests, pending first."""
+    pending = ForgotPasswordRequest.objects.filter(status='pending').select_related('user')
+    resolved = ForgotPasswordRequest.objects.filter(status='resolved').select_related('user', 'resolved_by')[:50]
+    return render(request, 'superadmin/password_requests.html', {
+        'pending': pending,
+        'resolved': resolved,
+    })
+
+
+@superuser_required
+@require_POST
+def resolve_password_request(request, req_id):
+    """Set a new password for the user and mark the request resolved."""
+    pw_request = get_object_or_404(ForgotPasswordRequest, pk=req_id, status='pending')
+    new_password = request.POST.get('new_password', '').strip()
+    if len(new_password) < 6:
+        return JsonResponse({'error': 'Password must be at least 6 characters.'}, status=400)
+    pw_request.user.set_password(new_password)
+    pw_request.user.save()
+    pw_request.status = 'resolved'
+    pw_request.resolved_at = timezone.now()
+    pw_request.resolved_by = request.user
+    pw_request.save()
+    return JsonResponse({'success': True, 'username': pw_request.user.username})
 
 
 # ─── TEST SERIES MANAGEMENT ──────────────────────────────────────────────────
