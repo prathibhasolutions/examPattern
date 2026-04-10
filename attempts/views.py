@@ -90,8 +90,8 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
         if 'status' in request.data:
             answer.status = request.data.get('status')
 
-        if 'time_spent_seconds' in request.data:
-            answer.time_spent_seconds = request.data.get('time_spent_seconds', 0)
+        # time_spent_seconds is NOT updated here — it is accumulated exclusively
+        # via the track_question_time endpoint to prevent overwriting with stale values.
 
         answer.save()
 

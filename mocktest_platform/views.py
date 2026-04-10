@@ -449,23 +449,15 @@ def attempt_results(request, attempt_id):
     )
     
     # Calculate timing data
-    total_time_spent = 0
-    section_times = {}  # section_id -> time_spent
-    
-    # Sum up all question times
-    from attempts.models import Answer
-    answers = Answer.objects.filter(attempt=attempt).select_related('question__section')
-    for answer in answers:
-        total_time_spent += answer.time_spent_seconds or 0
-        section_id = answer.question.section.id
-        if section_id not in section_times:
-            section_times[section_id] = 0
-        section_times[section_id] += answer.time_spent_seconds or 0
-    
-    # Calculate test duration
+    # Use attempt.duration_seconds as the authoritative total — it is computed at
+    # submission time as (test_duration - time_remaining_seconds) and is always
+    # accurate, even when the student skips navigation (heartbeats never fire).
+    # section_timings is a JSONField with string keys: {"<section_id>": seconds}
+    # which matches what the JS lookup expects via data-section-id attributes.
+    total_time_spent = attempt.duration_seconds or 0
+    section_times = attempt.section_timings or {}   # already string-keyed
     test_duration = attempt.test.duration_seconds or 0
-    
-    # Format timing data for template
+
     timing_data = {
         'total_time_spent': total_time_spent,
         'test_duration': test_duration,
@@ -604,7 +596,7 @@ def review_solutions(request, attempt_id):
     avg_times = Answer.objects.filter(
         attempt__test=attempt.test,
         attempt__status=TestAttempt.STATUS_SUBMITTED,
-        time_spent_seconds__isnull=False
+        time_spent_seconds__gt=0  # exclude unvisited/untracked answers so they don't drag average to 0
     ).values('question_id').annotate(
         avg_time=Avg('time_spent_seconds')
     )

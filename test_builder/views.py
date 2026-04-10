@@ -357,6 +357,19 @@ def manage_series(request):
             messages.success(request, f"Subsection '{subsection_name}' added under {section.name}.")
             return redirect('builder_manage_series')
 
+        if action == 'delete_section':
+            section_id = request.POST.get('section_id')
+            section = get_object_or_404(SeriesSection, id=section_id)
+            # Prevent deleting the default "All Tests" section
+            if section.name.strip().lower() == 'all tests':
+                messages.error(request, "The 'All Tests' section cannot be deleted.")
+                return redirect('builder_manage_series')
+            section_name = section.name
+            series_name = section.series.name
+            section.delete()
+            messages.success(request, f"Section '{section_name}' deleted from '{series_name}'. Tests in that section have been unlinked.")
+            return redirect('builder_manage_series')
+
     series_list = (
         TestSeries.objects.filter(is_active=True)
         .prefetch_related('sections__subsections', 'exam_sections', 'highlights')

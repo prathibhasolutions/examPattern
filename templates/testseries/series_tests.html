@@ -867,6 +867,10 @@ const subsectionsData = {
 function handleSectionClick(sectionId, hasSubsections) {
     const subNavContainer = document.getElementById('subNavContainer');
     const sectionTabs = document.getElementById('sectionTabs');
+    // Update active state on section pills
+    document.querySelectorAll('#sectionTabs .nav-link').forEach(btn => btn.classList.remove('active'));
+    const activeBtn = document.getElementById(`section-${sectionId}-tab`);
+    if (activeBtn) activeBtn.classList.add('active');
     // Show/hide sub-nav pills
     if (hasSubsections > 0) {
         subNavContainer.style.display = 'flex';

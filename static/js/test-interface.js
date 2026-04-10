@@ -58,7 +58,8 @@ const OfflineQueue = {
           selected_option_ids: answer.selected_option_ids || [],
           response_text: answer.response_text || '',
           status: answer.status || 'visited',
-          time_spent_seconds: answer.time_spent_seconds || 0,
+          // time_spent_seconds intentionally omitted — tracked exclusively via
+          // track_question_time which accumulates; sending 0 here would overwrite it.
         });
         if (UI.answers[qId]) UI.answers[qId]._savedToServer = true;
       } catch (e) {

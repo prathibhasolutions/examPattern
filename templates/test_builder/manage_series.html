@@ -983,12 +983,21 @@
                         <div class="section-tree">
                             {% for section in series.sections.all %}
                                 <div class="section-item">
-                                    <div class="section-name" onclick="toggleSection(this)">
-                                        <span class="collapse-icon">▼</span>
-                                        <span>📂 {{ section.name }}</span>
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="section-name" onclick="toggleSection(this)" style="margin-bottom:0; flex:1;">
+                                            <span class="collapse-icon">▼</span>
+                                            <span>📂 {{ section.name }}</span>
+                                        </div>
+                                        {% if section.name|lower != 'all tests' %}
+                                        <button type="button" class="btn btn-sm btn-outline-danger ms-2"
+                                                title="Delete section"
+                                                onclick="confirmDeleteSection({{ section.id }}, '{{ section.name|escapejs }}', {{ section.subsections.count }})">
+                                            🗑 Delete
+                                        </button>
+                                        {% endif %}
                                     </div>
                                     {% if section.subsections.all %}
-                                        <ul class="subsection-list">
+                                        <ul class="subsection-list" style="margin-top:0.5rem;">
                                             {% for subsection in section.subsections.all %}
                                                 <li class="subsection-item">🧩 {{ subsection.name }}</li>
                                             {% endfor %}
@@ -1010,7 +1019,48 @@
     </div>
 </div>
 
+<!-- Delete Section Confirmation Modal -->
+<div class="modal fade" id="deleteSectionModal" tabindex="-1" aria-labelledby="deleteSectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:16px; border:none; box-shadow:0 10px 40px rgba(0,0,0,0.2);">
+            <div class="modal-header" style="background:linear-gradient(135deg,#dc3545,#c82333); border-radius:16px 16px 0 0; border:none;">
+                <h5 class="modal-title text-white fw-bold" id="deleteSectionModalLabel">⚠️ Delete Section</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="padding:1.5rem;">
+                <p class="mb-2">You are about to delete the section:</p>
+                <p class="fw-bold fs-5 text-danger" id="deleteSectionName"></p>
+                <div id="deleteSectionWarnings"></div>
+                <hr>
+                <p class="mb-0 text-muted" style="font-size:0.9rem;">This action <strong>cannot be undone</strong>. Are you sure you want to proceed?</p>
+            </div>
+            <div class="modal-footer" style="border:none; padding:1rem 1.5rem;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteSectionForm" method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_section">
+                    <input type="hidden" name="section_id" id="deleteSectionIdInput">
+                    <button type="submit" class="btn btn-danger">Yes, Delete Section</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+function confirmDeleteSection(sectionId, sectionName, subsectionCount) {
+    document.getElementById('deleteSectionName').textContent = '📂 ' + sectionName;
+    document.getElementById('deleteSectionIdInput').value = sectionId;
+    let warnings = '';
+    if (subsectionCount > 0) {
+        warnings += `<div class="alert alert-warning py-2">⚠️ This section has <strong>${subsectionCount} subsection(s)</strong> which will also be permanently deleted.</div>`;
+    }
+    warnings += `<div class="alert alert-info py-2">ℹ️ Any tests assigned to this section will <strong>not</strong> be deleted — they will simply be unlinked from this section.</div>`;
+    document.getElementById('deleteSectionWarnings').innerHTML = warnings;
+    const modal = new bootstrap.Modal(document.getElementById('deleteSectionModal'));
+    modal.show();
+}
+
 // Toggle series visibility
 function toggleSeries(element) {
     const seriesBlock = element.closest('.series-block');
