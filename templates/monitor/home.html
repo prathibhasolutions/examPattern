@@ -140,6 +140,9 @@ body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2
 .user-name { font-weight: 600; color: #2d3436; }
 .user-email { font-size: 0.75rem; color: #6c757d; }
 .att-number { display: inline-block; background: #e8ecf8; color: #1e3c72; font-weight: 700; font-size: 0.75rem; padding: 2px 9px; border-radius: 12px; }
+.status-live { display: inline-flex; align-items: center; gap: 0.3rem; background: #fff3cd; color: #856404; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 12px; }
+.status-live::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; animation: pulse 1.2s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
 .score-val { font-weight: 700; color: #1e3c72; }
 .score-pct { font-size: 0.75rem; color: #6c757d; }
 .date-val { font-size: 0.82rem; color: #525c6e; }
@@ -156,6 +159,59 @@ body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2
 
 /* ── No rows ── */
 .no-rows td { text-align: center; color: #aaa; padding: 2.5rem; font-size: 0.9rem; }
+
+/* ── All Attempts sidebar link ── */
+.all-link-wrap { padding: 0.5rem 1rem 0.25rem; }
+.all-link {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.5rem 0.75rem; border-radius: 8px;
+  font-size: 0.85rem; font-weight: 700; color: rgba(255,255,255,0.75);
+  text-decoration: none; background: rgba(255,255,255,0.05);
+  transition: all 0.2s; border: 1.5px solid transparent;
+}
+.all-link:hover { background: rgba(255,255,255,0.12); color: white; }
+.all-link.active { background: rgba(79,172,254,0.18); color: #4facfe; border-color: rgba(79,172,254,0.35); }
+.sidebar-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 0.5rem 1rem; }
+.sidebar-section-label { padding: 0.5rem 1rem 0.25rem; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.8px; color: rgba(255,255,255,0.35); text-transform: uppercase; }
+
+/* ── Filter bar ── */
+.filter-bar {
+  background: white; border-radius: 12px; padding: 0.9rem 1.25rem;
+  margin-bottom: 1rem; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  display: flex; flex-wrap: wrap; gap: 0.55rem; align-items: center;
+}
+.filter-bar input, .filter-bar select {
+  border: 1.5px solid #dee2e6; border-radius: 8px;
+  padding: 0.4rem 0.75rem; font-size: 0.82rem; outline: none;
+  background: #fafbff; transition: border-color 0.2s; height: 34px;
+}
+.filter-bar input:focus, .filter-bar select:focus { border-color: #2a5298; }
+.filter-bar input { min-width: 190px; }
+.filter-bar select { min-width: 140px; cursor: pointer; }
+.filter-reset {
+  padding: 0.4rem 0.9rem; border-radius: 8px; border: 1.5px solid #dee2e6;
+  background: #f0f2f8; color: #636e72; font-size: 0.82rem; font-weight: 600;
+  cursor: pointer; height: 34px; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 0.3rem;
+}
+.filter-reset:hover { background: #dde1ed; color: #2d3436; }
+.filter-bar-count { margin-left: auto; font-size: 0.8rem; color: #6c757d; white-space: nowrap; }
+
+/* ── Show more ── */
+.show-more-wrap { text-align: center; padding: 1.25rem 0 0.5rem; }
+.show-more-btn {
+  padding: 0.5rem 2rem; border-radius: 20px; border: 1.5px solid #2a5298;
+  background: white; color: #2a5298; font-size: 0.85rem; font-weight: 700;
+  cursor: pointer; transition: all 0.2s;
+}
+.show-more-btn:hover { background: #2a5298; color: white; }
+
+/* ── Role badges ── */
+.role-badge {
+  display: inline-block; font-size: 0.67rem; font-weight: 700; padding: 1px 6px;
+  border-radius: 9px; text-transform: uppercase; letter-spacing: 0.3px; margin-left: 4px; vertical-align: middle;
+}
+.role-superuser { background: #f3e8ff; color: #7c3aed; }
+.role-staff { background: #dbeafe; color: #1d4ed8; }
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
@@ -194,6 +250,14 @@ body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2
       <input type="text" id="sidebarSearch" placeholder="Search tests..." autocomplete="off">
     </div>
 
+    <div class="all-link-wrap">
+      <a href="?all=1" class="all-link {% if show_all %}active{% endif %}">
+        <i class="fas fa-stream"></i> All Attempts
+      </a>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section-label">By Test</div>
+
     {% for series in series_list %}
     <div class="series-group" data-series="{{ series.name|lower }}">
       <div class="series-toggle {% if selected_test and selected_test.series_id == series.id %}open{% endif %}"
@@ -218,11 +282,135 @@ body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2
 
   <!-- Main content -->
   <main class="mon-main">
-    {% if not selected_test %}
+    {% if show_all %}
+    <!-- All Attempts Log -->
+    <div class="test-heading">
+      <div>
+        <h2><i class="fas fa-stream" style="color:#4facfe; font-size:0.9em; margin-right:0.3rem;"></i> All Attempts</h2>
+        <div style="font-size:0.82rem; color:#6c757d; margin-top:0.2rem;">Chronological log of all attempts across all tests</div>
+      </div>
+      <div class="stats-pill">
+        <strong id="allAttemptsCount">–</strong> matched
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <input type="text" id="allSearch" placeholder="&#128269; Search name, email, test…" oninput="applyAllFilters()">
+      <select id="filterSeries" onchange="onSeriesFilterChange()">
+        <option value="">All Series</option>
+        {% for s in series_list %}
+        <option value="{{ s.id }}">{{ s.name }}</option>
+        {% endfor %}
+      </select>
+      <select id="filterTest" onchange="applyAllFilters()">
+        <option value="">All Tests</option>
+      </select>
+      <select id="filterRole" onchange="applyAllFilters()">
+        <option value="">All Roles</option>
+        <option value="superuser">Superuser</option>
+        <option value="staff">Staff / Admin</option>
+        <option value="student">Student</option>
+      </select>
+      <select id="filterStatus" onchange="applyAllFilters()">
+        <option value="">All Status</option>
+        <option value="in_progress">Live (In Progress)</option>
+        <option value="submitted">Submitted</option>
+      </select>
+      <button class="filter-reset" onclick="resetAllFilters()"><i class="fas fa-times"></i> Reset</button>
+    </div>
+
+    <!-- Table -->
+    <div class="mon-table-wrap">
+      <table class="mon-table" id="allAttemptsTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Student</th>
+            <th>Series</th>
+            <th>Test</th>
+            <th>Attempt</th>
+            <th>Status</th>
+            <th>Time</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in all_attempts %}
+          <tr class="all-row"
+              data-search="{{ row.user.username|lower }} {{ row.user.get_full_name|lower }} {{ row.user.email|lower }} {{ row.test.name|lower }} {{ row.test.series.name|lower }}"
+              data-series-id="{{ row.test.series_id }}"
+              data-test-id="{{ row.test_id }}"
+              data-test-name="{{ row.test.name }}"
+              data-role="{% if row.user.is_superuser %}superuser{% elif row.user.is_staff %}staff{% else %}student{% endif %}"
+              data-status="{{ row.status }}">
+            <td style="color:#b2bec3; font-size:0.78rem; white-space:nowrap;">{{ forloop.counter }}</td>
+            <td>
+              <div class="user-cell">
+                <div class="user-avatar">
+                  {% if row.user.photo %}
+                    <img src="{{ row.user.photo.url }}" alt="{{ row.user.username }}">
+                  {% else %}
+                    {{ row.user.username|first|upper }}
+                  {% endif %}
+                </div>
+                <div>
+                  <div class="user-name">
+                    {{ row.user.get_full_name|default:row.user.username }}
+                    {% if row.user.is_superuser %}<span class="role-badge role-superuser">Superuser</span>
+                    {% elif row.user.is_staff %}<span class="role-badge role-staff">Staff</span>{% endif %}
+                  </div>
+                  <div class="user-email">{{ row.user.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td style="font-size:0.8rem; color:#636e72; max-width:130px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ row.test.series.name }}">{{ row.test.series.name }}</td>
+            <td style="font-weight:600; color:#2d3436; font-size:0.84rem; max-width:180px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ row.test.name }}">{{ row.test.name }}</td>
+            <td><span class="att-number">Attempt {{ row.attempt_number }}</span></td>
+            <td>
+              {% if row.status == 'in_progress' %}
+                <span class="status-live">Live</span>
+              {% else %}
+                <span style="font-size:0.78rem; color:#00896b; font-weight:600;">Submitted</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="date-val">
+                {% if row.status == 'submitted' and row.submitted_at %}
+                  {{ row.submitted_at|date:"d M Y" }}<br>
+                  <span style="font-size:0.75rem; color:#aaa;">{{ row.submitted_at|date:"H:i" }} IST</span>
+                {% else %}
+                  {{ row.started_at|date:"d M Y" }}<br>
+                  <span style="font-size:0.75rem; color:#aaa;">{{ row.started_at|date:"H:i" }} IST</span>
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              <div class="action-btns">
+                {% if row.status == 'submitted' %}
+                <a href="{% url 'results_page' row.id %}" class="act-btn act-results" target="_blank"><i class="fas fa-chart-pie"></i> Results</a>
+                <a href="{% url 'review_solutions' row.id %}" class="act-btn act-solutions" target="_blank"><i class="fas fa-book-open"></i> Solutions</a>
+                {% else %}
+                <span style="font-size:0.78rem; color:#aaa;">In progress…</span>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr class="no-rows"><td colspan="8">No attempts found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="show-more-wrap">
+      <button class="show-more-btn" id="showMoreBtn" onclick="showMore()" style="display:none;"></button>
+    </div>
+
+    {% elif not selected_test %}
     <div class="empty-state">
       <i class="fas fa-chart-bar"></i>
       <h3>Select a test from the left panel</h3>
-      <p>Choose any test series → test to view all student attempts.</p>
+      <p>Choose a test to view its attempts, or click <strong>All Attempts</strong> in the sidebar for a chronological log.</p>
     </div>
 
     {% else %}
@@ -233,7 +421,7 @@ body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2
         <h2>{{ selected_test.name }}</h2>
       </div>
       <div class="stats-pill">
-        <strong>{{ student_rows|length }}</strong> attempt{{ student_rows|length|pluralize }}
+        <strong>{{ student_rows|length }}</strong> attempt{{ student_rows|length|pluralize }} (including live)
       </div>
     </div>
 
@@ -249,6 +437,7 @@ body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2
           <tr>
             <th>Student</th>
             <th>Attempt</th>
+            <th>Status</th>
             <th>Score</th>
             <th>Date</th>
             <th>Actions</th>
@@ -274,38 +463,56 @@ body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2
             </td>
             <td><span class="att-number">Attempt {{ row.attempt_number }}</span></td>
             <td>
-              {% with eval=row.evaluation %}
-              {% if eval %}
-                <div class="score-val">{{ eval.total_score|floatformat:2 }}</div>
-                <div class="score-pct">
-                  {% if eval.percentage %}{{ eval.percentage|floatformat:1 }}%{% endif %}
-                </div>
+              {% if row.status == 'in_progress' %}
+                <span class="status-live">Live</span>
               {% else %}
-                <span class="text-muted" style="font-size:0.78rem;">Pending</span>
+                <span style="font-size:0.78rem; color:#00896b; font-weight:600;">Submitted</span>
               {% endif %}
-              {% endwith %}
+            </td>
+            <td>
+              {% if row.status == 'submitted' %}
+                {% with eval=row.evaluation %}
+                {% if eval %}
+                  <div class="score-val">{{ eval.total_score|floatformat:2 }}</div>
+                  <div class="score-pct">
+                    {% if eval.percentage %}{{ eval.percentage|floatformat:1 }}%{% endif %}
+                  </div>
+                {% else %}
+                  <span class="text-muted" style="font-size:0.78rem;">Pending</span>
+                {% endif %}
+                {% endwith %}
+              {% else %}
+                <span style="font-size:0.78rem; color:#aaa;">—</span>
+              {% endif %}
             </td>
             <td>
               <div class="date-val">
-                {% if row.submitted_at %}
+                {% if row.status == 'submitted' and row.submitted_at %}
                   {{ row.submitted_at|date:"d M Y" }}<br>
-                  <span style="font-size:0.75rem; color:#aaa;">{{ row.submitted_at|date:"H:i" }}</span>
-                {% else %}—{% endif %}
+                  <span style="font-size:0.75rem; color:#aaa;">{{ row.submitted_at|date:"H:i" }} IST</span>
+                {% else %}
+                  Started {{ row.started_at|date:"d M Y" }}<br>
+                  <span style="font-size:0.75rem; color:#aaa;">{{ row.started_at|date:"H:i" }} IST</span>
+                {% endif %}
               </div>
             </td>
             <td>
               <div class="action-btns">
+                {% if row.status == 'submitted' %}
                 <a href="{% url 'results_page' row.id %}" class="act-btn act-results" target="_blank">
                   <i class="fas fa-chart-pie"></i> Results
                 </a>
                 <a href="{% url 'review_solutions' row.id %}" class="act-btn act-solutions" target="_blank">
                   <i class="fas fa-book-open"></i> Solutions
                 </a>
+                {% else %}
+                <span style="font-size:0.78rem; color:#aaa;">In progress…</span>
+                {% endif %}
               </div>
             </td>
           </tr>
           {% empty %}
-          <tr class="no-rows"><td colspan="5">No submitted attempts yet for this test.</td></tr>
+          <tr class="no-rows"><td colspan="6">No attempts yet for this test.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -344,6 +551,111 @@ document.getElementById('sidebarSearch').addEventListener('input', function() {
     }
   });
 });
+
+{% if show_all %}
+// ── All Attempts: filter + show-more ─────────────────────────────────────────
+const PAGE_SIZE = 50;
+let visibleCount = PAGE_SIZE;
+let _allTestOptions = []; // [{id, name, seriesId}]
+
+// Build test dropdown from row data attributes (deduped, sorted)
+(function buildTestDropdown() {
+  const seen = new Map();
+  document.querySelectorAll('#allAttemptsTable tbody tr.all-row').forEach(tr => {
+    const id = tr.dataset.testId;
+    if (id && !seen.has(id)) {
+      seen.set(id, { name: tr.dataset.testName, seriesId: tr.dataset.seriesId });
+    }
+  });
+  _allTestOptions = Array.from(seen.entries())
+    .map(([id, info]) => ({ id, name: info.name, seriesId: info.seriesId }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const sel = document.getElementById('filterTest');
+  _allTestOptions.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t.id;
+    o.textContent = t.name;
+    o.dataset.series = t.seriesId;
+    sel.appendChild(o);
+  });
+})();
+
+function onSeriesFilterChange() {
+  const seriesId = document.getElementById('filterSeries').value;
+  const testSel = document.getElementById('filterTest');
+  // Rebuild test dropdown filtered by series
+  while (testSel.options.length > 1) testSel.remove(1);
+  _allTestOptions.forEach(t => {
+    if (!seriesId || t.seriesId === seriesId) {
+      const o = document.createElement('option');
+      o.value = t.id;
+      o.textContent = t.name;
+      o.dataset.series = t.seriesId;
+      testSel.appendChild(o);
+    }
+  });
+  testSel.value = '';
+  applyAllFilters();
+}
+
+function applyAllFilters() {
+  const q      = document.getElementById('allSearch').value.toLowerCase();
+  const series = document.getElementById('filterSeries').value;
+  const test   = document.getElementById('filterTest').value;
+  const role   = document.getElementById('filterRole').value;
+  const status = document.getElementById('filterStatus').value;
+
+  const rows = Array.from(document.querySelectorAll('#allAttemptsTable tbody tr.all-row'));
+  const matched = [];
+
+  rows.forEach(tr => {
+    const ok =
+      (!q      || tr.dataset.search.includes(q)) &&
+      (!series || tr.dataset.seriesId === series) &&
+      (!test   || tr.dataset.testId   === test)   &&
+      (!role   || tr.dataset.role     === role)   &&
+      (!status || tr.dataset.status   === status);
+    if (ok) matched.push(tr);
+  });
+
+  // Hide all first, then show up to visibleCount matched
+  rows.forEach(tr => { tr.style.display = 'none'; });
+  matched.slice(0, visibleCount).forEach(tr => { tr.style.display = ''; });
+
+  // Update count
+  document.getElementById('allAttemptsCount').textContent = matched.length;
+
+  // Show-more button
+  const remaining = matched.length - Math.min(visibleCount, matched.length);
+  const btn = document.getElementById('showMoreBtn');
+  if (remaining > 0) {
+    btn.style.display = '';
+    btn.textContent = `Show ${Math.min(PAGE_SIZE, remaining)} More  (${remaining} remaining)`;
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function showMore() {
+  visibleCount += PAGE_SIZE;
+  applyAllFilters();
+}
+
+function resetAllFilters() {
+  document.getElementById('allSearch').value = '';
+  document.getElementById('filterSeries').value = '';
+  document.getElementById('filterRole').value = '';
+  document.getElementById('filterStatus').value = '';
+  // Rebuild full test dropdown
+  onSeriesFilterChange(); // series is now '' so shows all tests
+  visibleCount = PAGE_SIZE;
+  applyAllFilters();
+}
+
+// Run on load
+applyAllFilters();
+{% endif %}
 </script>
 
 </body>

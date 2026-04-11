@@ -202,16 +202,27 @@
     }
     .series-card-header {
         background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-        padding: 18px 22px;
+        padding: 14px 16px 14px 22px;
         color: white;
         font-weight: 700;
         font-size: 18px;
-        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+    .series-card-title {
+        flex: 1;
+        min-width: 0;
+    }
+    .series-card-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
     }
     .know-more-btn {
-        position: absolute;
-        top: 12px;
-        right: 12px;
+        position: static;
         background: rgba(255, 255, 255, 0.18);
         border: 1px solid rgba(255, 255, 255, 0.4);
         color: white;
@@ -227,7 +238,6 @@
     .know-more-btn:hover {
         background: white;
         color: #1e3c72;
-        transform: translateY(-1px);
     }
     .series-card-body {
         padding: 18px 22px;
@@ -464,12 +474,27 @@
         {% if series %}
             <div class="series-grid" id="seriesGrid">
                 {% for s in series %}
-                <div class="series-card" data-series-name="{{ s.name|lower }}">
+                <div class="series-card" data-series-name="{{ s.name|lower }}"
+                     data-series-id="{{ s.id }}"
+                     data-series-slug="{{ s.slug }}"
+                     data-series-description="{{ s.description|escapejs }}">
                     <div class="series-card-header">
-                        {{ s.name }}
-                        {% if s.slug %}
+                        <span class="series-card-title">{{ s.name }}</span>
+                        <div class="series-card-header-actions">
+                            {% if user.is_staff %}
+                            <button class="series-admin-btn" title="Edit Series"
+                                    onclick="openEditSeriesModal({{ s.id }}, '{{ s.name|escapejs }}', '{{ s.description|escapejs }}', {% if s.exam_cover %}'{{ s.exam_cover.url }}'{% else %}null{% endif %}); event.preventDefault();">
+                                <i class="fas fa-pencil-alt"></i>
+                            </button>
+                            <button class="series-admin-btn series-admin-btn--danger" title="Delete Series"
+                                    onclick="deleteSeriesConfirm({{ s.id }}, '{{ s.name|escapejs }}', this); event.preventDefault();">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                            {% if s.slug %}
                             <a class="know-more-btn" href="{% url 'tests_series_about' s.slug %}">Know More</a>
-                        {% endif %}
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="series-card-body">
                         <div class="series-description">{{ s.description|default:"No description available." }}</div>
@@ -501,6 +526,130 @@
         {% endif %}
     </div>
 </div>
+
+{% if user.is_staff %}
+<!-- FAB: Create New Series -->
+<button id="createSeriesFab" onclick="document.getElementById('createSeriesModal').style.display='flex'"
+        title="Create New Test Series"
+        style="position:fixed;bottom:32px;right:32px;z-index:1100;
+               width:58px;height:58px;border-radius:50%;border:none;
+               background:linear-gradient(135deg,#1e3c72,#2a5298);
+               color:white;font-size:26px;cursor:pointer;
+               box-shadow:0 6px 20px rgba(30,60,114,0.4);
+               display:flex;align-items:center;justify-content:center;
+               transition:all 0.25s;">
+    <i class="fas fa-plus"></i>
+</button>
+
+<!-- Create Series Modal -->
+<div id="createSeriesModal" style="display:none;position:fixed;inset:0;z-index:1200;
+     background:rgba(0,0,0,0.55);align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:18px;padding:32px;width:min(540px,95vw);
+                max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;">
+            <h4 style="margin:0;font-weight:800;color:#1e3c72;"><i class="fas fa-plus-circle" style="color:#667eea;margin-right:8px;"></i>Create New Series</h4>
+            <button onclick="document.getElementById('createSeriesModal').style.display='none'"
+                    style="background:none;border:none;font-size:24px;cursor:pointer;color:#999;">&times;</button>
+        </div>
+        <form id="createSeriesForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div style="margin-bottom:16px;">
+                <label style="font-weight:600;font-size:14px;color:#374151;">Series Name <span style="color:red">*</span></label>
+                <input type="text" name="name" id="csName" required
+                       placeholder="e.g. SSC CGL 2026"
+                       oninput="updateSlugPreview(this.value)"
+                       style="width:100%;border:1.5px solid #d1d5db;border-radius:10px;padding:10px 14px;margin-top:6px;font-size:14px;box-sizing:border-box;">
+                <div style="margin-top:6px;font-size:12px;color:#6b7280;">URL: <span id="slugPreview" style="font-family:monospace;color:#667eea;"></span></div>
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="font-weight:600;font-size:14px;color:#374151;">Description</label>
+                <textarea name="description" rows="3" placeholder="Optional description"
+                          style="width:100%;border:1.5px solid #d1d5db;border-radius:10px;padding:10px 14px;margin-top:6px;font-size:14px;resize:vertical;box-sizing:border-box;"></textarea>
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="font-weight:600;font-size:14px;color:#374151;">Exam Cover Photo</label>
+                <input type="file" name="exam_cover" accept="image/*"
+                       style="display:block;margin-top:6px;font-size:13px;">
+                <div style="font-size:12px;color:#9ca3af;margin-top:4px;">Optional hero image for the Know More page.</div>
+            </div>
+            <div style="margin-bottom:16px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <label style="font-weight:600;font-size:14px;color:#374151;">Highlights <span style="color:#9ca3af;font-weight:400;">(max 4)</span></label>
+                    <button type="button" onclick="addHighlightRow('csHighlights')"
+                            style="background:#f0f4ff;border:1.5px solid #667eea;color:#667eea;border-radius:8px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;">+ Add</button>
+                </div>
+                <div id="csHighlights"></div>
+            </div>
+            <div id="csError" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;color:#dc2626;font-size:13px;margin-bottom:14px;"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button type="button" onclick="document.getElementById('createSeriesModal').style.display='none'"
+                        style="padding:10px 20px;border-radius:10px;border:1.5px solid #d1d5db;background:#fff;color:#374151;font-weight:600;cursor:pointer;">Cancel</button>
+                <button type="submit"
+                        style="padding:10px 24px;border-radius:10px;border:none;background:linear-gradient(135deg,#1e3c72,#2a5298);color:white;font-weight:700;cursor:pointer;">Create Series</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Series Modal -->
+<div id="editSeriesModal" style="display:none;position:fixed;inset:0;z-index:1200;
+     background:rgba(0,0,0,0.55);align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:18px;padding:32px;width:min(540px,95vw);
+                max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;">
+            <h4 style="margin:0;font-weight:800;color:#1e3c72;"><i class="fas fa-edit" style="color:#667eea;margin-right:8px;"></i>Edit Series</h4>
+            <button onclick="document.getElementById('editSeriesModal').style.display='none'"
+                    style="background:none;border:none;font-size:24px;cursor:pointer;color:#999;">&times;</button>
+        </div>
+        <form id="editSeriesForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" id="esSeriesId">
+            <div style="margin-bottom:16px;">
+                <label style="font-weight:600;font-size:14px;color:#374151;">Series Name <span style="color:red">*</span></label>
+                <input type="text" name="name" id="esName" required
+                       style="width:100%;border:1.5px solid #d1d5db;border-radius:10px;padding:10px 14px;margin-top:6px;font-size:14px;box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="font-weight:600;font-size:14px;color:#374151;">Description</label>
+                <textarea name="description" id="esDescription" rows="3"
+                          style="width:100%;border:1.5px solid #d1d5db;border-radius:10px;padding:10px 14px;margin-top:6px;font-size:14px;resize:vertical;box-sizing:border-box;"></textarea>
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="font-weight:600;font-size:14px;color:#374151;">Replace Cover Photo</label>
+                <input type="file" name="exam_cover" accept="image/*"
+                       style="display:block;margin-top:6px;font-size:13px;">
+                <div id="esCurrentCover" style="margin-top:6px;font-size:12px;color:#6b7280;"></div>
+            </div>
+            <div style="margin-bottom:16px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <label style="font-weight:600;font-size:14px;color:#374151;">Highlights <span style="color:#9ca3af;font-weight:400;">(max 4)</span></label>
+                    <button type="button" onclick="addHighlightRow('esHighlights')"
+                            style="background:#f0f4ff;border:1.5px solid #667eea;color:#667eea;border-radius:8px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;">+ Add</button>
+                </div>
+                <div id="esHighlights"></div>
+            </div>
+            <div id="esError" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;color:#dc2626;font-size:13px;margin-bottom:14px;"></div>
+            <div style="display:flex;gap:10px;justify-content:space-between;align-items:center;">
+                <a href="/builder/series/"
+                   style="padding:9px 14px;border-radius:10px;border:1.5px solid #d1d5db;background:#f9fafb;color:#374151;font-weight:600;text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:6px;">
+                    <i class="fas fa-external-link-alt"></i> Full Edit in Builder
+                </a>
+                <div style="display:flex;gap:10px;">
+                    <button type="button" onclick="document.getElementById('editSeriesModal').style.display='none'"
+                            style="padding:10px 20px;border-radius:10px;border:1.5px solid #d1d5db;background:#fff;color:#374151;font-weight:600;cursor:pointer;">Cancel</button>
+                    <button type="submit"
+                            style="padding:10px 24px;border-radius:10px;border:none;background:linear-gradient(135deg,#1e3c72,#2a5298);color:white;font-weight:700;cursor:pointer;">Save Changes</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Toast notification -->
+<div id="inlineToast" style="display:none;position:fixed;bottom:24px;right:100px;z-index:9999;
+     padding:13px 22px;border-radius:12px;font-weight:600;font-size:14px;
+     color:white;box-shadow:0 4px 16px rgba(0,0,0,0.18);transition:opacity 0.3s;"></div>
 
 <footer class="footer-custom">
     <div class="container-fluid" style="padding-left: 60px; padding-right: 60px;">
@@ -537,7 +686,158 @@
     </div>
 </footer>
 
+<style>
+.series-admin-btn {
+    background: rgba(255,255,255,0.22);
+    border: 1px solid rgba(255,255,255,0.45);
+    color: white;
+    border-radius: 7px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.2s;
+}
+.series-admin-btn:hover { background: rgba(255,255,255,0.4); }
+.series-admin-btn--danger:hover { background: rgba(239,68,68,0.7); border-color: rgba(239,68,68,0.8); }
+#createSeriesFab:hover { transform: scale(1.1); box-shadow: 0 8px 28px rgba(30,60,114,0.55) !important; }
+.hl-row { display:flex; gap:8px; margin-bottom:8px; align-items:center; }
+.hl-row input { flex:1; border:1.5px solid #d1d5db; border-radius:8px; padding:7px 10px; font-size:13px; box-sizing:border-box; }
+.hl-row button { background:none; border:none; color:#ef4444; cursor:pointer; font-size:18px; line-height:1; }
+</style>
+
 <script>
+  // ── Shared helpers ────────────────────────────────────────────────
+  function getCsrf() {
+    var m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+  function showToast(msg, type) {
+    var t = document.getElementById('inlineToast');
+    t.textContent = msg;
+    t.style.background = (type === 'error') ? '#ef4444' : '#22c55e';
+    t.style.display = 'block';
+    t.style.opacity = '1';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(function() {
+      t.style.opacity = '0';
+      setTimeout(function(){ t.style.display = 'none'; }, 300);
+    }, 3200);
+  }
+  function slugify(s) {
+    return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/, '');
+  }
+  function updateSlugPreview(name) {
+    var el = document.getElementById('slugPreview');
+    if (el) el.textContent = '/tests/series/' + slugify(name) + '/';
+  }
+
+  // ── Highlight row helpers ─────────────────────────────────────────
+  function addHighlightRow(containerId, titleVal, valueVal) {
+    var c = document.getElementById(containerId);
+    if (c.children.length >= 4) { showToast('Maximum 4 highlights allowed.', 'error'); return; }
+    var row = document.createElement('div');
+    row.className = 'hl-row';
+    row.innerHTML = '<input placeholder="Title (e.g. Total Tests)" value="' + (titleVal || '') + '">'
+                  + '<input placeholder="Value (e.g. 140)" value="' + (valueVal || '') + '">'
+                  + '<button type="button" onclick="this.parentElement.remove()">&times;</button>';
+    c.appendChild(row);
+  }
+  function collectHighlights(containerId, fd) {
+    var rows = document.getElementById(containerId).querySelectorAll('.hl-row');
+    fd.append('highlight_count', rows.length);
+    rows.forEach(function(row, i) {
+      var inputs = row.querySelectorAll('input');
+      fd.append('highlight_title_' + i, inputs[0].value);
+      fd.append('highlight_value_' + i, inputs[1].value);
+    });
+  }
+
+  // ── Create Series ─────────────────────────────────────────────────
+  var csForm = document.getElementById('createSeriesForm');
+  if (csForm) csForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var fd = new FormData(this);
+    collectHighlights('csHighlights', fd);
+    fetch('/builder/api/inline/series/create/', {
+      method: 'POST', body: fd,
+      headers: {'X-CSRFToken': getCsrf()}
+    }).then(function(r){ return r.json(); }).then(function(d) {
+      if (d.ok) {
+        showToast('Series "' + d.series.name + '" created!', 'success');
+        setTimeout(function(){ location.reload(); }, 900);
+      } else {
+        var el = document.getElementById('csError');
+        el.textContent = d.error; el.style.display = 'block';
+      }
+    }).catch(function(){ showToast('Network error', 'error'); });
+  });
+
+  // ── Edit / Update Series ──────────────────────────────────────────
+  function openEditSeriesModal(id, name, description, coverUrl) {
+    document.getElementById('esSeriesId').value = id;
+    document.getElementById('esName').value = name;
+    document.getElementById('esDescription').value = description;
+    document.getElementById('esError').style.display = 'none';
+    var cc = document.getElementById('esCurrentCover');
+    cc.textContent = coverUrl ? ('Current: ' + coverUrl.split('/').pop()) : 'No cover photo set.';
+    var hc = document.getElementById('esHighlights');
+    hc.innerHTML = '';
+    // Load existing highlights from a lightweight data endpoint
+    fetch('/builder/api/inline/series/' + id + '/highlights/')
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        (data.highlights || []).forEach(function(h){
+          addHighlightRow('esHighlights', h.title, h.value);
+        });
+      }).catch(function(){});
+    document.getElementById('editSeriesModal').style.display = 'flex';
+  }
+
+  var esForm = document.getElementById('editSeriesForm');
+  if (esForm) esForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var id = document.getElementById('esSeriesId').value;
+    var fd = new FormData(this);
+    collectHighlights('esHighlights', fd);
+    fetch('/builder/api/inline/series/' + id + '/update/', {
+      method: 'POST', body: fd,
+      headers: {'X-CSRFToken': getCsrf()}
+    }).then(function(r){ return r.json(); }).then(function(d) {
+      if (d.ok) {
+        showToast('Series updated!', 'success');
+        setTimeout(function(){ location.reload(); }, 900);
+      } else {
+        var el = document.getElementById('esError');
+        el.textContent = d.error; el.style.display = 'block';
+      }
+    }).catch(function(){ showToast('Network error', 'error'); });
+  });
+
+  // ── Delete Series ─────────────────────────────────────────────────
+  function deleteSeriesConfirm(id, name, btn) {
+    if (!confirm('Hide "' + name + '" from students?\n(Soft delete — can be re-activated from Builder)')) return;
+    fetch('/builder/api/inline/series/' + id + '/delete/', {
+      method: 'POST',
+      headers: {'X-CSRFToken': getCsrf()}
+    }).then(function(r){ return r.json(); }).then(function(d) {
+      if (d.ok) {
+        var card = btn.closest('.series-card');
+        card.style.transition = 'opacity 0.4s, transform 0.4s';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.9)';
+        setTimeout(function(){
+          card.remove();
+          showToast('"' + name + '" hidden from students.', 'success');
+        }, 400);
+      } else { showToast(d.error, 'error'); }
+    }).catch(function(){ showToast('Network error', 'error'); });
+  }
+
+  // ── Search autocomplete ───────────────────────────────────────────
   (function() {
     var input = document.getElementById('seriesSearchInput');
     var box   = document.getElementById('searchSuggestBox');

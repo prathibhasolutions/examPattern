@@ -577,6 +577,108 @@
             padding-right: 20px !important;
         }
     }
+
+    /* ===== Inline Admin Controls ===== */
+    .st-pill-item { display: flex; align-items: center; }
+    .st-pill-actions {
+        display: none;
+        background: rgba(30,60,114,.92);
+        border-radius: 6px;
+        padding: 2px 4px;
+        gap: 2px;
+        flex-direction: row;
+        margin-left: 2px;
+        white-space: nowrap;
+    }
+    .st-pill-item:hover .st-pill-actions { display: flex; }
+    .st-action-btn {
+        background: transparent;
+        border: none;
+        color: #aac4ff;
+        padding: 2px 5px;
+        cursor: pointer;
+        font-size: 11px;
+        border-radius: 4px;
+    }
+    .st-action-btn:hover { background: rgba(255,255,255,.15); color: #fff; }
+    .st-action-btn--danger { color: #ff8a80; }
+    .st-action-btn--danger:hover { background: rgba(229,57,53,.25); color: #ff5252; }
+    .st-action-btn--add { color: #4ade80; }
+    .st-action-btn--add:hover { background: rgba(34,197,94,.2); color: #22c55e; }
+    .st-add-pill {
+        background: rgba(34,197,94,.12) !important;
+        color: #22c55e !important;
+        border: 2px dashed #22c55e !important;
+        font-size: 13px !important;
+        padding: 4px 12px !important;
+    }
+    .st-add-pill:hover { background: rgba(34,197,94,.22) !important; }
+
+    /* Test row admin buttons */
+    .test-admin-btns {
+        display: flex;
+        gap: 6px;
+        margin-left: 8px;
+        align-items: center;
+    }
+    .test-admin-btn {
+        padding: 5px 9px;
+        font-size: 12px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        color: #fff;
+    }
+    .test-admin-btn--edit { background: #667eea; }
+    .test-admin-btn--edit:hover { background: #5568d6; }
+    .test-admin-btn--move { background: #f59e0b; }
+    .test-admin-btn--move:hover { background: #d97706; }
+    .test-admin-btn--danger { background: #ef4444; }
+    .test-admin-btn--danger:hover { background: #dc2626; }
+
+    /* Add Test row */
+    .add-test-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 18px;
+        margin: 6px 0;
+        border: 2px dashed #22c55e;
+        border-radius: 8px;
+        color: #22c55e;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        background: rgba(34,197,94,.05);
+        transition: background .2s;
+    }
+    .add-test-row:hover { background: rgba(34,197,94,.12); }
+    .add-test-row i { font-size: 16px; }
+
+    /* Draft test row */
+    .test-item--draft {
+        background: repeating-linear-gradient(
+            -45deg,
+            transparent,
+            transparent 6px,
+            rgba(251,191,36,.06) 6px,
+            rgba(251,191,36,.06) 12px
+        );
+        border-left: 3px solid #f59e0b !important;
+        opacity: 0.92;
+    }
+    .draft-badge {
+        display: inline-block;
+        background: #f59e0b;
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+        padding: 2px 7px;
+        border-radius: 4px;
+        margin-right: 7px;
+        vertical-align: middle;
+    }
 </style>
 
 <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
@@ -632,10 +734,26 @@
         <div class="nav-pills-container">
             <ul class="nav custom-nav-pills" id="sectionTabs">
                 {% for data in sectional_data %}
-                    <li class="nav-item">
+                    <li class="nav-item st-pill-item">
                         <button class="nav-link {% if forloop.first %}active{% endif %}" id="section-{{ data.section.id }}-tab" type="button" role="tab" onclick="handleSectionClick({{ data.section.id }}, {{ data.subsections|length }})">{{ data.section.name }}</button>
+                        {% if user.is_staff %}
+                        <span class="st-pill-actions">
+                            <button class="st-action-btn" title="Rename section" onclick="openRenameSectionModal({{ data.section.id }}, '{{ data.section.name|escapejs }}')"><i class="fas fa-pencil-alt"></i></button>
+                            {% if data.section.name|lower != 'all tests' %}
+                            <button class="st-action-btn st-action-btn--add" title="Add subsection" onclick="openCreateSubsectionModal({{ data.section.id }})"><i class="fas fa-plus"></i></button>
+                            <button class="st-action-btn st-action-btn--danger" title="Delete section" onclick="deleteSectionConfirm({{ data.section.id }}, '{{ data.section.name|escapejs }}')"><i class="fas fa-trash"></i></button>
+                            {% endif %}
+                        </span>
+                        {% endif %}
                     </li>
                 {% endfor %}
+                {% if user.is_staff %}
+                <li class="nav-item">
+                    <button class="nav-link st-add-pill" onclick="openCreateSectionModal()" title="Add new section">
+                        <i class="fas fa-plus"></i> Section
+                    </button>
+                </li>
+                {% endif %}
             </ul>
             <ul class="nav sub-nav-pills" id="subNavContainer" style="display: none;"></ul>
         </div>
@@ -718,13 +836,68 @@
                                                 <i class="fas fa-lock"></i> Login to Attempt
                                             </button>
                                             {% endif %}
+                                            {% if user.is_staff %}
+                                            <div class="test-admin-btns">
+                                                <button class="btn btn-sm test-admin-btn test-admin-btn--edit" title="Edit test" onclick="openRenameTestModal({{ test.id }}, '{{ test.name|escapejs }}', {{ test.duration_seconds }}, '{{ test.marks_per_question }}', '{{ test.negative_marks_per_question }}')"><i class="fas fa-pencil-alt"></i></button>
+                                                <button class="btn btn-sm test-admin-btn test-admin-btn--move" title="Move to another section" onclick="openMoveTestModal({{ test.id }}, '{{ test.name|escapejs }}')"><i class="fas fa-exchange-alt"></i></button>
+                                                <button class="btn btn-sm test-admin-btn test-admin-btn--danger" title="Delete test permanently" onclick="deleteTestConfirm({{ test.id }}, '{{ test.name|escapejs }}')"><i class="fas fa-trash"></i></button>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                    {% if user.is_staff %}
+                                    {% for draft in subsection_data.drafts %}
+                                    <div class="test-item test-item--draft">
+                                        <div class="test-info">
+                                            <div class="test-name">
+                                                <span class="draft-badge">DRAFT</span>
+                                                {{ draft.name }}
+                                            </div>
+                                            <div class="test-meta">
+                                                <div class="meta-item"><span class="meta-icon">⏱️</span>{{ draft.duration_minutes }} mins</div>
+                                            </div>
+                                        </div>
+                                        <div class="card-footer test-action">
+                                            <a href="/builder/{{ draft.id }}/live-editor/" class="btn btn-warning attempt-btn">
+                                                <i class="fas fa-pen"></i> Continue Editing
+                                            </a>
+                                            <button class="btn btn-danger attempt-btn" onclick="deleteDraftConfirm({{ draft.id }}, '{{ draft.name|escapejs }}')"><i class="fas fa-trash"></i> Delete</button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                    <div class="add-test-row" onclick="openCreateTestModal({{ data.section.id }}, {{ subsection_data.subsection.id }})">
+                                        <i class="fas fa-plus-circle"></i> Add Test
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% else %}
+                            {% if user.is_staff %}
+                            <div class="subsection-group">
+                                {% if subsection_data.drafts %}
+                                <div class="tests-list">
+                                    {% for draft in subsection_data.drafts %}
+                                    <div class="test-item test-item--draft">
+                                        <div class="test-info">
+                                            <div class="test-name"><span class="draft-badge">DRAFT</span>{{ draft.name }}</div>
+                                            <div class="test-meta"><div class="meta-item"><span class="meta-icon">⏱️</span>{{ draft.duration_minutes }} mins</div></div>
+                                        </div>
+                                        <div class="card-footer test-action">
+                                            <a href="/builder/{{ draft.id }}/live-editor/" class="btn btn-warning attempt-btn"><i class="fas fa-pen"></i> Continue Editing</a>
+                                            <button class="btn btn-danger attempt-btn" onclick="deleteDraftConfirm({{ draft.id }}, '{{ draft.name|escapejs }}')"><i class="fas fa-trash"></i> Delete</button>
                                         </div>
                                     </div>
                                     {% endfor %}
                                 </div>
+                                {% endif %}
+                                <div class="add-test-row" onclick="openCreateTestModal({{ data.section.id }}, {{ subsection_data.subsection.id }})">
+                                    <i class="fas fa-plus-circle"></i> Add Test to {{ subsection_data.subsection.name }}
+                                </div>
                             </div>
                             {% else %}
                             <p class="text-muted">No tests available in this subsection.</p>
+                            {% endif %}
                             {% endif %}
                         </div>
                         {% endfor %}
@@ -801,13 +974,68 @@
                                         <i class="fas fa-lock"></i> Login to Attempt
                                     </button>
                                     {% endif %}
+                                    {% if user.is_staff %}
+                                    <div class="test-admin-btns">
+                                        <button class="btn btn-sm test-admin-btn test-admin-btn--edit" title="Edit test" onclick="openRenameTestModal({{ test.id }}, '{{ test.name|escapejs }}', {{ test.duration_seconds }}, '{{ test.marks_per_question }}', '{{ test.negative_marks_per_question }}')"><i class="fas fa-pencil-alt"></i></button>
+                                        <button class="btn btn-sm test-admin-btn test-admin-btn--move" title="Move to another section" onclick="openMoveTestModal({{ test.id }}, '{{ test.name|escapejs }}')"><i class="fas fa-exchange-alt"></i></button>
+                                        <button class="btn btn-sm test-admin-btn test-admin-btn--danger" title="Delete test permanently" onclick="deleteTestConfirm({{ test.id }}, '{{ test.name|escapejs }}')"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                            {% if user.is_staff %}
+                            {% for draft in data.drafts %}
+                            <div class="test-item test-item--draft">
+                                <div class="test-info">
+                                    <div class="test-name">
+                                        <span class="draft-badge">DRAFT</span>
+                                        {{ draft.name }}
+                                    </div>
+                                    <div class="test-meta">
+                                        <div class="meta-item"><span class="meta-icon">⏱️</span>{{ draft.duration_minutes }} mins</div>
+                                    </div>
+                                </div>
+                                <div class="card-footer test-action">
+                                    <a href="/builder/{{ draft.id }}/live-editor/" class="btn btn-warning attempt-btn">
+                                        <i class="fas fa-pen"></i> Continue Editing
+                                    </a>
+                                    <button class="btn btn-danger attempt-btn" onclick="deleteDraftConfirm({{ draft.id }}, '{{ draft.name|escapejs }}')"><i class="fas fa-trash"></i> Delete</button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                            <div class="add-test-row" onclick="openCreateTestModal({{ data.section.id }}, null)">
+                                <i class="fas fa-plus-circle"></i> Add Test
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    {% if user.is_staff %}
+                    <div class="subsection-group">
+                        {% if data.drafts %}
+                        <div class="tests-list">
+                            {% for draft in data.drafts %}
+                            <div class="test-item test-item--draft">
+                                <div class="test-info">
+                                    <div class="test-name"><span class="draft-badge">DRAFT</span>{{ draft.name }}</div>
+                                    <div class="test-meta"><div class="meta-item"><span class="meta-icon">⏱️</span>{{ draft.duration_minutes }} mins</div></div>
+                                </div>
+                                <div class="card-footer test-action">
+                                    <a href="/builder/{{ draft.id }}/live-editor/" class="btn btn-warning attempt-btn"><i class="fas fa-pen"></i> Continue Editing</a>
+                                    <button class="btn btn-danger attempt-btn" onclick="deleteDraftConfirm({{ draft.id }}, '{{ draft.name|escapejs }}')"><i class="fas fa-trash"></i> Delete</button>
                                 </div>
                             </div>
                             {% endfor %}
                         </div>
+                        {% endif %}
+                        <div class="add-test-row" onclick="openCreateTestModal({{ data.section.id }}, null)">
+                            <i class="fas fa-plus-circle"></i> Add Test to {{ data.section.name }}
+                        </div>
                     </div>
                     {% else %}
                     <p class="text-muted">No tests available in this section.</p>
+                    {% endif %}
                     {% endif %}
                 {% endif %}
             </div>
@@ -850,6 +1078,36 @@
 
 <!-- Place all JavaScript inside a script block at the end -->
 <script>
+// Admin context constants
+const SERIES_ID = {{ series.id }};
+const SERIES_SLUG = "{{ series.slug }}";
+const IS_ADMIN = {% if user.is_staff %}true{% else %}false{% endif %};
+
+// Sections data for move-test modal
+const SECTIONS_DATA = [{% for data in sectional_data %}{id: {{ data.section.id }}, name: "{{ data.section.name|escapejs }}", subsections: [{% for s in data.subsections %}{id: {{ s.subsection.id }}, name: "{{ s.subsection.name|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]}{% if not forloop.last %},{% endif %}{% endfor %}];
+
+// CSRF helper
+function getCsrf() {
+    const m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? m[1] : '';
+}
+
+// Toast helper
+function showToast(msg, type) {
+    let t = document.getElementById('inlineToastST');
+    if (!t) {
+        t = document.createElement('div');
+        t.id = 'inlineToastST';
+        t.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;background:#333;color:#fff;padding:12px 20px;border-radius:8px;font-size:14px;max-width:320px;box-shadow:0 4px 12px rgba(0,0,0,.3);transition:opacity .3s;';
+        document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.background = (type === 'error') ? '#e53935' : (type === 'success') ? '#22c55e' : '#333';
+    t.style.opacity = '1';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.style.opacity = '0'; }, 3000);
+}
+
 // Store subsection data for each section
 const subsectionsData = {
     {% for data in sectional_data %}
@@ -879,16 +1137,30 @@ function handleSectionClick(sectionId, hasSubsections) {
         let pillsHTML = '';
         subsections.forEach((subsection, index) => {
             pillsHTML += `
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link ${index === 0 ? 'active' : ''}" 
-                            id="subsection-${subsection.id}-tab" 
+                <li class="nav-item st-pill-item" role="presentation">
+                    <button class="nav-link ${index === 0 ? 'active' : ''}"
+                            id="subsection-${subsection.id}-tab"
                             type="button" role="tab"
                             onclick="showSubsection(${sectionId}, ${subsection.id})">
                         ${subsection.name}
-                    </button>
-                </li>
-            `;
+                    </button>`;
+            if (IS_ADMIN) {
+                pillsHTML += `
+                    <span class="st-pill-actions">
+                        <button class="st-action-btn" title="Rename subsection" onclick="openRenameSubsectionModal(${subsection.id}, '${subsection.name.replace(/'/g,"\\'")}', ${sectionId})"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="st-action-btn st-action-btn--danger" title="Delete subsection" onclick="deleteSubsectionConfirm(${subsection.id}, '${subsection.name.replace(/'/g,"\\'")}')"><i class="fas fa-trash"></i></button>
+                    </span>`;
+            }
+            pillsHTML += `</li>`;
         });
+        if (IS_ADMIN) {
+            pillsHTML += `
+                <li class="nav-item">
+                    <button class="nav-link st-add-pill" onclick="openCreateSubsectionModal(${sectionId})" title="Add new subsection">
+                        <i class="fas fa-plus"></i> Subsection
+                    </button>
+                </li>`;
+        }
         subNavContainer.innerHTML = pillsHTML;
         // Show first subsection by default
         if (subsections.length > 0) {
@@ -973,4 +1245,416 @@ document.addEventListener('DOMContentLoaded', function() {
     })();
 });
 </script>
+
+{% if user.is_staff %}
+<!-- ========= ADMIN MODALS ========= -->
+
+<!-- Create Section Modal -->
+<div class="modal fade" id="stModalCreateSection" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Add New Section</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <label class="form-label">Section Name</label>
+        <input type="text" id="stInputSectionName" class="form-control" placeholder="e.g. Physics">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="submitCreateSection()">Create</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Rename Section Modal -->
+<div class="modal fade" id="stModalRenameSection" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Rename Section</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="stRenameSectionId">
+        <label class="form-label">New Name</label>
+        <input type="text" id="stInputRenameSectionName" class="form-control">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="submitRenameSection()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Subsection Modal -->
+<div class="modal fade" id="stModalCreateSubsection" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Add New Subsection</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="stCreateSubsectionSectionId">
+        <label class="form-label">Subsection Name</label>
+        <input type="text" id="stInputSubsectionName" class="form-control" placeholder="e.g. Part A">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="submitCreateSubsection()">Create</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Rename Subsection Modal -->
+<div class="modal fade" id="stModalRenameSubsection" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Rename Subsection</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="stRenameSubsectionId">
+        <input type="hidden" id="stRenameSubsectionSectionId">
+        <label class="form-label">New Name</label>
+        <input type="text" id="stInputRenameSubsectionName" class="form-control">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="submitRenameSubsection()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Test Modal -->
+<div class="modal fade" id="stModalCreateTest" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Create New Test</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="stCreateTestSectionId">
+        <input type="hidden" id="stCreateTestSubsectionId">
+        <div class="mb-3">
+          <label class="form-label">Test Name <span class="text-danger">*</span></label>
+          <input type="text" id="stCreateTestName" class="form-control" placeholder="e.g. Mock Test 1">
+        </div>
+        <div class="row g-2">
+          <div class="col-4">
+            <label class="form-label">Duration (mins)</label>
+            <input type="number" id="stCreateTestDuration" class="form-control" value="180" min="1">
+          </div>
+          <div class="col-4">
+            <label class="form-label">Marks/Question</label>
+            <input type="number" id="stCreateTestMarks" class="form-control" value="4" min="0" step="0.5">
+          </div>
+          <div class="col-4">
+            <label class="form-label">Negative Marks</label>
+            <input type="number" id="stCreateTestNegative" class="form-control" value="1" min="0" step="0.25">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="submitCreateTest()">Create &amp; Edit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Test Modal -->
+<div class="modal fade" id="stModalRenameTest" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Edit Test</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="stRenameTestId">
+        <div class="mb-3">
+          <label class="form-label">Test Name <span class="text-danger">*</span></label>
+          <input type="text" id="stInputRenameTestName" class="form-control">
+        </div>
+        <div class="row g-2">
+          <div class="col-4">
+            <label class="form-label">Duration (mins)</label>
+            <input type="number" id="stEditTestDuration" class="form-control" min="1">
+          </div>
+          <div class="col-4">
+            <label class="form-label">Marks/Question</label>
+            <input type="number" id="stEditTestMarks" class="form-control" min="0" step="0.5">
+          </div>
+          <div class="col-4">
+            <label class="form-label">Negative Marks</label>
+            <input type="number" id="stEditTestNegative" class="form-control" min="0" step="0.25">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="submitRenameTest()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Move Test Modal -->
+<div class="modal fade" id="stModalMoveTest" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Move Test</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="stMoveTestId">
+        <p id="stMoveTestNameLabel" class="text-muted small mb-3"></p>
+        <div class="mb-3">
+          <label class="form-label">Target Section</label>
+          <select id="stMoveTestSectionSelect" class="form-select" onchange="populateMoveSubsections()"></select>
+        </div>
+        <div class="mb-3" id="stMoveSubsectionRow">
+          <label class="form-label">Target Subsection <span class="text-muted">(optional)</span></label>
+          <select id="stMoveTestSubsectionSelect" class="form-select">
+            <option value="">— None (direct under section) —</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning" onclick="submitMoveTest()">Move</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Admin JS -->
+<script>
+// ---- Section ----
+function openCreateSectionModal() {
+    document.getElementById('stInputSectionName').value = '';
+    new bootstrap.Modal(document.getElementById('stModalCreateSection')).show();
+}
+function submitCreateSection() {
+    const name = document.getElementById('stInputSectionName').value.trim();
+    if (!name) return showToast('Section name is required.', 'error');
+    fetch('/builder/api/inline/section/create/', {
+        method: 'POST',
+        headers: {'X-CSRFToken': getCsrf(), 'Content-Type': 'application/json'},
+        body: JSON.stringify({series_id: SERIES_ID, name})
+    }).then(r => r.json()).then(d => {
+        if (d.ok) { showToast('Section created!', 'success'); setTimeout(() => location.reload(), 800); }
+        else showToast(d.error || 'Error', 'error');
+    }).catch(() => showToast('Network error', 'error'));
+}
+
+function openRenameSectionModal(id, name) {
+    document.getElementById('stRenameSectionId').value = id;
+    document.getElementById('stInputRenameSectionName').value = name;
+    new bootstrap.Modal(document.getElementById('stModalRenameSection')).show();
+}
+function submitRenameSection() {
+    const id = document.getElementById('stRenameSectionId').value;
+    const name = document.getElementById('stInputRenameSectionName').value.trim();
+    if (!name) return showToast('Name is required.', 'error');
+    fetch(`/builder/api/inline/section/${id}/rename/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': getCsrf(), 'Content-Type': 'application/json'},
+        body: JSON.stringify({name})
+    }).then(r => r.json()).then(d => {
+        if (d.ok) { showToast('Section renamed!', 'success'); setTimeout(() => location.reload(), 800); }
+        else showToast(d.error || 'Error', 'error');
+    }).catch(() => showToast('Network error', 'error'));
+}
+
+function deleteSectionConfirm(id, name) {
+    if (!confirm(`Delete section "${name}"? All tests inside it will also be removed.`)) return;
+    fetch(`/builder/api/inline/section/${id}/delete/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': getCsrf(), 'Content-Type': 'application/json'}
+    }).then(r => r.json()).then(d => {
+        if (d.ok) { showToast('Section deleted.', 'success'); setTimeout(() => location.reload(), 800); }
+        else showToast(d.error || 'Error', 'error');
+    }).catch(() => showToast('Network error', 'error'));
+}
+
+// ---- Subsection ----
+function openCreateSubsectionModal(sectionId) {
+    document.getElementById('stCreateSubsectionSectionId').value = sectionId;
+    document.getElementById('stInputSubsectionName').value = '';
+    new bootstrap.Modal(document.getElementById('stModalCreateSubsection')).show();
+}
+function submitCreateSubsection() {
+    const sectionId = document.getElementById('stCreateSubsectionSectionId').value;
+    const name = document.getElementById('stInputSubsectionName').value.trim();
+    if (!name) return showToast('Subsection name is required.', 'error');
+    fetch('/builder/api/inline/subsection/create/', {
+        method: 'POST',
+        headers: {'X-CSRFToken': getCsrf(), 'Content-Type': 'application/json'},
+        body: JSON.stringify({section_id: sectionId, name})
+    }).then(r => r.json()).then(d => {
+        if (d.ok) { showToast('Subsection created!', 'success'); setTimeout(() => location.reload(), 800); }
+        else showToast(d.error || 'Error', 'error');
+    }).catch(() => showToast('Network error', 'error'));
+}
+
+function openRenameSubsectionModal(id, name, sectionId) {
+    document.getElementById('stRenameSubsectionId').value = id;
+    document.getElementById('stRenameSubsectionSectionId').value = sectionId;
+    document.getElementById('stInputRenameSubsectionName').value = name;
+    new bootstrap.Modal(document.getElementById('stModalRenameSubsection')).show();
+}
+function submitRenameSubsection() {
+    const id = document.getElementById('stRenameSubsectionId').value;
+    const name = document.getElementById('stInputRenameSubsectionName').value.trim();
+    if (!name) return showToast('Name is required.', 'error');
+    fetch(`/builder/api/inline/subsection/${id}/rename/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': getCsrf(), 'Content-Type': 'application/json'},
+        body: JSON.stringify({name})
+    }).then(r => r.json()).then(d => {
+        if (d.ok) { showToast('Subsection renamed!', 'success'); setTimeout(() => location.reload(), 800); }
+        else showToast(d.error || 'Error', 'error');
+    }).catch(() => showToast('Network error', 'error'));
+}
+
+function deleteSubsectionConfirm(id, name) {
+    if (!confirm(`Delete subsection "${name}"?`)) return;
+    fetch(`/builder/api/inline/subsection/${id}/delete/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': getCsrf(), 'Content-Type': 'application/json'}
+    }).then(r => r.json()).then(d => {
+        if (d.ok) { showToast('Subsection deleted.', 'success'); setTimeout(() => location.reload(), 800); }
+        else showToast(d.error || 'Error', 'error');
+    }).catch(() => showToast('Network error', 'error'));
+}
+
+// ---- Test ----
+function openCreateTestModal(sectionId, subsectionId) {
+    document.getElementById('stCreateTestSectionId').value = sectionId;
+    document.getElementById('stCreateTestSubsectionId').value = subsectionId || '';
+    document.getElementById('stCreateTestName').value = '';
+    document.getElementById('stCreateTestDuration').value = 180;
+    document.getElementById('stCreateTestMarks').value = 4;
+    document.getElementById('stCreateTestNegative').value = 1;
+    new bootstrap.Modal(document.getElementById('stModalCreateTest')).show();
+}
+function submitCreateTest() {
+    const name = document.getElementById('stCreateTestName').value.trim();
+    if (!name) return showToast('Test name is required.', 'error');
+    const payload = {
+        series_id: SERIES_ID,
+        section_id: document.getElementById('stCreateTestSectionId').value,
+        subsection_id: document.getElementById('stCreateTestSubsectionId').value || null,
+        name,
+        duration_minutes: parseInt(document.getElementById('stCreateTestDuration').value) || 180,
+        marks_per_question: parseFloat(document.getElementById('stCreateTestMarks').value) || 4,
+        negative_marks: parseFloat(document.getElementById('stCreateTestNegative').value) || 1
+    };
+    fetch('/builder/api/inline/test/create/', {
+        method: 'POST',
+        headers: {'X-CSRFToken': getCsrf(), 'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    }).then(r => r.json()).then(d => {
+        if (d.ok) {
+            showToast('Test created! Redirecting to editor…', 'success');
+            setTimeout(() => { window.location.href = d.redirect; }, 800);
+        } else showToast(d.error || 'Error', 'error');
+    }).catch(() => showToast('Network error', 'error'));
+}
+
+function openRenameTestModal(id, name, durationSeconds, marksPerQ, negativeMarks) {
+    document.getElementById('stRenameTestId').value = id;
+    document.getElementById('stInputRenameTestName').value = name;
+    document.getElementById('stEditTestDuration').value = durationSeconds ? Math.round(durationSeconds / 60) : '';
+    document.getElementById('stEditTestMarks').value = marksPerQ || '';
+    document.getElementById('stEditTestNegative').value = negativeMarks || '';
+    new bootstrap.Modal(document.getElementById('stModalRenameTest')).show();
+}
+function submitRenameTest() {
+    const id = document.getElementById('stRenameTestId').value;
+    const name = document.getElementById('stInputRenameTestName').value.trim();
+    if (!name) return showToast('Name is required.', 'error');
+    const payload = { name };
+    const dur = document.getElementById('stEditTestDuration').value;
+    const marks = document.getElementById('stEditTestMarks').value;
+    const neg = document.getElementById('stEditTestNegative').value;
+    if (dur !== '') payload.duration_minutes = parseFloat(dur);
+    if (marks !== '') payload.marks_per_question = parseFloat(marks);
+    if (neg !== '') payload.negative_marks = parseFloat(neg);
+    fetch(`/builder/api/inline/test/${id}/rename/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': getCsrf(), 'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    }).then(r => r.json()).then(d => {
+        if (d.ok) {
+            showToast('Test updated!', 'success');
+            document.querySelectorAll(`.test-item[data-test-id="${id}"] .test-name`).forEach(el => {
+                const num = el.querySelector('.test-number');
+                el.textContent = '';
+                if (num) el.appendChild(num);
+                el.append(' ' + name);
+            });
+            bootstrap.Modal.getInstance(document.getElementById('stModalRenameTest')).hide();
+        } else showToast(d.error || 'Error', 'error');
+    }).catch(() => showToast('Network error', 'error'));
+}
+function deleteTestConfirm(id, name) {
+    if (!confirm(`Permanently delete test "${name}"? This cannot be undone.`)) return;
+    fetch(`/builder/api/inline/test/${id}/delete/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': getCsrf(), 'Content-Type': 'application/json'}
+    }).then(r => r.json()).then(d => {
+        if (d.ok) { showToast('Test deleted.', 'success'); setTimeout(() => location.reload(), 800); }
+        else showToast(d.error || 'Error', 'error');
+    }).catch(() => showToast('Network error', 'error'));
+}
+function deleteDraftConfirm(id, name) {
+    if (!confirm(`Permanently delete draft "${name}"? This cannot be undone.`)) return;
+    fetch(`/builder/api/inline/draft/${id}/delete/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': getCsrf(), 'Content-Type': 'application/json'}
+    }).then(r => r.json()).then(d => {
+        if (d.ok) { showToast('Draft deleted.', 'success'); setTimeout(() => location.reload(), 800); }
+        else showToast(d.error || 'Error', 'error');
+    }).catch(() => showToast('Network error', 'error'));
+}
+
+function openMoveTestModal(id, name) {
+    document.getElementById('stMoveTestId').value = id;
+    document.getElementById('stMoveTestNameLabel').textContent = `Moving: "${name}"`;
+    // Populate section dropdown
+    const sel = document.getElementById('stMoveTestSectionSelect');
+    sel.innerHTML = '';
+    SECTIONS_DATA.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.name;
+        sel.appendChild(opt);
+    });
+    populateMoveSubsections();
+    new bootstrap.Modal(document.getElementById('stModalMoveTest')).show();
+}
+function populateMoveSubsections() {
+    const sectionId = parseInt(document.getElementById('stMoveTestSectionSelect').value);
+    const section = SECTIONS_DATA.find(s => s.id === sectionId);
+    const sel = document.getElementById('stMoveTestSubsectionSelect');
+    sel.innerHTML = '<option value="">— None (direct under section) —</option>';
+    if (section && section.subsections.length > 0) {
+        section.subsections.forEach(sub => {
+            const opt = document.createElement('option');
+            opt.value = sub.id;
+            opt.textContent = sub.name;
+            sel.appendChild(opt);
+        });
+        document.getElementById('stMoveSubsectionRow').style.display = '';
+    } else {
+        document.getElementById('stMoveSubsectionRow').style.display = 'none';
+    }
+}
+function submitMoveTest() {
+    const id = document.getElementById('stMoveTestId').value;
+    const sectionId = document.getElementById('stMoveTestSectionSelect').value;
+    const subsectionId = document.getElementById('stMoveTestSubsectionSelect').value || null;
+    fetch(`/builder/api/inline/test/${id}/move/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': getCsrf(), 'Content-Type': 'application/json'},
+        body: JSON.stringify({section_id: sectionId, subsection_id: subsectionId})
+    }).then(r => r.json()).then(d => {
+        if (d.ok) { showToast('Test moved!', 'success'); setTimeout(() => location.reload(), 800); }
+        else showToast(d.error || 'Error', 'error');
+    }).catch(() => showToast('Network error', 'error'));
+}
+</script>
+{% endif %}
+
 {% endblock %}

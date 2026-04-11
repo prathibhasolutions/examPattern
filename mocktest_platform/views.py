@@ -53,7 +53,8 @@ def tests_list(request):
 def tests_series_detail(request, slug):
     """Display tests within a series with sections as main tabs and subsections as sub-tabs."""
     from django.db.models import Prefetch, Count, Q
-    
+    from test_builder.models import TestDraft
+
     series = get_object_or_404(TestSeries.objects.filter(is_active=True), slug=slug)
 
     # Get all sections for this series (these will be main nav pills)
@@ -83,10 +84,16 @@ def tests_series_detail(request, slug):
         # Check if this is "All Tests" section (case-insensitive)
         if section.name.lower() == 'all tests':
             # For "All Tests" section, include all tests in the series
+            all_drafts = []
+            if request.user.is_staff:
+                all_drafts = list(TestDraft.objects.filter(
+                    series=series, is_published=False
+                ).order_by('name'))
             sectional_data.append({
                 'section': section,
                 'subsections': [],
                 'tests': all_tests,
+                'drafts': all_drafts,
                 'is_all_tests': True
             })
         else:
@@ -99,7 +106,17 @@ def tests_series_detail(request, slug):
             ).annotate(
                 question_count=Count('sections__questions', filter=Q(sections__questions__is_active=True))
             ).order_by('name')
-            
+
+            # Draft tests for this section (admin only)
+            section_drafts = []
+            if request.user.is_staff:
+                section_drafts = list(TestDraft.objects.filter(
+                    series=series,
+                    series_section=section,
+                    series_subsection__isnull=True,
+                    is_published=False,
+                ).order_by('name'))
+
             # Get subsections with their tests
             subsections_with_tests = []
             for subsection in section.subsections.all():
@@ -111,16 +128,27 @@ def tests_series_detail(request, slug):
                 ).annotate(
                     question_count=Count('sections__questions', filter=Q(sections__questions__is_active=True))
                 ).order_by('name')
-                
+
+                subsection_drafts = []
+                if request.user.is_staff:
+                    subsection_drafts = list(TestDraft.objects.filter(
+                        series=series,
+                        series_section=section,
+                        series_subsection=subsection,
+                        is_published=False,
+                    ).order_by('name'))
+
                 subsections_with_tests.append({
                     'subsection': subsection,
-                    'tests': subsection_tests
+                    'tests': subsection_tests,
+                    'drafts': subsection_drafts,
                 })
             
             sectional_data.append({
                 'section': section,
                 'subsections': subsections_with_tests,
                 'tests': section_tests,
+                'drafts': section_drafts,
                 'is_all_tests': False
             })
 

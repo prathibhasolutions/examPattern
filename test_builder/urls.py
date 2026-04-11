@@ -26,4 +26,22 @@ urlpatterns = [
     path('<int:draft_id>/delete-published/', views.delete_published_test, name='builder_delete_published'),
     path('<int:draft_id>/toggle-active/', views.toggle_test_active, name='builder_toggle_active'),
     path('orphan/<int:test_id>/deactivate/', views.deactivate_orphaned_test, name='builder_deactivate_orphan'),
+
+    # Inline management API (called by tests_list & series_tests pages)
+    path('api/inline/series/create/', views.api_inline_create_series, name='api_inline_create_series'),
+    path('api/inline/series/<int:series_id>/update/', views.api_inline_update_series, name='api_inline_update_series'),
+    path('api/inline/series/<int:series_id>/delete/', views.api_inline_delete_series, name='api_inline_delete_series'),
+    path('api/inline/section/create/', views.api_inline_create_section, name='api_inline_create_section'),
+    path('api/inline/section/<int:section_id>/rename/', views.api_inline_rename_section, name='api_inline_rename_section'),
+    path('api/inline/section/<int:section_id>/delete/', views.api_inline_delete_section, name='api_inline_delete_section'),
+    path('api/inline/sections/reorder/', views.api_inline_reorder_sections, name='api_inline_reorder_sections'),
+    path('api/inline/subsection/create/', views.api_inline_create_subsection, name='api_inline_create_subsection'),
+    path('api/inline/subsection/<int:subsection_id>/rename/', views.api_inline_rename_subsection, name='api_inline_rename_subsection'),
+    path('api/inline/subsection/<int:subsection_id>/delete/', views.api_inline_delete_subsection, name='api_inline_delete_subsection'),
+    path('api/inline/test/create/', views.api_inline_create_test, name='api_inline_create_test'),
+    path('api/inline/test/<int:test_id>/rename/', views.api_inline_rename_test, name='api_inline_rename_test'),
+    path('api/inline/test/<int:test_id>/delete/', views.api_inline_delete_test, name='api_inline_delete_test'),
+    path('api/inline/test/<int:test_id>/move/', views.api_inline_move_test, name='api_inline_move_test'),
+    path('api/inline/draft/<int:draft_id>/delete/', views.api_inline_delete_draft, name='api_inline_delete_draft'),
+    path('api/inline/series/<int:series_id>/highlights/', views.api_inline_series_highlights, name='api_inline_series_highlights'),
 ]

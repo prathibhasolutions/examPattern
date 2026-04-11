@@ -29,21 +29,37 @@ def monitor_home(request):
         .order_by('name')
     )
 
+    show_all = request.GET.get('all') == '1'
     selected_test = None
     student_rows = []
+    all_attempts = []
 
-    test_id = request.GET.get('test')
-    if test_id:
-        selected_test = get_object_or_404(Test, id=test_id)
-        student_rows = (
+    if show_all:
+        all_attempts = (
             TestAttempt.objects
-            .filter(test=selected_test, status=TestAttempt.STATUS_SUBMITTED)
-            .select_related('user', 'evaluation')
-            .order_by('user__username', 'attempt_number')
+            .filter(status__in=[TestAttempt.STATUS_IN_PROGRESS, TestAttempt.STATUS_SUBMITTED])
+            .select_related('user', 'test', 'test__series', 'evaluation')
+            .order_by('-started_at')
         )
+    else:
+        test_id = request.GET.get('test')
+        if test_id:
+            selected_test = get_object_or_404(Test, id=test_id)
+            student_rows = (
+                TestAttempt.objects
+                .filter(
+                    test=selected_test,
+                    status__in=[TestAttempt.STATUS_IN_PROGRESS, TestAttempt.STATUS_SUBMITTED]
+                )
+                .select_related('user', 'evaluation')
+                .order_by('user__username', 'attempt_number')
+            )
 
     return render(request, 'monitor/home.html', {
         'series_list': series_list,
         'selected_test': selected_test,
         'student_rows': student_rows,
+        'show_all': show_all,
+        'all_attempts': all_attempts,
     })
+

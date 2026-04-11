@@ -232,6 +232,9 @@ body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2
     <div id="modalStep3Wrap" style="display:none">
       <div class="warning-box"><strong>Step 3 of 3:</strong> Type <code id="modalConfirmWord"></code> below to confirm deletion.</div>
       <input type="text" id="modalConfirmInput" placeholder="Type name here…">
+      <p id="modalConfirmError" style="color:#d63031; font-size:0.82rem; margin:0.4rem 0 0; display:none;">
+        <i class="fas fa-exclamation-circle"></i> Name does not match — please type it exactly as shown above.
+      </p>
     </div>
     <div class="modal-actions">
       <button class="sa-btn sa-btn-ghost" id="modalCancelBtn" onclick="closeDeleteModal()">Cancel</button>
@@ -252,6 +255,8 @@ function openDeleteModal(title, desc, confirmWord, actionFn) {
   document.getElementById('modalDesc').textContent = desc;
   document.getElementById('modalConfirmWord').textContent = confirmWord;
   document.getElementById('modalConfirmInput').value = '';
+  document.getElementById('modalConfirmInput').style.borderColor = '';
+  document.getElementById('modalConfirmError').style.display = 'none';
   document.getElementById('modalStep1').style.display = '';
   document.getElementById('modalStep2').style.display = 'none';
   document.getElementById('modalStep3Wrap').style.display = 'none';
@@ -279,11 +284,13 @@ function modalNext() {
   } else if (_modalStep === 3) {
     const typed = document.getElementById('modalConfirmInput').value.trim();
     const expected = document.getElementById('modalConfirmWord').textContent.trim();
+    const errEl = document.getElementById('modalConfirmError');
     if (typed !== expected) {
       document.getElementById('modalConfirmInput').style.borderColor = '#d63031';
-      document.getElementById('modalConfirmInput').placeholder = 'Name does not match — try again';
+      errEl.style.display = '';
       return;
     }
+    errEl.style.display = 'none';
     closeDeleteModal();
     if (_modalAction) _modalAction();
   }
@@ -306,17 +313,18 @@ function postJSON(url, data, onSuccess, onError) {
   body.append('csrfmiddlewaretoken', getCsrf());
   fetch(url, { method:'POST', body, headers:{'X-Requested-With':'XMLHttpRequest'} })
     .then(r => {
-      if (!r.ok && r.status !== 400) {
-        onError('Server error ' + r.status + '. Try refreshing the page.');
-        return;
-      }
-      r.json().then(d => {
+      r.text().then(text => {
+        let d;
+        try { d = JSON.parse(text); } catch(e) {
+          onError('Server error ' + r.status + '. Try refreshing the page.');
+          return;
+        }
         if (d.success) {
           try { onSuccess(d); } catch(e) { console.error('postJSON onSuccess error:', e); }
         } else {
           onError(d.error || 'Unknown error');
         }
-      }).catch(() => onError('Invalid server response. Try refreshing the page.'));
+      });
     })
     .catch(() => onError('Could not reach the server. Check your connection.'));
 }

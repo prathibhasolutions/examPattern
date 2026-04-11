@@ -1796,3 +1796,474 @@ def api_copy_questions(request, draft_id):
         'section_id': target_section.id,
         'questions': questions_data,
     })
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Inline management API (used by tests_list and series_tests pages directly)
+# ──────────────────────────────────────────────────────────────────────────────
+
+import json as _json_inline
+
+
+def _json_admin(request):
+    """Return JsonResponse error if user is not admin, else None."""
+    from django.http import JsonResponse
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    return None
+
+
+def _body(request):
+    """Parse JSON body if Content-Type is application/json, else fall back to POST."""
+    ct = request.content_type or ''
+    if 'application/json' in ct:
+        try:
+            return _json_inline.loads(request.body)
+        except (ValueError, TypeError):
+            return {}
+    return request.POST
+
+
+@require_http_methods(["POST"])
+def api_inline_create_series(request):
+    """Inline API: create a new test series."""
+    from django.http import JsonResponse
+    err = _json_admin(request)
+    if err:
+        return err
+
+    _b = _body(request)
+    name = (_b.get('name') or '').strip()
+    description = (_b.get('description') or '').strip()
+    exam_cover = request.FILES.get('exam_cover')
+
+    if not name:
+        return JsonResponse({'error': 'Series name is required.'}, status=400)
+    if TestSeries.objects.filter(name__iexact=name).exists():
+        return JsonResponse({'error': f"A series named '{name}' already exists."}, status=400)
+
+    base_slug = slugify(name)
+    slug = base_slug
+    counter = 1
+    while TestSeries.objects.filter(slug=slug).exists():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+
+    with transaction.atomic():
+        series = TestSeries.objects.create(
+            name=name, slug=slug, description=description,
+            exam_cover=exam_cover, is_active=True,
+        )
+        SeriesSection.objects.create(
+            series=series, name="All Tests",
+            slug="all-tests", order=1, is_active=True,
+        )
+        highlights = _extract_highlights(request)
+        for order, h in enumerate(highlights, start=1):
+            TestSeriesHighlight.objects.create(
+                series=series, title=h['title'], value=h['value'], order=order
+            )
+
+    return JsonResponse({
+        'ok': True,
+        'series': {
+            'id': series.id, 'name': series.name, 'slug': series.slug,
+            'description': series.description,
+        }
+    })
+
+
+@require_http_methods(["POST"])
+def api_inline_update_series(request, series_id):
+    """Inline API: update a series name, description, cover photo, and highlights."""
+    from django.http import JsonResponse
+    err = _json_admin(request)
+    if err:
+        return err
+
+    series = get_object_or_404(TestSeries, id=series_id)
+    _b = _body(request)
+    name = (_b.get('name') or '').strip()
+    description = (_b.get('description') or '').strip()
+    exam_cover = request.FILES.get('exam_cover')
+
+    if not name:
+        return JsonResponse({'error': 'Series name is required.'}, status=400)
+    if TestSeries.objects.filter(name__iexact=name).exclude(id=series_id).exists():
+        return JsonResponse({'error': f"A series named '{name}' already exists."}, status=400)
+
+    update_fields = ['name', 'description', 'updated_at']
+    series.name = name
+    series.description = description
+    if exam_cover:
+        series.exam_cover = exam_cover
+        update_fields.append('exam_cover')
+    series.save(update_fields=update_fields)
+
+    series.highlights.all().delete()
+    highlights = _extract_highlights(request)
+    for order, h in enumerate(highlights, start=1):
+        TestSeriesHighlight.objects.create(
+            series=series, title=h['title'], value=h['value'], order=order
+        )
+
+    return JsonResponse({'ok': True, 'name': series.name, 'description': series.description})
+
+
+@require_http_methods(["POST"])
+def api_inline_delete_series(request, series_id):
+    """Inline API: soft-delete (deactivate) a test series."""
+    from django.http import JsonResponse
+    err = _json_admin(request)
+    if err:
+        return err
+    series = get_object_or_404(TestSeries, id=series_id)
+    series.is_active = False
+    series.save(update_fields=['is_active'])
+    return JsonResponse({'ok': True})
+
+
+@require_http_methods(["POST"])
+def api_inline_create_section(request):
+    """Inline API: create a section under a series."""
+    from django.http import JsonResponse
+    err = _json_admin(request)
+    if err:
+        return err
+
+    _b = _body(request)
+    series_id = str(_b.get('series_id') or '').strip()
+    name = (_b.get('name') or '').strip()
+
+    if not series_id or not name:
+        return JsonResponse({'error': 'Series and section name are required.'}, status=400)
+
+    series = get_object_or_404(TestSeries, id=series_id)
+    if SeriesSection.objects.filter(series=series, name__iexact=name).exists():
+        return JsonResponse({'error': f"Section '{name}' already exists in {series.name}."}, status=400)
+
+    base_slug = slugify(name)
+    slug = base_slug
+    counter = 1
+    while SeriesSection.objects.filter(series=series, slug=slug).exists():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+
+    section = SeriesSection.objects.create(
+        series=series, name=name, slug=slug,
+        order=SeriesSection.objects.filter(series=series).count() + 1,
+        is_active=True,
+    )
+    return JsonResponse({'ok': True, 'section': {'id': section.id, 'name': section.name}})
+
+
+@require_http_methods(["POST"])
+def api_inline_rename_section(request, section_id):
+    """Inline API: rename a section."""
+    from django.http import JsonResponse
+    err = _json_admin(request)
+    if err:
+        return err
+
+    section = get_object_or_404(SeriesSection, id=section_id)
+    name = (_body(request).get('name') or '').strip()
+    if not name:
+        return JsonResponse({'error': 'Section name is required.'}, status=400)
+    if SeriesSection.objects.filter(series=section.series, name__iexact=name).exclude(id=section_id).exists():
+        return JsonResponse({'error': f"Section '{name}' already exists."}, status=400)
+
+    section.name = name
+    section.save(update_fields=['name'])
+    return JsonResponse({'ok': True, 'name': section.name})
+
+
+@require_http_methods(["POST"])
+def api_inline_delete_section(request, section_id):
+    """Inline API: delete a section (cannot delete 'All Tests')."""
+    from django.http import JsonResponse
+    err = _json_admin(request)
+    if err:
+        return err
+
+    section = get_object_or_404(SeriesSection, id=section_id)
+    if section.name.strip().lower() == 'all tests':
+        return JsonResponse({'error': "The 'All Tests' section cannot be deleted."}, status=400)
+    section.delete()
+    return JsonResponse({'ok': True})
+
+
+@require_http_methods(["POST"])
+def api_inline_reorder_sections(request):
+    """Inline API: reorder sections (JSON body: [{id, order}, ...])."""
+    from django.http import JsonResponse
+    err = _json_admin(request)
+    if err:
+        return err
+
+    try:
+        order_data = _json_inline.loads(request.body)
+    except (ValueError, TypeError):
+        return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+    for item in order_data:
+        SeriesSection.objects.filter(id=item['id']).update(order=item['order'])
+    return JsonResponse({'ok': True})
+
+
+@require_http_methods(["POST"])
+def api_inline_create_subsection(request):
+    """Inline API: create a subsection under a section."""
+    from django.http import JsonResponse
+    err = _json_admin(request)
+    if err:
+        return err
+
+    _b = _body(request)
+    section_id = str(_b.get('section_id') or '').strip()
+    name = (_b.get('name') or '').strip()
+
+    if not section_id or not name:
+        return JsonResponse({'error': 'Section and subsection name are required.'}, status=400)
+
+    section = get_object_or_404(SeriesSection, id=section_id)
+    if SeriesSubsection.objects.filter(section=section, name__iexact=name).exists():
+        return JsonResponse({'error': f"Subsection '{name}' already exists in {section.name}."}, status=400)
+
+    base_slug = slugify(name)
+    slug = base_slug
+    counter = 1
+    while SeriesSubsection.objects.filter(section=section, slug=slug).exists():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+
+    subsection = SeriesSubsection.objects.create(
+        section=section, name=name, slug=slug,
+        order=SeriesSubsection.objects.filter(section=section).count() + 1,
+        is_active=True,
+    )
+    return JsonResponse({'ok': True, 'subsection': {'id': subsection.id, 'name': subsection.name}})
+
+
+@require_http_methods(["POST"])
+def api_inline_rename_subsection(request, subsection_id):
+    """Inline API: rename a subsection."""
+    from django.http import JsonResponse
+    err = _json_admin(request)
+    if err:
+        return err
+
+    subsection = get_object_or_404(SeriesSubsection, id=subsection_id)
+    name = (_body(request).get('name') or '').strip()
+    if not name:
+        return JsonResponse({'error': 'Subsection name is required.'}, status=400)
+    if SeriesSubsection.objects.filter(section=subsection.section, name__iexact=name).exclude(id=subsection_id).exists():
+        return JsonResponse({'error': f"Subsection '{name}' already exists."}, status=400)
+
+    subsection.name = name
+    subsection.save(update_fields=['name'])
+    return JsonResponse({'ok': True, 'name': subsection.name})
+
+
+@require_http_methods(["POST"])
+def api_inline_delete_subsection(request, subsection_id):
+    """Inline API: delete a subsection."""
+    from django.http import JsonResponse
+    err = _json_admin(request)
+    if err:
+        return err
+
+    subsection = get_object_or_404(SeriesSubsection, id=subsection_id)
+    subsection.delete()
+    return JsonResponse({'ok': True})
+
+
+@require_http_methods(["POST"])
+def api_inline_create_test(request):
+    """Inline API: create a test draft and return the live-editor URL."""
+    from django.http import JsonResponse
+    err = _json_admin(request)
+    if err:
+        return err
+
+    _b = _body(request)
+    series_id = str(_b.get('series_id') or '').strip()
+    section_id = str(_b.get('section_id') or '').strip()
+    subsection_id = str(_b.get('subsection_id') or '').strip()
+    name = (_b.get('name') or '').strip()
+    duration_minutes = str(_b.get('duration_minutes') or '60').strip()
+    marks_per_question = str(_b.get('marks_per_question') or '1').strip()
+    negative_marks = str(_b.get('negative_marks') or '0').strip()
+
+    if not series_id or not name:
+        return JsonResponse({'error': 'Series and test name are required.'}, status=400)
+
+    series = get_object_or_404(TestSeries, id=series_id)
+
+    series_section = None
+    if section_id:
+        series_section = SeriesSection.objects.filter(id=section_id, series=series).first()
+    if not series_section:
+        series_section, _ = SeriesSection.objects.get_or_create(
+            series=series, name="All Tests",
+            defaults={"slug": "all-tests", "order": 1, "is_active": True},
+        )
+
+    series_subsection = None
+    if subsection_id and series_section:
+        series_subsection = SeriesSubsection.objects.filter(
+            id=subsection_id, section=series_section
+        ).first()
+
+    if TestDraft.objects.filter(series=series, name__iexact=name).exists():
+        return JsonResponse({'error': f"A test named '{name}' already exists in {series.name}."}, status=400)
+    if Test.objects.filter(series=series, name__iexact=name, is_active=True).exists():
+        return JsonResponse({'error': f"A test named '{name}' already exists in {series.name}."}, status=400)
+
+    try:
+        duration_minutes = int(duration_minutes)
+        marks_per_question = float(marks_per_question)
+        negative_marks = float(negative_marks)
+    except ValueError:
+        return JsonResponse({'error': 'Invalid numeric values.'}, status=400)
+
+    draft = TestDraft.objects.create(
+        series=series,
+        series_section=series_section,
+        series_subsection=series_subsection,
+        name=name,
+        duration_minutes=duration_minutes,
+        marks_per_question=marks_per_question,
+        negative_marks=negative_marks,
+        created_by=request.user,
+    )
+    SectionDraft.objects.create(test_draft=draft, name="Section 1", order=1)
+
+    return JsonResponse({'ok': True, 'redirect': f'/builder/{draft.id}/live-editor/'})
+
+
+@require_http_methods(["POST"])
+def api_inline_rename_test(request, test_id):
+    """Inline API: update a published test's name, duration, and marking scheme."""
+    from django.http import JsonResponse
+    err = _json_admin(request)
+    if err:
+        return err
+
+    test = get_object_or_404(Test, id=test_id)
+    _b = _body(request)
+    name = (_b.get('name') or '').strip()
+    if not name:
+        return JsonResponse({'error': 'Test name is required.'}, status=400)
+    if Test.objects.filter(series=test.series, name__iexact=name, is_active=True).exclude(id=test_id).exists():
+        return JsonResponse({'error': f"A test named '{name}' already exists."}, status=400)
+
+    update_fields = ['name', 'updated_at']
+    test.name = name
+
+    try:
+        duration_minutes = _b.get('duration_minutes')
+        if duration_minutes is not None:
+            test.duration_seconds = int(float(duration_minutes)) * 60
+            update_fields.append('duration_seconds')
+        marks = _b.get('marks_per_question')
+        if marks is not None:
+            test.marks_per_question = float(marks)
+            update_fields.append('marks_per_question')
+        negative = _b.get('negative_marks')
+        if negative is not None:
+            test.negative_marks_per_question = float(negative)
+            update_fields.append('negative_marks_per_question')
+    except (ValueError, TypeError):
+        return JsonResponse({'error': 'Invalid numeric values.'}, status=400)
+
+    test.save(update_fields=update_fields)
+
+    draft = TestDraft.objects.filter(published_test_id=test_id).first()
+    if draft:
+        draft_fields = ['name']
+        draft.name = name
+        if 'duration_seconds' in update_fields:
+            draft.duration_minutes = test.duration_seconds // 60
+            draft_fields.append('duration_minutes')
+        if 'marks_per_question' in update_fields:
+            draft.marks_per_question = test.marks_per_question
+            draft_fields.append('marks_per_question')
+        if 'negative_marks_per_question' in update_fields:
+            draft.negative_marks = test.negative_marks_per_question
+            draft_fields.append('negative_marks')
+        draft.save(update_fields=draft_fields)
+
+    return JsonResponse({'ok': True, 'name': test.name})
+
+
+@require_http_methods(["POST"])
+def api_inline_delete_test(request, test_id):
+    """Inline API: permanently delete a published test and its linked draft."""
+    from django.http import JsonResponse
+    err = _json_admin(request)
+    if err:
+        return err
+    test = get_object_or_404(Test, id=test_id)
+    TestDraft.objects.filter(published_test_id=test_id).delete()
+    test.delete()
+    return JsonResponse({'ok': True})
+
+
+@require_http_methods(["POST"])
+def api_inline_delete_draft(request, draft_id):
+    """Inline API: permanently delete an unpublished test draft."""
+    from django.http import JsonResponse
+    err = _json_admin(request)
+    if err:
+        return err
+    draft = get_object_or_404(TestDraft, id=draft_id, is_published=False)
+    draft.delete()
+    return JsonResponse({'ok': True})
+
+
+@require_http_methods(["POST"])
+def api_inline_move_test(request, test_id):
+    """Inline API: move a test to a different section/subsection within the same series."""
+    from django.http import JsonResponse
+    err = _json_admin(request)
+    if err:
+        return err
+
+    test = get_object_or_404(Test, id=test_id)
+    _b = _body(request)
+    section_id = str(_b.get('section_id') or '').strip()
+    subsection_id = str(_b.get('subsection_id') or '').strip()
+
+    if not section_id:
+        return JsonResponse({'error': 'Target section is required.'}, status=400)
+
+    section = get_object_or_404(SeriesSection, id=section_id, series=test.series)
+    subsection = None
+    if subsection_id:
+        subsection = SeriesSubsection.objects.filter(id=subsection_id, section=section).first()
+
+    test.series_section = section
+    test.series_subsection = subsection
+    test.save(update_fields=['series_section', 'series_subsection', 'updated_at'])
+
+    draft = TestDraft.objects.filter(published_test_id=test_id).first()
+    if draft:
+        draft.series_section = section
+        draft.series_subsection = subsection
+        draft.save(update_fields=['series_section', 'series_subsection'])
+
+    return JsonResponse({'ok': True})
+
+
+@require_http_methods(["GET"])
+def api_inline_series_highlights(request, series_id):
+    """Inline API: return existing highlights for a series (used to pre-fill edit modal)."""
+    from django.http import JsonResponse
+    err = _json_admin(request)
+    if err:
+        return err
+    series = get_object_or_404(TestSeries, id=series_id)
+    highlights = list(
+        series.highlights.order_by('order', 'id').values('title', 'value')
+    )
+    return JsonResponse({'highlights': highlights})

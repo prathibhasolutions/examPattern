@@ -165,7 +165,10 @@ def series_delete(request, series_id):
         return JsonResponse({'error': 'Confirmation missing.'}, status=400)
     series = get_object_or_404(TestSeries, pk=series_id)
     name = series.name
-    series.delete()
+    try:
+        series.delete()
+    except Exception as exc:
+        return JsonResponse({'error': f'Delete failed: {exc}'}, status=500)
     return JsonResponse({'success': True, 'deleted': name})
 
 
