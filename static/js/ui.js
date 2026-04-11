@@ -158,16 +158,15 @@ const UI = {
 
   // Attach event listeners to question inputs
   attachEventListeners: (question) => {
-    // Option change
+    // Option change: drive CSS from actual checked state, then save
     document.querySelectorAll(`input[name="options"][data-question-id="${question.id}"]`).forEach(input => {
       input.addEventListener('change', () => {
+        // Update 'selected' class on every option label based on real checked state
+        document.querySelectorAll(`input[name="options"][data-question-id="${question.id}"]`).forEach(opt => {
+          const lbl = opt.closest('.option');
+          if (lbl) lbl.classList.toggle('selected', opt.checked);
+        });
         UI.onAnswerChange(question.id);
-      });
-      input.addEventListener('click', (e) => {
-        const label = e.target.closest('.option');
-        if (label) {
-          label.classList.toggle('selected');
-        }
       });
     });
 

@@ -1086,6 +1086,9 @@ const IS_ADMIN = {% if user.is_staff %}true{% else %}false{% endif %};
 // Sections data for move-test modal
 const SECTIONS_DATA = [{% for data in sectional_data %}{id: {{ data.section.id }}, name: "{{ data.section.name|escapejs }}", subsections: [{% for s in data.subsections %}{id: {{ s.subsection.id }}, name: "{{ s.subsection.name|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]}{% if not forloop.last %},{% endif %}{% endfor %}];
 
+// Map of test_id -> draft_id for live editor links
+const TEST_DRAFT_MAP = { {% for test_id, draft_id in test_draft_map.items %}{{ test_id }}: {{ draft_id }}{% if not forloop.last %}, {% endif %}{% endfor %} };
+
 // CSRF helper
 function getCsrf() {
     const m = document.cookie.match(/csrftoken=([^;]+)/);
@@ -1363,6 +1366,7 @@ document.addEventListener('DOMContentLoaded', function() {
       <div class="modal-header"><h5 class="modal-title">Edit Test</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
         <input type="hidden" id="stRenameTestId">
+        <input type="hidden" id="stRenameTestDraftId">
         <div class="mb-3">
           <label class="form-label">Test Name <span class="text-danger">*</span></label>
           <input type="text" id="stInputRenameTestName" class="form-control">
@@ -1383,6 +1387,9 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
       </div>
       <div class="modal-footer">
+        <a id="stLiveEditorBtn" href="#" target="_blank" class="btn btn-warning me-auto" style="display:none;">
+          <i class="fas fa-pen-nib me-1"></i>Open Live Editor
+        </a>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-primary" onclick="submitRenameTest()">Save</button>
       </div>
@@ -1558,6 +1565,15 @@ function openRenameTestModal(id, name, durationSeconds, marksPerQ, negativeMarks
     document.getElementById('stEditTestDuration').value = durationSeconds ? Math.round(durationSeconds / 60) : '';
     document.getElementById('stEditTestMarks').value = marksPerQ || '';
     document.getElementById('stEditTestNegative').value = negativeMarks || '';
+    // Show Live Editor link if a linked draft exists
+    const draftId = TEST_DRAFT_MAP[id];
+    const liveEditorBtn = document.getElementById('stLiveEditorBtn');
+    if (draftId) {
+        liveEditorBtn.href = `/builder/${draftId}/live-editor/`;
+        liveEditorBtn.style.display = '';
+    } else {
+        liveEditorBtn.style.display = 'none';
+    }
     new bootstrap.Modal(document.getElementById('stModalRenameTest')).show();
 }
 function submitRenameTest() {

@@ -11,11 +11,24 @@
     margin: 0 !important;
     padding: 0 !important;
     overflow: hidden;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Hide the mobile bottom nav bar while taking a test */
+  .bottom-nav {
+    display: none !important;
   }
 
   main.container-fluid {
     padding: 0 !important;
     margin: 0 !important;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   /* Mobile Palette Toggle Button */
@@ -119,14 +132,25 @@
     align-items: center;
     padding: 10px 20px;
     background: rgba(0, 0, 0, 0.1);
-    flex-wrap: wrap;
-    gap: 10px;
+    flex-wrap: nowrap;
+    gap: 8px;
   }
 
   .user-profile {
     display: flex;
     align-items: center;
     gap: 12px;
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .user-info-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .user-photo {
@@ -135,6 +159,7 @@
     border-radius: 50%;
     border: 2px solid white;
     object-fit: cover;
+    flex-shrink: 0;
   }
 
   .user-name {
@@ -142,10 +167,22 @@
     font-size: 14px;
   }
 
+  .test-name-label {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.92);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 240px;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+
   .timer-section {
     display: flex;
     align-items: center;
     gap: 15px;
+    flex-shrink: 0;
   }
 
   .timer-content {
@@ -303,10 +340,28 @@
     height: 18px;
   }
 
+  /* Review button — purple to match Marked status indicator */
+  .btn-review {
+    background-color: #c084fc;
+    border-color: #a855f7;
+    color: white;
+  }
+  .btn-review:hover, .btn-review:focus {
+    background-color: #a855f7;
+    border-color: #9333ea;
+    color: white;
+  }
+  .btn-review:active {
+    background-color: #9333ea;
+    border-color: #7e22ce;
+    color: white;
+  }
+
   /* Test Layout */
   .test-layout {
     display: flex;
-    height: calc(100vh - 117px - var(--offline-banner-height));
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
   }
 
@@ -452,7 +507,7 @@
   }
 
   .bottom-actions button {
-    min-width: 160px;
+    min-width: 0;
     font-weight: 600;
     padding: 10px 20px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -618,7 +673,7 @@
       position: fixed;
       right: 0;
       top: var(--navbar-height, 0px);
-      height: calc(100dvh - var(--navbar-height, 0px) - 60px);
+      height: calc(100dvh - var(--navbar-height, 0px));
       z-index: 1000;
       box-shadow: -4px 0 12px rgba(0, 0, 0, 0.2);
       width: min(85vw, 300px);
@@ -674,10 +729,6 @@
       font-size: 13px;
     }
 
-    .test-layout {
-      height: calc(100vh - 100px - var(--offline-banner-height));
-    }
-
     .question-header {
       padding: 10px 15px;
     }
@@ -695,32 +746,16 @@
     }
 
     .bottom-actions {
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      padding: 12px 15px;
+      flex-wrap: nowrap;
+      gap: 0.35rem;
+      padding: 10px 10px;
     }
 
     .bottom-actions button {
+      flex: 1 1 0;
       min-width: 0;
-      flex: 1 1 calc(50% - 0.25rem);
-      font-size: 13px;
-      padding: 8px 12px;
-    }
-
-    #btn-clear {
-      order: 1;
-    }
-
-    #btn-prev {
-      order: 2;
-    }
-
-    #btn-mark-review {
-      order: 3;
-    }
-
-    #btn-next {
-      order: 4;
+      font-size: 11px;
+      padding: 8px 5px;
     }
 
     .option {
@@ -778,12 +813,25 @@
     }
 
     .palette-grid {
-      grid-template-columns: repeat(7, 1fr);
-      gap: 5px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
     }
 
     .legend-items {
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .btn-label {
+      display: none;
+    }
+
+    .bottom-actions button {
+      font-size: 15px;
+      padding: 9px 6px;
+    }
+
+    .test-name-label {
+      max-width: 100px;
     }
   }
 
@@ -842,7 +890,10 @@
       {% else %}
         <div class="user-photo" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; color:white;">{{ user.username|first|upper }}</div>
       {% endif %}
-      <span class="user-name" id="userName">{{ user.get_full_name|default:user.username }}</span>
+      <div class="user-info-stack">
+        <span class="user-name" id="userName">{{ user.get_full_name|default:user.username }}</span>
+        {% if test %}<span class="test-name-label">{{ test.name }}</span>{% endif %}
+      </div>
     </div>
     <div class="timer-section">
       <div class="timer-content">
@@ -897,20 +948,20 @@
 
     <!-- Bottom Navigation Actions -->
     <div class="bottom-actions">
-      <button id="btn-prev" class="btn btn-secondary">
-        <i class="fas fa-arrow-left me-2"></i>Previous
+      <button id="btn-prev" class="btn btn-secondary" title="Previous Question">
+        <i class="fas fa-arrow-left"></i><span class="btn-label"> Previous</span>
       </button>
       
-      <button id="btn-clear" class="btn btn-outline-secondary">
-        <i class="fas fa-eraser me-2"></i>Clear Response
+      <button id="btn-clear" class="btn btn-outline-secondary" title="Clear Response">
+        <i class="fas fa-eraser"></i><span class="btn-label"> Clear</span>
       </button>
       
-      <button id="btn-mark-review" class="btn btn-warning">
-        <i class="fas fa-bookmark me-2"></i>Mark for Review
+      <button id="btn-mark-review" class="btn btn-review" title="Mark for Review">
+        <i class="fas fa-bookmark"></i><span class="btn-label"> Review</span>
       </button>
       
-      <button id="btn-next" class="btn btn-primary">
-        Next<i class="fas fa-arrow-right ms-2"></i>
+      <button id="btn-next" class="btn btn-primary" title="Save &amp; Next">
+        <span class="btn-label">Next </span><i class="fas fa-arrow-right"></i>
       </button>
     </div>
   </div>

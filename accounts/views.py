@@ -188,12 +188,10 @@ def forgot_password(request):
             context['submitted_email'] = email
             try:
                 target = CustomUser.objects.get(email=email)
-                if not target.has_usable_password():
-                    context['error'] = 'This account uses Google Sign-In — no password reset needed.'
-                else:
-                    context['show_confirm'] = True
-                    context['confirm_email'] = email
-                    context['target_username'] = target.username
+                context['show_confirm'] = True
+                context['confirm_email'] = email
+                context['target_username'] = target.username
+                context['is_google_user'] = not target.has_usable_password()
             except CustomUser.DoesNotExist:
                 context['error'] = 'No account found with that email address.'
 
@@ -201,14 +199,11 @@ def forgot_password(request):
             email = request.POST.get('email', '').strip().lower()
             try:
                 target = CustomUser.objects.get(email=email)
-                if target.has_usable_password():
-                    # Remove any existing request and create a fresh pending one
-                    ForgotPasswordRequest.objects.filter(user=target, status='pending').delete()
-                    ForgotPasswordRequest.objects.create(user=target)
-                    context['request_sent'] = True
-                    context['target_username'] = target.username
-                else:
-                    context['error'] = 'This account uses Google Sign-In.'
+                # Remove any existing request and create a fresh pending one
+                ForgotPasswordRequest.objects.filter(user=target, status='pending').delete()
+                ForgotPasswordRequest.objects.create(user=target)
+                context['request_sent'] = True
+                context['target_username'] = target.username
             except CustomUser.DoesNotExist:
                 context['error'] = 'Invalid request. Please try again.'
 

@@ -175,11 +175,21 @@ def tests_series_detail(request, slug):
                 if attempt_map[tid]['latest_submitted_id'] is None:
                     attempt_map[tid]['latest_submitted_id'] = attempt.id
 
+    # Build a map of test_id → draft_id so the edit modal can link to live editor
+    test_draft_map = {}
+    if request.user.is_staff:
+        all_test_ids = list(all_tests.values_list('id', flat=True))
+        linked_drafts = TestDraft.objects.filter(
+            published_test_id__in=all_test_ids
+        ).values('published_test_id', 'id')
+        test_draft_map = {d['published_test_id']: d['id'] for d in linked_drafts}
+
     return render(request, 'testseries/series_tests.html', {
         'series': series,
         'sectional_data': sectional_data,
         'all_tests': all_tests,
         'attempt_map': attempt_map,
+        'test_draft_map': test_draft_map,
     })
 
 
@@ -290,6 +300,7 @@ def test_interface(request, test_id):
     return render(request, 'test_interface.html', {
         'test_id': test_id,
         'attempt_id': attempt_id,
+        'test': test,
         'now': timezone.now(),
     })
 
