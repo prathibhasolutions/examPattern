@@ -103,6 +103,11 @@
         <i class="fas fa-tools"></i>
         <span>Builder</span>
       </a>
+      <a href="/monitor/"
+         class="{% if 'monitor' in request.resolver_match.namespace %}active{% endif %}">
+        <i class="fas fa-chart-bar"></i>
+        <span>Monitor</span>
+      </a>
       {% endif %}
       {% if user.is_superuser %}
       <button type="button" class="bottom-nav-btn" data-bs-toggle="modal" data-bs-target="#manageAdminsModal">
