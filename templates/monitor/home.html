@@ -213,14 +213,80 @@ body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2
 .role-superuser { background: #f3e8ff; color: #7c3aed; }
 .role-staff { background: #dbeafe; color: #1d4ed8; }
 
+/* ── Hamburger button ── */
+.hamburger-btn {
+  display: none;
+  background: transparent; border: none; color: white;
+  font-size: 1.4rem; cursor: pointer; padding: 0 0.5rem 0 0;
+  line-height: 1; flex-shrink: 0;
+}
+
+/* ── Sidebar overlay (mobile backdrop) ── */
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5); z-index: 999;
+}
+.sidebar-overlay.active { display: block; }
+
+/* ── Bottom nav (mobile only) — uses mon-bottom-nav to avoid style.css conflict ── */
+.mon-bottom-nav {
+  display: none; position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: #1a2744; height: 58px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  z-index: 1100; justify-content: space-around; align-items: center;
+}
+.mon-bottom-nav a {
+  display: flex; flex-direction: column; align-items: center;
+  color: rgba(255,255,255,0.6); text-decoration: none;
+  font-size: 0.62rem; gap: 3px; padding: 0 0.5rem; transition: color 0.2s;
+}
+.mon-bottom-nav a i { font-size: 1.15rem; }
+.mon-bottom-nav a.active, .mon-bottom-nav a:hover { color: #4facfe; }
+
 /* ── Responsive ── */
-@media (max-width: 768px) {
-  .mon-sidebar { display: none; }
-  .mon-main { padding: 1rem; }
+@media (max-width: 992px) {
+  /* Show hamburger, hide topbar chips — use !important to beat base specificity */
+  .hamburger-btn { display: flex !important; align-items: center; }
+  .mon-topbar .topbar-right { display: none !important; }
+
+  /* Sidebar: off-canvas slide-in drawer */
+  .mon-sidebar {
+    position: fixed; top: 60px; bottom: 0; left: -285px;
+    width: 280px; z-index: 1000;
+    transition: left 0.3s ease; overflow-y: auto;
+  }
+  .mon-sidebar.open { left: 0; }
+
+  /* Main content full width, add bottom padding for nav bar */
+  .mon-shell { display: block; }
+  .mon-main { padding: 1rem; padding-bottom: 70px; }
+
+  /* Test heading */
   .test-heading { flex-direction: column; align-items: flex-start; }
   .test-heading .stats-pill { margin-left: 0; }
+
+  /* Table toolbar */
+  .table-toolbar { flex-direction: column; }
   .table-toolbar input { width: 100%; }
+
+  /* Filter bar */
+  .filter-bar { flex-direction: column; }
+  .filter-bar input, .filter-bar select { width: 100%; min-width: unset; }
+  .filter-bar-count { margin-left: 0; }
+
+  /* Action buttons */
   .action-btns { flex-direction: column; }
+
+  /* Show bottom nav */
+  .mon-bottom-nav { display: flex; }
+
+  /* Brand text smaller to fit */
+  .mon-topbar .brand span { font-size: 0.95rem; }
+}
+
+@media (max-width: 480px) {
+  .mon-topbar .brand span { display: none; }
 }
 </style>
 </head>
@@ -228,6 +294,9 @@ body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2
 
 <!-- Top Bar -->
 <header class="mon-topbar">
+  <button class="hamburger-btn" id="sidebarToggle" aria-label="Open sidebar">
+    <i class="fas fa-bars"></i>
+  </button>
   <a class="brand" href="{% url 'monitor:home' %}">
     <img src="{% static 'examPattern.png' %}" alt="examPattern">
     <span>Student Monitor</span>
@@ -241,6 +310,8 @@ body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2
     <a href="{% url 'logout' %}" class="tb-chip tb-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
   </div>
 </header>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <div class="mon-shell">
 
@@ -425,9 +496,19 @@ body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2
       </div>
     </div>
 
-    <!-- Search / filter -->
-    <div class="table-toolbar">
-      <input type="text" id="studentSearch" placeholder="Search by name or email…" oninput="filterStudents(this.value)">
+    <!-- Filter bar -->
+    <div class="filter-bar" id="testFilterBar">
+      <input type="text" id="studentSearch" placeholder="&#128269; Search by name or email…" oninput="applyTestFilters()">
+      <select id="filterAttempt" onchange="applyTestFilters()">
+        <option value="">All Attempts</option>
+      </select>
+      <select id="filterSort" onchange="applyTestFilters()">
+        <option value="">Default Order</option>
+        <option value="desc">Marks: High → Low</option>
+        <option value="asc">Marks: Low → High</option>
+      </select>
+      <button class="filter-reset" onclick="resetTestFilters()"><i class="fas fa-times"></i> Reset</button>
+      <span class="filter-bar-count" id="testFilterCount"></span>
     </div>
 
     <!-- Attempts table -->
@@ -445,7 +526,10 @@ body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2
         </thead>
         <tbody>
           {% for row in student_rows %}
-          <tr data-search="{{ row.user.username|lower }} {{ row.user.email|lower }} {{ row.user.get_full_name|lower }}">
+          {% with eval=row.evaluation %}
+          <tr data-search="{{ row.user.username|lower }} {{ row.user.email|lower }} {{ row.user.get_full_name|lower }}"
+              data-attempt="{{ row.attempt_number }}"
+              data-score="{% if row.status == 'submitted' and eval %}{{ eval.total_score|default:'-1' }}{% else %}-1{% endif %}">
             <td>
               <div class="user-cell">
                 <div class="user-avatar">
@@ -511,6 +595,7 @@ body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2
               </div>
             </td>
           </tr>
+          {% endwith %}
           {% empty %}
           <tr class="no-rows"><td colspan="6">No attempts yet for this test.</td></tr>
           {% endfor %}
@@ -522,17 +607,93 @@ body { margin:0; font-family:'Segoe UI', system-ui, sans-serif; background:#f0f2
 </div>
 
 <script>
+// ── Sidebar hamburger toggle (mobile) ─────────────────────────────────────────
+const _sidebarToggleBtn = document.getElementById('sidebarToggle');
+const _monSidebar = document.querySelector('.mon-sidebar');
+const _sidebarOverlay = document.getElementById('sidebarOverlay');
+
+if (_sidebarToggleBtn) {
+  _sidebarToggleBtn.addEventListener('click', function () {
+    _monSidebar.classList.toggle('open');
+    _sidebarOverlay.classList.toggle('active');
+  });
+}
+if (_sidebarOverlay) {
+  _sidebarOverlay.addEventListener('click', function () {
+    _monSidebar.classList.remove('open');
+    _sidebarOverlay.classList.remove('active');
+  });
+}
+// Close sidebar when a test/all link is tapped on mobile
+document.querySelectorAll('.test-link[href], .all-link').forEach(function (link) {
+  link.addEventListener('click', function () {
+    if (window.innerWidth <= 768) {
+      _monSidebar.classList.remove('open');
+      _sidebarOverlay.classList.remove('active');
+    }
+  });
+});
+
 function toggleSeries(el) {
   el.classList.toggle('open');
   el.nextElementSibling.classList.toggle('open');
 }
 
-function filterStudents(q) {
-  q = q.toLowerCase();
-  document.querySelectorAll('#attemptsTable tbody tr:not(.no-rows)').forEach(tr => {
-    tr.style.display = tr.dataset.search.includes(q) ? '' : 'none';
+function applyTestFilters() {
+  const q       = document.getElementById('studentSearch').value.toLowerCase();
+  const attempt = document.getElementById('filterAttempt').value;
+  const sort    = document.getElementById('filterSort').value;
+
+  const tbody = document.querySelector('#attemptsTable tbody');
+  const rows  = Array.from(tbody.querySelectorAll('tr:not(.no-rows)'));
+
+  // Filter
+  const matched = rows.filter(tr => {
+    const searchOk  = !q       || tr.dataset.search.includes(q);
+    const attemptOk = !attempt || tr.dataset.attempt === attempt;
+    return searchOk && attemptOk;
   });
+
+  // Sort
+  if (sort === 'desc' || sort === 'asc') {
+    matched.sort((a, b) => {
+      const sa = parseFloat(a.dataset.score) || -Infinity;
+      const sb = parseFloat(b.dataset.score) || -Infinity;
+      return sort === 'desc' ? sb - sa : sa - sb;
+    });
+  }
+
+  // Hide all, then show matched in sorted order
+  rows.forEach(tr => { tr.style.display = 'none'; });
+  matched.forEach(tr => { tbody.appendChild(tr); tr.style.display = ''; });
+
+  // Update count label
+  const countEl = document.getElementById('testFilterCount');
+  if (countEl) countEl.textContent = matched.length + ' shown';
 }
+
+function resetTestFilters() {
+  document.getElementById('studentSearch').value = '';
+  document.getElementById('filterAttempt').value = '';
+  document.getElementById('filterSort').value = '';
+  applyTestFilters();
+}
+
+// Populate attempt dropdown from row data
+(function buildAttemptDropdown() {
+  const seen = new Set();
+  document.querySelectorAll('#attemptsTable tbody tr:not(.no-rows)').forEach(tr => {
+    if (tr.dataset.attempt) seen.add(tr.dataset.attempt);
+  });
+  const sel = document.getElementById('filterAttempt');
+  if (!sel) return;
+  Array.from(seen).sort((a, b) => Number(a) - Number(b)).forEach(n => {
+    const o = document.createElement('option');
+    o.value = n;
+    o.textContent = 'Attempt ' + n;
+    sel.appendChild(o);
+  });
+})();
 
 // Sidebar search
 document.getElementById('sidebarSearch').addEventListener('input', function() {
@@ -657,6 +818,30 @@ function resetAllFilters() {
 applyAllFilters();
 {% endif %}
 </script>
+<nav class="mon-bottom-nav">
+  <a href="{% url 'monitor:home' %}">
+    <i class="fas fa-tachometer-alt"></i>
+    <span>Monitor</span>
+  </a>
+  <a href="?all=1">
+    <i class="fas fa-stream"></i>
+    <span>All</span>
+  </a>
+  <a href="{% url 'tests_list' %}">
+    <i class="fas fa-list-alt"></i>
+    <span>Site</span>
+  </a>
+  {% if request.user.is_superuser %}
+  <a href="/superadmin/">
+    <i class="fas fa-shield-alt"></i>
+    <span>Admin</span>
+  </a>
+  {% endif %}
+  <a href="{% url 'logout' %}">
+    <i class="fas fa-sign-out-alt"></i>
+    <span>Logout</span>
+  </a>
+</nav>
 
 </body>
 </html>

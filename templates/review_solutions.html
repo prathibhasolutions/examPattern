@@ -412,7 +412,7 @@
     }
 
     .right-sidebar.mobile-hidden {
-        transform: translateX(100%);
+        /* hidden state is handled per breakpoint below */
     }
 
     .legend-section {
@@ -468,7 +468,7 @@
 
     .palette-grid {
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(5, 1fr) !important;
         gap: 8px;
     }
 
@@ -524,15 +524,42 @@
 
         .right-sidebar {
             position: fixed;
-            right: 0;
-            top: 106px;
-            height: calc(100vh - 106px);
-            z-index: 200;
-            width: min(85vw, 300px);
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 300;
+            overflow-y: auto;
         }
 
         .right-sidebar.mobile-hidden {
-            transform: translateX(100%);
+            display: none;
+        }
+
+        .mobile-palette-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .mobile-palette-close {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
         }
     }
 
@@ -542,7 +569,7 @@
         }
 
         .palette-grid {
-            grid-template-columns: repeat(6, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 6px;
         }
 
@@ -564,9 +591,14 @@
         }
 
         .palette-grid {
-            grid-template-columns: repeat(7, 1fr);
-            gap: 5px;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
         }
+    }
+
+    .action-btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
     }
 </style>
 {% endblock %}
@@ -647,7 +679,12 @@
             </div>
         </div>
 
-        <div class="right-sidebar" id="rightSidebar">
+        <div class="right-sidebar mobile-hidden" id="rightSidebar">
+            <!-- Mobile-only close bar -->
+            <div class="mobile-palette-header" id="mobilePaletteHeader">
+                <span>Question Palette</span>
+                <button class="mobile-palette-close" id="mobilePaletteClose" aria-label="Close palette">&times;</button>
+            </div>
             <div class="legend-section">
                 <div class="legend-title">Legend</div>
                 <div class="legend-items">
@@ -693,12 +730,13 @@
         return acc;
     }, {});
 
-    const orderedQuestions = [...questions].sort((a, b) => {
-        if (a.section_order !== b.section_order) {
-            return a.section_order - b.section_order;
-        }
-        return a.question_number - b.question_number;
-    });
+    // Preserve the server-side ordering (section order, then question id) by
+    // using the original payload index as the sort key so ties are stable.
+    const orderedQuestions = questions.map((q, i) => ({ ...q, _idx: i }))
+        .sort((a, b) => {
+            if (a.section_order !== b.section_order) return a.section_order - b.section_order;
+            return a._idx - b._idx;
+        });
 
     const escapeHtml = (value) => {
         const div = document.createElement('div');
@@ -910,24 +948,30 @@
         updateQuestionHeader(question);
         renderQuestion(question);
         updatePaletteActive();
+
+        // Keep prev/next buttons in sync regardless of how navigation happened
+        const idx = orderedQuestions.findIndex(q => q.id === currentQuestionId);
+        const _prev = document.getElementById('btn-prev');
+        const _next = document.getElementById('btn-next');
+        if (_prev) _prev.disabled = idx <= 0;
+        if (_next) _next.disabled = idx >= orderedQuestions.length - 1;
+
+        // Auto-close the palette panel on mobile after selecting a question
+        if (window.innerWidth <= 992) {
+            rightSidebar.classList.add('mobile-hidden');
+            if (paletteToggle) paletteToggle.classList.remove('active');
+        }
     };
 
     const bindNavigation = () => {
         const prevBtn = document.getElementById('btn-prev');
         const nextBtn = document.getElementById('btn-next');
 
-        const updateButtons = () => {
-            const index = orderedQuestions.findIndex(q => q.id === currentQuestionId);
-            if (prevBtn) prevBtn.disabled = index <= 0;
-            if (nextBtn) nextBtn.disabled = index === orderedQuestions.length - 1;
-        };
-
         if (prevBtn) {
             prevBtn.addEventListener('click', () => {
                 const index = orderedQuestions.findIndex(q => q.id === currentQuestionId);
                 if (index > 0) {
                     selectQuestion(orderedQuestions[index - 1].id);
-                    updateButtons();
                 }
             });
         }
@@ -937,29 +981,40 @@
                 const index = orderedQuestions.findIndex(q => q.id === currentQuestionId);
                 if (index < orderedQuestions.length - 1) {
                     selectQuestion(orderedQuestions[index + 1].id);
-                    updateButtons();
                 }
             });
         }
+    };
 
-        updateButtons();
+    const closePaletteOnMobile = () => {
+        rightSidebar.classList.add('mobile-hidden');
+        paletteToggle.classList.remove('active');
     };
 
     const initPaletteToggle = () => {
         if (!paletteToggle || !rightSidebar) return;
+
+        // Hamburger button opens palette
         paletteToggle.addEventListener('click', () => {
             paletteToggle.classList.toggle('active');
             rightSidebar.classList.toggle('mobile-hidden');
         });
 
-        document.addEventListener('click', (event) => {
-            const isClickInsideSidebar = rightSidebar.contains(event.target);
-            const isClickToggle = paletteToggle.contains(event.target);
-            if (!isClickInsideSidebar && !isClickToggle && window.innerWidth <= 992) {
-                rightSidebar.classList.add('mobile-hidden');
-                paletteToggle.classList.remove('active');
-            }
-        });
+        // X button inside the palette closes it
+        const closeBtn = document.getElementById('mobilePaletteClose');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closePaletteOnMobile);
+        }
+
+        // Hide the mobile header bar on desktop
+        const mobileHeader = document.getElementById('mobilePaletteHeader');
+        if (mobileHeader) {
+            const updateHeaderVisibility = () => {
+                mobileHeader.style.display = window.innerWidth <= 992 ? 'flex' : 'none';
+            };
+            updateHeaderVisibility();
+            window.addEventListener('resize', updateHeaderVisibility);
+        }
     };
 
     const initAttemptSwitcher = () => {
@@ -980,15 +1035,10 @@
 
         renderSectionTabs();
         setActiveSection(sections[0].id);
-        selectQuestion(orderedQuestions[0].id);
         bindNavigation();
         initPaletteToggle();
         initAttemptSwitcher();
-
-        if (window.innerWidth <= 992) {
-            rightSidebar.classList.add('mobile-hidden');
-            paletteToggle.classList.remove('active');
-        }
+        selectQuestion(orderedQuestions[0].id);
     };
 
     initReview();

@@ -1384,6 +1384,103 @@ def api_delete_question(request, draft_id, question_id):
 @admin_required
 @login_required
 @require_http_methods(["POST"])
+def api_bulk_delete_questions(request, draft_id):
+    """Delete multiple questions from a section in one request."""
+    import json
+    from django.http import JsonResponse
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+    draft.refresh_lock(request.user)
+    try:
+        body = json.loads(request.body)
+        question_ids = [int(x) for x in body.get('question_ids', [])]
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return JsonResponse({'success': False, 'error': 'Invalid request body.'}, status=400)
+    if not question_ids:
+        return JsonResponse({'success': False, 'error': 'No question IDs provided.'}, status=400)
+
+    # Verify all questions belong to this draft and collect their section IDs
+    questions = QuestionDraft.objects.filter(id__in=question_ids, section__test_draft=draft)
+    if questions.count() != len(question_ids):
+        return JsonResponse({'success': False, 'error': 'One or more questions not found.'}, status=404)
+    affected_sections = set(questions.values_list('section_id', flat=True))
+    questions.delete()
+
+    # Reorder remaining questions in every affected section
+    for section_id in affected_sections:
+        for i, q in enumerate(QuestionDraft.objects.filter(section_id=section_id).order_by('order'), start=1):
+            if q.order != i:
+                q.order = i
+                q.save(update_fields=['order'])
+    return JsonResponse({'success': True})
+
+
+@admin_required
+@login_required
+@require_http_methods(["POST"])
+def api_bulk_move_questions(request, draft_id):
+    """Move multiple questions from their current section to a different section in the same draft."""
+    import json
+    from django.http import JsonResponse
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+    draft.refresh_lock(request.user)
+    try:
+        body = json.loads(request.body)
+        question_ids = [int(x) for x in body.get('question_ids', [])]
+        target_section_id = int(body.get('target_section_id'))
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return JsonResponse({'success': False, 'error': 'Invalid request body.'}, status=400)
+    if not question_ids:
+        return JsonResponse({'success': False, 'error': 'No question IDs provided.'}, status=400)
+
+    target_section = get_object_or_404(SectionDraft, id=target_section_id, test_draft=draft)
+
+    # Verify all questions belong to this draft and are NOT already in the target section
+    questions = QuestionDraft.objects.filter(
+        id__in=question_ids, section__test_draft=draft
+    ).exclude(section_id=target_section_id).order_by('order')
+    if questions.count() == 0:
+        return JsonResponse({'success': False, 'error': 'No valid questions to move.'}, status=400)
+
+    source_section_ids = set(questions.values_list('section_id', flat=True))
+
+    # Find the current max order in the target section
+    target_max = QuestionDraft.objects.filter(section_id=target_section_id).count()
+    next_order = target_max + 1
+
+    for q in questions:
+        q.section = target_section
+        q.order = next_order
+        q.save(update_fields=['section', 'order'])
+        next_order += 1
+
+    # Reorder source sections (gaps left by moved questions)
+    for section_id in source_section_ids:
+        for i, q in enumerate(QuestionDraft.objects.filter(section_id=section_id).order_by('order'), start=1):
+            if q.order != i:
+                q.order = i
+                q.save(update_fields=['order'])
+
+    # Build response: updated questions list for target section and each source section
+    def section_questions(sid):
+        return [
+            {'id': q.id, 'order': q.order}
+            for q in QuestionDraft.objects.filter(section_id=sid).order_by('order')
+        ]
+
+    result = {
+        'success': True,
+        'target_section': {'id': target_section_id, 'questions': section_questions(target_section_id)},
+        'source_sections': [
+            {'id': sid, 'questions': section_questions(sid)}
+            for sid in source_section_ids
+        ],
+    }
+    return JsonResponse(result)
+
+
+@admin_required
+@login_required
+@require_http_methods(["POST"])
 def api_toggle_shuffle(request, draft_id):
     """Toggle shuffle_questions flag on a draft. Returns new state."""
     from django.http import JsonResponse

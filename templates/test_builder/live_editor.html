@@ -289,6 +289,41 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
     color: #86efac; font-size: 20px; font-weight: 300;
 }
 .le-q-circle-add:hover { background: rgba(34,197,94,0.35); }
+/* ── Multi-select mode ───────────────────────────────── */
+.le-q-circle.ms-selected {
+    background: #3b82f6 !important;
+    border-color: #60a5fa !important;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.45);
+    color: white !important;
+}
+.le-multiselect-btn {
+    width: 100%; padding: 6px 10px; border-radius: 6px;
+    border: 1px dashed rgba(255,255,255,0.35);
+    background: transparent; color: rgba(255,255,255,0.75);
+    font-size: 11px; font-weight: 600; cursor: pointer;
+    text-align: center; letter-spacing: 0.06em;
+    transition: all 0.2s; margin-bottom: 10px;
+}
+.le-multiselect-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+.le-multiselect-btn.ms-active { background: #3b82f6; border-color: #2563eb; color: white; border-style: solid; }
+.le-bulk-actions {
+    background: rgba(0,0,0,0.25); border-radius: 8px; padding: 10px 12px; margin-top: 12px;
+}
+.le-bulk-count {
+    font-size: 11px; color: rgba(255,255,255,0.65); margin-bottom: 8px; text-align: center;
+}
+.le-bulk-btn {
+    width: 100%; padding: 7px 10px; border-radius: 6px; border: none;
+    font-size: 11px; font-weight: 700; cursor: pointer; margin-bottom: 6px;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: all 0.2s;
+}
+.le-bulk-btn:last-child { margin-bottom: 0; }
+.le-bulk-btn-delete { background: #ef4444; color: white; }
+.le-bulk-btn-delete:hover:not(:disabled) { background: #dc2626; }
+.le-bulk-btn-move { background: #3b82f6; color: white; }
+.le-bulk-btn-move:hover:not(:disabled) { background: #2563eb; }
+.le-bulk-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 /* Error state: purple dot in top-right corner of a question circle */
 .le-q-circle.has-error::after {
     content: ''; position: absolute; top: -4px; right: -4px;
@@ -757,7 +792,24 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
                 </div>
             </div>
             <div class="le-palette-section-title" id="paletteSectionTitle">SECTION: —</div>
+            <button class="le-multiselect-btn" id="multiSelectToggle" onclick="toggleMultiSelect()">
+                <i class="fas fa-check-square"></i> Select Multiple
+            </button>
             <div class="le-palette-grid" id="paletteGrid"></div>
+            <!-- Bulk actions panel — visible only in multi-select mode -->
+            <div id="bulkActionsPanel" style="display:none;">
+                <div class="le-bulk-actions">
+                    <div class="le-bulk-count" id="bulkCountLabel">0 selected</div>
+                    <button class="le-bulk-btn le-bulk-btn-delete" id="bulkDeleteBtn"
+                            onclick="bulkDeleteSelected()" disabled>
+                        <i class="fas fa-trash"></i> Delete Selected
+                    </button>
+                    <button class="le-bulk-btn le-bulk-btn-move" id="bulkMoveBtn"
+                            onclick="openBulkMoveModal()" disabled>
+                        <i class="fas fa-arrow-right"></i> Move to Section
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -789,6 +841,32 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
                         <i class="fas fa-copy"></i> Copy Selected into Draft
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Move to Section Modal -->
+<div class="modal fade" id="bulkMoveModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:380px;">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#1e40af,#3b82f6);color:white;">
+                <h5 class="modal-title"><i class="fas fa-arrow-right"></i> Move to Section</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding:16px 20px;">
+                <p style="font-size:13px;color:#475569;margin-bottom:12px;">
+                    Select the destination section:
+                </p>
+                <div id="bulkMoveSectionList" style="display:flex;flex-direction:column;gap:8px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-sm" id="confirmBulkMoveBtn"
+                    style="background:#3b82f6;color:white;font-weight:700;"
+                    onclick="executeBulkMove()" disabled>
+                    <i class="fas fa-arrow-right"></i> Move Questions
+                </button>
             </div>
         </div>
     </div>
@@ -913,6 +991,11 @@ let validationErrors = {};
 let globalValidationErrors = [];
 // questionWarnings: { sectionId: { questionId: string } } — soft warnings, publish still allowed
 let questionWarnings = {};
+
+// ── Multi-select state ─────────────────────────────────
+let isMultiSelectMode = false;
+let selectedQuestionIds = new Set();
+let bulkMoveTargetSectionId = null;
 let hasWarningsOnly = false;  // true when validate returns valid:true but warnings exist
 
 // ── Helpers ────────────────────────────────────────────
@@ -1030,17 +1113,24 @@ function renderPalette() {
         }
 
         circle.textContent = q.order;
-        circle.addEventListener('click', () => handleSelectQuestion(q.id));
+        if (isMultiSelectMode) {
+            if (selectedQuestionIds.has(q.id)) circle.classList.add('ms-selected');
+            circle.addEventListener('click', () => toggleQuestionSelection(q.id));
+        } else {
+            circle.addEventListener('click', () => handleSelectQuestion(q.id));
+        }
         grid.appendChild(circle);
     });
 
-    // "+" add-question circle
-    const addCircle = document.createElement('div');
-    addCircle.className = 'le-q-circle le-q-circle-add' + (isNewQuestion ? ' new-mode' : '');
-    addCircle.textContent = '+';
-    addCircle.title = 'Add new question';
-    addCircle.addEventListener('click', () => handleAddNewQuestion());
-    grid.appendChild(addCircle);
+    // "+" add-question circle — hidden in multi-select mode
+    if (!isMultiSelectMode) {
+        const addCircle = document.createElement('div');
+        addCircle.className = 'le-q-circle le-q-circle-add' + (isNewQuestion ? ' new-mode' : '');
+        addCircle.textContent = '+';
+        addCircle.title = 'Add new question';
+        addCircle.addEventListener('click', () => handleAddNewQuestion());
+        grid.appendChild(addCircle);
+    }
 }
 
 // ── Navigation + unsaved guard ─────────────────────────
@@ -1062,6 +1152,7 @@ function handleAddNewQuestion() {
 
 function doSelectSection(sectionId) {
     activeSectionId = sectionId; activeQuestionId = null; isNewQuestion = false; isDirty = false;
+    exitMultiSelect();
     renderSectionTabs(); renderPalette(); hideEditor();
 }
 function doSelectQuestion(questionId) {
@@ -1564,6 +1655,204 @@ async function deleteQuestion() {
             showToast('Question deleted.', 'success');
         } else { showToast('Delete failed.', 'danger'); }
     } catch { showToast('Delete failed.', 'danger'); }
+}
+
+// ── Multi-select ───────────────────────────────────────
+function toggleMultiSelect() {
+    if (isMultiSelectMode) {
+        exitMultiSelect();
+    } else {
+        enterMultiSelect();
+    }
+}
+
+function enterMultiSelect() {
+    // Guard: don't enter multi-select with unsaved edits open
+    if (isDirty) {
+        showToast('Save or discard your changes before selecting multiple questions.', 'warning');
+        return;
+    }
+    isMultiSelectMode = true;
+    selectedQuestionIds.clear();
+    document.getElementById('multiSelectToggle').classList.add('ms-active');
+    document.getElementById('multiSelectToggle').innerHTML =
+        '<i class="fas fa-times"></i> Cancel Selection';
+    document.getElementById('bulkActionsPanel').style.display = 'block';
+    // Hide the single-question editor to avoid confusion
+    hideEditor();
+    updateBulkActionsUI();
+    renderPalette();
+}
+
+function exitMultiSelect() {
+    isMultiSelectMode = false;
+    selectedQuestionIds.clear();
+    bulkMoveTargetSectionId = null;
+    const toggle = document.getElementById('multiSelectToggle');
+    if (toggle) {
+        toggle.classList.remove('ms-active');
+        toggle.innerHTML = '<i class="fas fa-check-square"></i> Select Multiple';
+    }
+    const panel = document.getElementById('bulkActionsPanel');
+    if (panel) panel.style.display = 'none';
+    renderPalette();
+}
+
+function toggleQuestionSelection(questionId) {
+    if (selectedQuestionIds.has(questionId)) {
+        selectedQuestionIds.delete(questionId);
+    } else {
+        selectedQuestionIds.add(questionId);
+    }
+    updateBulkActionsUI();
+    renderPalette();
+}
+
+function updateBulkActionsUI() {
+    const count = selectedQuestionIds.size;
+    document.getElementById('bulkCountLabel').textContent =
+        count === 0 ? 'No questions selected'
+        : count === 1 ? '1 question selected'
+        : `${count} questions selected`;
+    document.getElementById('bulkDeleteBtn').disabled = count === 0;
+    document.getElementById('bulkMoveBtn').disabled = count === 0;
+}
+
+async function bulkDeleteSelected() {
+    const count = selectedQuestionIds.size;
+    if (count === 0) return;
+    if (!confirm(`Delete ${count} question${count > 1 ? 's' : ''}? This cannot be undone.`)) return;
+
+    const ids = Array.from(selectedQuestionIds);
+    try {
+        const resp = await fetch(`/builder/${DRAFT_ID}/api/questions/bulk-delete/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRF,
+            },
+            body: JSON.stringify({ question_ids: ids }),
+        });
+        const data = await resp.json();
+        if (data.success) {
+            // Remove deleted questions from local state and reorder
+            const sec = activeSection();
+            sec.questions = sec.questions.filter(q => !ids.includes(q.id));
+            sec.questions.forEach((q, i) => { q.order = i + 1; });
+            exitMultiSelect();
+            showToast(`${count} question${count > 1 ? 's' : ''} deleted.`, 'success');
+        } else {
+            showToast(data.error || 'Bulk delete failed.', 'danger');
+        }
+    } catch {
+        showToast('Bulk delete failed.', 'danger');
+    }
+}
+
+function openBulkMoveModal() {
+    if (selectedQuestionIds.size === 0) return;
+
+    const otherSections = sections.filter(s => s.id !== activeSectionId);
+    const listEl = document.getElementById('bulkMoveSectionList');
+    listEl.innerHTML = '';
+    bulkMoveTargetSectionId = null;
+    document.getElementById('confirmBulkMoveBtn').disabled = true;
+
+    if (otherSections.length === 0) {
+        listEl.innerHTML = '<p style="color:#64748b;font-size:13px;">No other sections exist in this test.</p>';
+    } else {
+        otherSections.forEach(sec => {
+            const qCount = sec.questions.length;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.style.cssText =
+                'width:100%;text-align:left;padding:10px 14px;border-radius:8px;' +
+                'border:2px solid #e2e8f0;background:white;cursor:pointer;' +
+                'font-size:13px;font-weight:600;color:#1e293b;transition:all 0.15s;';
+            btn.innerHTML =
+                `<i class="fas fa-layer-group" style="color:#3b82f6;margin-right:8px;"></i>` +
+                `${sec.name} <span style="font-weight:400;color:#94a3b8;margin-left:6px;">(${qCount} question${qCount !== 1 ? 's' : ''})</span>`;
+            btn.dataset.sectionId = sec.id;
+            btn.addEventListener('click', () => {
+                // Deselect any previously selected
+                listEl.querySelectorAll('button').forEach(b => {
+                    b.style.borderColor = '#e2e8f0';
+                    b.style.background = 'white';
+                    b.style.color = '#1e293b';
+                });
+                btn.style.borderColor = '#3b82f6';
+                btn.style.background = '#eff6ff';
+                btn.style.color = '#1d4ed8';
+                bulkMoveTargetSectionId = sec.id;
+                document.getElementById('confirmBulkMoveBtn').disabled = false;
+            });
+            listEl.appendChild(btn);
+        });
+    }
+
+    getModal('bulkMoveModal').show();
+}
+
+async function executeBulkMove() {
+    if (!bulkMoveTargetSectionId || selectedQuestionIds.size === 0) return;
+
+    const ids = Array.from(selectedQuestionIds);
+    const count = ids.length;
+
+    // Snapshot full question objects BEFORE removing them from source.
+    // The source questions carry all rich data (question_text, image_url,
+    // options, solution_text, solution_image_url) needed by loadEditor.
+    const src = activeSection();
+    const fullMovedQuestions = src.questions.filter(q => ids.includes(q.id));
+
+    try {
+        const resp = await fetch(`/builder/${DRAFT_ID}/api/questions/bulk-move/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRF,
+            },
+            body: JSON.stringify({ question_ids: ids, target_section_id: bulkMoveTargetSectionId }),
+        });
+        const data = await resp.json();
+        if (data.success) {
+            // Remove moved questions from source section and reorder remaining
+            src.questions = src.questions.filter(q => !ids.includes(q.id));
+            src.questions.forEach((q, i) => { q.order = i + 1; });
+
+            // Add moved questions to target section with the correct orders
+            // returned by the server, but carrying their FULL data from source.
+            const targetSec = sections.find(s => s.id === bulkMoveTargetSectionId);
+            if (targetSec && data.target_section) {
+                data.target_section.questions.forEach(sq => {
+                    const existing = targetSec.questions.find(q => q.id === sq.id);
+                    if (existing) {
+                        // Was already in target section — just update its order
+                        existing.order = sq.order;
+                    } else {
+                        // Find full question data captured before the move
+                        const fullQ = fullMovedQuestions.find(q => q.id === sq.id);
+                        if (fullQ) {
+                            targetSec.questions.push({ ...fullQ, order: sq.order });
+                        }
+                    }
+                });
+                targetSec.questions.sort((a, b) => a.order - b.order);
+            }
+
+            getModal('bulkMoveModal').hide();
+            exitMultiSelect();
+            const targetName = sections.find(s => s.id === bulkMoveTargetSectionId)?.name || 'section';
+            showToast(
+                `${count} question${count > 1 ? 's' : ''} moved to "${targetName}".`,
+                'success'
+            );
+        } else {
+            showToast(data.error || 'Move failed.', 'danger');
+        }
+    } catch {
+        showToast('Move failed.', 'danger');
+    }
 }
 
 // ── Sections ───────────────────────────────────────────
