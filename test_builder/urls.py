@@ -18,6 +18,7 @@ urlpatterns = [
     path('<int:draft_id>/api/question/<int:question_id>/delete/', views.api_delete_question, name='api_delete_question'),
     path('<int:draft_id>/api/questions/bulk-delete/', views.api_bulk_delete_questions, name='api_bulk_delete_questions'),
     path('<int:draft_id>/api/questions/bulk-move/', views.api_bulk_move_questions, name='api_bulk_move_questions'),
+    path('<int:draft_id>/api/questions/reorder/', views.api_reorder_questions, name='api_reorder_questions'),
     path('<int:draft_id>/api/validate/', views.api_validate_draft, name='api_validate_draft'),
     path('<int:draft_id>/api/toggle-shuffle/', views.api_toggle_shuffle, name='api_toggle_shuffle'),
     path('<int:draft_id>/api/copy-source-list/', views.api_copy_source_list, name='api_copy_source_list'),

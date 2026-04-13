@@ -1289,6 +1289,7 @@ def api_save_question(request, draft_id):
         return JsonResponse({'success': False, 'error': f'Only one correct answer allowed ({correct_count} selected).'}, status=400)
 
     # Save / update question
+    insert_at_order = None  # used only when creating a new question at a specific position
     if question_id:
         question = get_object_or_404(QuestionDraft, id=question_id, section=section)
         question.question_text = question_text
@@ -1303,15 +1304,38 @@ def api_save_question(request, draft_id):
             question.solution_image = None
         question.save()
     else:
-        order = section.questions.count() + 1
-        question = QuestionDraft.objects.create(
-            section=section,
-            question_text=question_text,
-            question_image=question_image,
-            solution_text=solution_text,
-            solution_image=solution_image,
-            order=order,
-        )
+        raw_insert = request.POST.get('insert_at_order', '').strip()
+        try:
+            insert_at_order = int(raw_insert) if raw_insert else None
+        except ValueError:
+            insert_at_order = None
+
+        if insert_at_order is not None:
+            total = section.questions.count()
+            insert_at_order = max(1, min(insert_at_order, total + 1))
+            with transaction.atomic():
+                # Shift all existing questions at or above the insert position up by 1
+                QuestionDraft.objects.filter(
+                    section=section, order__gte=insert_at_order
+                ).update(order=models.F('order') + 1)
+                question = QuestionDraft.objects.create(
+                    section=section,
+                    question_text=question_text,
+                    question_image=question_image,
+                    solution_text=solution_text,
+                    solution_image=solution_image,
+                    order=insert_at_order,
+                )
+        else:
+            order = section.questions.count() + 1
+            question = QuestionDraft.objects.create(
+                section=section,
+                question_text=question_text,
+                question_image=question_image,
+                solution_text=solution_text,
+                solution_image=solution_image,
+                order=order,
+            )
 
     # Update options: update existing, create new, delete removed
     submitted_ids = set()
@@ -1349,7 +1373,7 @@ def api_save_question(request, draft_id):
         }
         for opt in question.options.all()
     ]
-    return JsonResponse({
+    response_data = {
         'success': True,
         'question': {
             'id': question.id,
@@ -1360,7 +1384,15 @@ def api_save_question(request, draft_id):
             'solution_image_url': question.solution_image.url if question.solution_image else None,
             'options': options_resp,
         }
-    })
+    }
+    # When inserting at a specific position (not appending), include the updated order of
+    # all other questions so the frontend can keep its local state in sync.
+    if not question_id and insert_at_order is not None:
+        response_data['section_questions'] = [
+            {'id': q.id, 'order': q.order}
+            for q in QuestionDraft.objects.filter(section=section).order_by('order')
+        ]
+    return JsonResponse(response_data)
 
 
 @admin_required
@@ -1490,6 +1522,39 @@ def api_toggle_shuffle(request, draft_id):
     draft.shuffle_questions = enabled
     draft.save(update_fields=['shuffle_questions'])
     return JsonResponse({'success': True, 'shuffle_questions': draft.shuffle_questions})
+
+
+@admin_required
+@login_required
+@require_http_methods(["POST"])
+def api_reorder_questions(request, draft_id):
+    """Reorder questions in a section by providing their IDs in the desired new order."""
+    import json
+    from django.http import JsonResponse
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+    draft.refresh_lock(request.user)
+    try:
+        body = json.loads(request.body)
+        section_id = int(body.get('section_id'))
+        ordered_ids = [int(x) for x in body.get('ordered_ids', [])]
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return JsonResponse({'success': False, 'error': 'Invalid request body.'}, status=400)
+
+    section = get_object_or_404(SectionDraft, id=section_id, test_draft=draft)
+
+    # Verify the supplied IDs exactly match the questions belonging to this section
+    existing_ids = set(QuestionDraft.objects.filter(section=section).values_list('id', flat=True))
+    if set(ordered_ids) != existing_ids:
+        return JsonResponse(
+            {'success': False, 'error': 'Question IDs do not match section questions.'},
+            status=400,
+        )
+
+    with transaction.atomic():
+        for new_order, qid in enumerate(ordered_ids, start=1):
+            QuestionDraft.objects.filter(id=qid).update(order=new_order)
+
+    return JsonResponse({'success': True})
 
 
 @admin_required

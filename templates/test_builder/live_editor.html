@@ -271,6 +271,7 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
     border-bottom: 1px solid rgba(255,255,255,0.2);
 }
 .le-palette-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.le-palette-grid.reorder-mode { flex-direction: column; flex-wrap: nowrap; gap: 5px; }
 .le-q-circle {
     width: 38px; height: 38px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
@@ -398,6 +399,55 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
     border-bottom: 1px solid rgba(168,85,247,0.15); display: flex; gap: 6px; align-items: flex-start;
 }
 .le-validation-global-error i { color: #f87171; flex-shrink: 0; margin-top: 1px; font-size: 10px; }
+
+/* ── Reorder list (shown in palette when reorder mode is on) ──── */
+.le-reorder-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+.le-reorder-item {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 7px; padding: 7px 9px; cursor: grab; user-select: none;
+    transition: background 0.15s, border-color 0.15s;
+}
+.le-reorder-item:active { cursor: grabbing; }
+.le-reorder-item.drag-over { border-color: #fbbf24; background: rgba(251,191,36,0.18); }
+.le-reorder-item.drag-source { opacity: 0.35; }
+.le-reorder-handle { color: rgba(255,255,255,0.45); font-size: 13px; cursor: grab; flex-shrink: 0; }
+.le-reorder-num {
+    width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(255,255,255,0.18); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+}
+.le-reorder-text {
+    flex: 1; font-size: 11px; color: rgba(255,255,255,0.82);
+    min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.le-reorder-arrows { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+.le-reorder-arrow {
+    width: 20px; height: 17px; border: none; border-radius: 3px;
+    background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.75);
+    font-size: 9px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: background 0.15s;
+}
+.le-reorder-arrow:hover:not(:disabled) { background: rgba(255,255,255,0.28); color: white; }
+.le-reorder-arrow:disabled { opacity: 0.25; cursor: not-allowed; }
+.le-reorder-save {
+    width: 100%; padding: 7px 10px; border-radius: 6px; border: none;
+    background: #22c55e; color: white; font-size: 11px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: background 0.2s; margin-top: 4px;
+}
+.le-reorder-save:hover { background: #16a34a; }
+.le-reorder-toggle {
+    width: 100%; padding: 6px 10px; border-radius: 6px;
+    border: 1px dashed rgba(255,255,255,0.35);
+    background: transparent; color: rgba(255,255,255,0.75);
+    font-size: 11px; font-weight: 600; cursor: pointer;
+    text-align: center; letter-spacing: 0.06em;
+    transition: all 0.2s; margin-bottom: 10px;
+}
+.le-reorder-toggle:hover { background: rgba(255,255,255,0.1); color: white; }
+.le-reorder-toggle.ro-active { background: #f59e0b; border-color: #d97706; color: white; border-style: solid; }
 
 /* Toast */
 .le-toast {
@@ -795,6 +845,9 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
             <button class="le-multiselect-btn" id="multiSelectToggle" onclick="toggleMultiSelect()">
                 <i class="fas fa-check-square"></i> Select Multiple
             </button>
+            <button class="le-reorder-toggle" id="reorderToggle" onclick="toggleReorderMode()">
+                <i class="fas fa-arrows-alt-v"></i> Reorder Questions
+            </button>
             <div class="le-palette-grid" id="paletteGrid"></div>
             <!-- Bulk actions panel — visible only in multi-select mode -->
             <div id="bulkActionsPanel" style="display:none;">
@@ -933,6 +986,40 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
     </div>
 </div>
 
+<!-- Insert at Position Modal -->
+<div class="modal fade" id="insertPositionModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:360px;">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#1e40af,#3b82f6);color:white;">
+                <h5 class="modal-title"><i class="fas fa-plus-circle"></i> Add New Question</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding:18px 20px;">
+                <p style="font-size:13px;color:#475569;margin-bottom:14px;">
+                    Where should the new question be inserted?
+                </p>
+                <label style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:6px;">
+                    Insert at position
+                </label>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <input type="number" id="insertPositionInput" class="form-control form-control-sm"
+                           min="1" style="max-width:90px;" placeholder="e.g. 3">
+                    <span id="insertPositionMax" style="font-size:12px;color:#94a3b8;"></span>
+                </div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:6px;">
+                    Leave blank to add at the end. Existing questions shift down automatically — their content is unchanged.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-sm" id="confirmInsertBtn">
+                    <i class="fas fa-plus"></i> Create Question
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -997,6 +1084,12 @@ let isMultiSelectMode = false;
 let selectedQuestionIds = new Set();
 let bulkMoveTargetSectionId = null;
 let hasWarningsOnly = false;  // true when validate returns valid:true but warnings exist
+
+// ── Reorder state ──────────────────────────────────────
+let isReorderMode = false;
+let insertAtOrder = null;      // null = append at end; integer = insert at this position
+let _roSrcId = null;           // drag-source question ID
+let _roOvId = null;            // drag-over question ID
 
 // ── Helpers ────────────────────────────────────────────
 function activeSection() { return sections.find(s => s.id === activeSectionId); }
@@ -1087,6 +1180,17 @@ function renderPalette() {
     grid.innerHTML = '';
     if (!sec) return;
 
+    // ── Reorder mode: show vertical drag list instead of circles ──
+    if (isReorderMode) {
+        grid.classList.add('reorder-mode');
+        const sorted = [...sec.questions].sort((a, b) => a.order - b.order);
+        sorted.forEach((q, idx) => {
+            grid.appendChild(createReorderItem(q, idx, sorted.length));
+        });
+        return;
+    }
+    grid.classList.remove('reorder-mode');
+
     sec.questions.forEach(q => {
         const circle = document.createElement('div');
         const isActive = !isNewQuestion && q.id === activeQuestionId;
@@ -1133,6 +1237,144 @@ function renderPalette() {
     }
 }
 
+// ── Reorder helpers ────────────────────────────────────
+function toggleReorderMode() {
+    if (isReorderMode) {
+        isReorderMode = false;
+        const btn = document.getElementById('reorderToggle');
+        if (btn) { btn.classList.remove('ro-active'); btn.innerHTML = '<i class="fas fa-arrows-alt-v"></i> Reorder Questions'; }
+        renderPalette();
+    } else {
+        if (isDirty) { showToast('Save or discard changes before reordering.', 'warning'); return; }
+        isReorderMode = true;
+        if (isMultiSelectMode) exitMultiSelect();
+        hideEditor();
+        const btn = document.getElementById('reorderToggle');
+        if (btn) { btn.classList.add('ro-active'); btn.innerHTML = '<i class="fas fa-times"></i> Exit Reorder'; }
+        renderPalette();
+    }
+}
+
+function createReorderItem(q, idx, total) {
+    const item = document.createElement('div');
+    item.className = 'le-reorder-item';
+    item.draggable = true;
+    item.dataset.qid = q.id;
+    if (_roSrcId === q.id) item.classList.add('drag-source');
+    if (_roOvId === q.id && _roSrcId !== q.id) item.classList.add('drag-over');
+
+    const preview = (q.question_text || '').replace(/\$.*?\$/g, '[math]').trim() || '(no text)';
+
+    item.innerHTML = `
+        <span class="le-reorder-handle" title="Drag to reorder">&#8801;</span>
+        <span class="le-reorder-num">${q.order}</span>
+        <span class="le-reorder-text" title="${preview.replace(/"/g,"&quot;")}">${preview}</span>
+        <div class="le-reorder-arrows">
+            <button class="le-reorder-arrow" title="Move up" ${idx === 0 ? 'disabled' : ''} onclick="roMoveUp(${q.id})">&#9650;</button>
+            <button class="le-reorder-arrow" title="Move down" ${idx === total - 1 ? 'disabled' : ''} onclick="roMoveDown(${q.id})">&#9660;</button>
+        </div>`;
+
+    item.addEventListener('dragstart', e => {
+        _roSrcId = q.id;
+        e.dataTransfer.effectAllowed = 'move';
+        setTimeout(() => renderPalette(), 0);
+    });
+    item.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (_roOvId !== q.id) { _roOvId = q.id; renderPalette(); }
+    });
+    item.addEventListener('drop', e => {
+        e.preventDefault();
+        if (_roSrcId !== null && _roSrcId !== q.id) roDropOnto(q.id);
+    });
+    item.addEventListener('dragend', () => {
+        _roSrcId = null; _roOvId = null; renderPalette();
+    });
+    return item;
+}
+
+function roMoveUp(qid) {
+    const sec = activeSection();
+    if (!sec) return;
+    const sorted = [...sec.questions].sort((a, b) => a.order - b.order);
+    const idx = sorted.findIndex(q => q.id === qid);
+    if (idx <= 0) return;
+    const tmp = sorted[idx].order; sorted[idx].order = sorted[idx-1].order; sorted[idx-1].order = tmp;
+    sorted.forEach(q => { const orig = sec.questions.find(x => x.id === q.id); if (orig) orig.order = q.order; });
+    renderPalette();
+    callReorderApi(sec.id, sorted.map(q => q.id));
+}
+
+function roMoveDown(qid) {
+    const sec = activeSection();
+    if (!sec) return;
+    const sorted = [...sec.questions].sort((a, b) => a.order - b.order);
+    const idx = sorted.findIndex(q => q.id === qid);
+    if (idx < 0 || idx >= sorted.length - 1) return;
+    const tmp = sorted[idx].order; sorted[idx].order = sorted[idx+1].order; sorted[idx+1].order = tmp;
+    sorted.forEach(q => { const orig = sec.questions.find(x => x.id === q.id); if (orig) orig.order = q.order; });
+    renderPalette();
+    callReorderApi(sec.id, sorted.map(q => q.id));
+}
+
+function roDropOnto(targetQid) {
+    const sec = activeSection();
+    if (!sec) return;
+    const sorted = [...sec.questions].sort((a, b) => a.order - b.order);
+    const srcIdx = sorted.findIndex(q => q.id === _roSrcId);
+    const tgtIdx = sorted.findIndex(q => q.id === targetQid);
+    if (srcIdx < 0 || tgtIdx < 0) return;
+    const [moved] = sorted.splice(srcIdx, 1);
+    sorted.splice(tgtIdx, 0, moved);
+    sorted.forEach((q, i) => {
+        q.order = i + 1;
+        const orig = sec.questions.find(x => x.id === q.id);
+        if (orig) orig.order = q.order;
+    });
+    _roSrcId = null; _roOvId = null;
+    renderPalette();
+    callReorderApi(sec.id, sorted.map(q => q.id));
+}
+
+async function callReorderApi(sectionId, orderedIds) {
+    try {
+        const resp = await fetch(`/builder/${DRAFT_ID}/api/questions/reorder/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            body: JSON.stringify({ section_id: sectionId, ordered_ids: orderedIds }),
+        });
+        const data = await resp.json();
+        if (data.success) showToast('Order saved.', 'success', 2000);
+        else showToast(data.error || 'Reorder failed.', 'danger');
+    } catch { showToast('Reorder failed — check connection.', 'danger'); }
+}
+
+// ── Insert-at-position ─────────────────────────────────
+function showInsertPositionModal() {
+    const sec = activeSection();
+    const total = sec ? sec.questions.length : 0;
+    const input = document.getElementById('insertPositionInput');
+    const maxLabel = document.getElementById('insertPositionMax');
+    input.value = '';
+    input.max = total + 1;
+    maxLabel.textContent = `(max: ${total + 1})`;
+    getModal('insertPositionModal').show();
+    setTimeout(() => input.focus(), 300);
+}
+
+function doInsertAtPosition(pos) {
+    const sec = activeSection();
+    const total = sec ? sec.questions.length : 0;
+    if (pos === null || pos === '') {
+        insertAtOrder = null;
+    } else {
+        const n = parseInt(pos, 10);
+        insertAtOrder = isNaN(n) ? null : Math.max(1, Math.min(n, total + 1));
+    }
+    doAddNewQuestion();
+}
+
 // ── Navigation + unsaved guard ─────────────────────────
 function handleSelectSection(sectionId) {
     if (sectionId === activeSectionId) return;
@@ -1147,7 +1389,13 @@ function handleSelectQuestion(questionId) {
 function handleAddNewQuestion() {
     if (isNewQuestion) return;
     if (isDirty) { pendingAction = { type: 'new_question' }; getModal('unsavedModal').show(); return; }
-    doAddNewQuestion();
+    const sec = activeSection();
+    if (sec && sec.questions.length > 0) {
+        showInsertPositionModal();
+    } else {
+        insertAtOrder = null;
+        doAddNewQuestion();
+    }
 }
 
 function doSelectSection(sectionId) {
@@ -1191,7 +1439,7 @@ function loadEditor(questionData) {
         document.getElementById('solutionText').value = questionData.solution_text || '';
         setImagePreview('sol', questionData.solution_image_url);
     } else {
-        const newOrder = sec ? sec.questions.length + 1 : 1;
+        const newOrder = insertAtOrder !== null ? insertAtOrder : (sec ? sec.questions.length + 1 : 1);
         document.getElementById('qHeaderLabel').textContent = `Question ${newOrder} — New`;
         document.getElementById('deleteQuestionBtn').style.display = 'none';
         document.getElementById('qText').value = '';
@@ -1352,6 +1600,8 @@ async function saveQuestion() {
     const fd = new FormData();
     fd.append('section_id', sec.id);
     if (activeQuestionId !== null) fd.append('question_id', activeQuestionId);
+    // Send insert position for new questions
+    if (activeQuestionId === null && insertAtOrder !== null) fd.append('insert_at_order', insertAtOrder);
     fd.append('question_text', document.getElementById('qText').value.trim());
     fd.append('solution_text', document.getElementById('solutionText').value.trim());
 
@@ -1385,10 +1635,22 @@ async function saveQuestion() {
             const q = data.question;
             pendingImageFiles['q'] = null;
             pendingImageFiles['sol'] = null;
-            // DEBUG: show what image_url the server returned
-            showToast(q.image_url ? `Image saved: ${q.image_url}` : 'No image_url in response', q.image_url ? 'success' : 'danger', 5000);
-            if (isNewQuestion) { sec.questions.push(q); isNewQuestion = false; }
-            else { const idx = sec.questions.findIndex(x => x.id === q.id); if (idx !== -1) sec.questions[idx] = q; }
+            if (isNewQuestion) {
+                // If the server returned shifted question orders, sync them first
+                if (data.section_questions) {
+                    data.section_questions.forEach(sq => {
+                        const existing = sec.questions.find(x => x.id === sq.id);
+                        if (existing) existing.order = sq.order;
+                    });
+                }
+                sec.questions.push(q);
+                sec.questions.sort((a, b) => a.order - b.order);
+                isNewQuestion = false;
+            } else {
+                const idx = sec.questions.findIndex(x => x.id === q.id);
+                if (idx !== -1) sec.questions[idx] = q;
+            }
+            insertAtOrder = null;
             activeQuestionId = q.id; isDirty = false;
             document.getElementById('qHeaderLabel').textContent = `Question ${q.order}`;
             document.getElementById('deleteQuestionBtn').style.display = 'inline-flex';
@@ -1671,6 +1933,12 @@ function enterMultiSelect() {
     if (isDirty) {
         showToast('Save or discard your changes before selecting multiple questions.', 'warning');
         return;
+    }
+    // Exit reorder mode if active
+    if (isReorderMode) {
+        isReorderMode = false;
+        const rBtn = document.getElementById('reorderToggle');
+        if (rBtn) { rBtn.classList.remove('ro-active'); rBtn.innerHTML = '<i class="fas fa-arrows-alt-v"></i> Reorder Questions'; }
     }
     isMultiSelectMode = true;
     selectedQuestionIds.clear();
@@ -2022,6 +2290,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('saveAndContinueBtn').addEventListener('click', () => {
         getModal('unsavedModal').hide();
         saveQuestion(); // pendingAction executed inside saveQuestion on success
+    });
+
+    // Insert position modal: confirm
+    document.getElementById('confirmInsertBtn').addEventListener('click', () => {
+        const val = document.getElementById('insertPositionInput').value.trim();
+        getModal('insertPositionModal').hide();
+        doInsertAtPosition(val === '' ? null : val);
+    });
+    document.getElementById('insertPositionInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('confirmInsertBtn').click();
     });
 
     // Warn before leaving page if dirty

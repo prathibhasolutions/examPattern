@@ -194,9 +194,15 @@
     }
 
     /* Review Layout */
+    .review-page {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+    }
+
     .test-layout {
         display: flex;
-        height: calc(100vh - 106px);
+        flex: 1;
         overflow: hidden;
     }
 
@@ -516,6 +522,21 @@
         border: 2px solid #bdbdbd;
     }
 
+    /* Palette backdrop */
+    .palette-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 299;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .palette-backdrop.visible {
+        opacity: 1;
+    }
+
     /* Responsive */
     @media (max-width: 992px) {
         .palette-toggle {
@@ -525,15 +546,23 @@
         .right-sidebar {
             position: fixed;
             top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
+            right: 0;
+            width: 80%;
+            max-width: 360px;
+            height: 100%;
             z-index: 300;
             overflow-y: auto;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            box-shadow: -4px 0 24px rgba(0, 0, 0, 0.18);
         }
 
         .right-sidebar.mobile-hidden {
-            display: none;
+            transform: translateX(100%);
+        }
+
+        .right-sidebar:not(.mobile-hidden) {
+            transform: translateX(0);
         }
 
         .mobile-palette-header {
@@ -563,18 +592,83 @@
         }
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 767.98px) {
+        .review-page {
+            padding-bottom: 60px; /* push content above fixed bottom-nav */
+        }
+
+        /* ── Top user bar ── */
+        .user-info-bar {
+            padding: 7px 12px;
+            gap: 6px;
+        }
+
+        .user-photo {
+            width: 32px;
+            height: 32px;
+            font-size: 13px !important;
+        }
+
+        .user-name {
+            font-size: 12px;
+        }
+
+        .user-meta {
+            font-size: 10px;
+            line-height: 1.3;
+        }
+
+        .attempt-switcher {
+            min-width: 0;
+            width: auto;
+            max-width: 120px;
+            font-size: 11px;
+            padding: 4px 22px 4px 8px;
+        }
+
+        .back-btn {
+            font-size: 11px;
+            padding: 5px 10px;
+        }
+
+        /* ── Question header ── */
+        .question-header {
+            padding: 8px 12px;
+            gap: 6px;
+        }
+
+        .question-number {
+            white-space: nowrap;
+            font-size: 13px;
+        }
+
+        .question-status {
+            font-size: 11px;
+            padding: 3px 8px;
+        }
+
+        #questionTime, #avgTime {
+            font-size: 11px !important;
+        }
+
+        #timeEmoji {
+            font-size: 14px !important;
+        }
+
+        .action-btn {
+            padding: 4px 10px;
+            font-size: 11px;
+        }
+
+        /* ── Question body ── */
         .question-body {
             padding: 16px;
+            padding-bottom: 24px;
         }
 
         .palette-grid {
             grid-template-columns: repeat(5, 1fr);
             gap: 6px;
-        }
-
-        .user-info-bar {
-            padding: 10px 14px;
         }
     }
 
@@ -679,6 +773,7 @@
             </div>
         </div>
 
+        <div class="palette-backdrop" id="paletteBackdrop"></div>
         <div class="right-sidebar mobile-hidden" id="rightSidebar">
             <!-- Mobile-only close bar -->
             <div class="mobile-palette-header" id="mobilePaletteHeader">
@@ -958,8 +1053,7 @@
 
         // Auto-close the palette panel on mobile after selecting a question
         if (window.innerWidth <= 992) {
-            rightSidebar.classList.add('mobile-hidden');
-            if (paletteToggle) paletteToggle.classList.remove('active');
+            closePaletteOnMobile();
         }
     };
 
@@ -986,9 +1080,28 @@
         }
     };
 
+    const backdrop = document.getElementById('paletteBackdrop');
+
+    const openPalette = () => {
+        rightSidebar.classList.remove('mobile-hidden');
+        paletteToggle.classList.add('active');
+        if (backdrop) {
+            backdrop.style.display = 'block';
+            // force reflow so transition fires
+            backdrop.getBoundingClientRect();
+            backdrop.classList.add('visible');
+        }
+    };
+
     const closePaletteOnMobile = () => {
         rightSidebar.classList.add('mobile-hidden');
         paletteToggle.classList.remove('active');
+        if (backdrop) {
+            backdrop.classList.remove('visible');
+            backdrop.addEventListener('transitionend', () => {
+                backdrop.style.display = 'none';
+            }, { once: true });
+        }
     };
 
     const initPaletteToggle = () => {
@@ -996,9 +1109,17 @@
 
         // Hamburger button opens palette
         paletteToggle.addEventListener('click', () => {
-            paletteToggle.classList.toggle('active');
-            rightSidebar.classList.toggle('mobile-hidden');
+            if (rightSidebar.classList.contains('mobile-hidden')) {
+                openPalette();
+            } else {
+                closePaletteOnMobile();
+            }
         });
+
+        // Tapping backdrop closes palette
+        if (backdrop) {
+            backdrop.addEventListener('click', closePaletteOnMobile);
+        }
 
         // X button inside the palette closes it
         const closeBtn = document.getElementById('mobilePaletteClose');
