@@ -33,10 +33,16 @@ class Question(models.Model):
 	negative_marks_override = models.DecimalField(
 		max_digits=6, decimal_places=2, null=True, blank=True
 	)
+	is_bonus = models.BooleanField(
+		default=False,
+		help_text="If True, all students get full marks regardless of their answer"
+	)
 
 	is_active = models.BooleanField(default=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
+	# Tracks which QuestionDraft this was created from (used for in-place re-publish)
+	draft_question_id = models.IntegerField(null=True, blank=True, db_index=True)
 
 	def clean(self):
 		"""Validate that question has at least text or image"""
@@ -69,6 +75,8 @@ class Option(models.Model):
 	is_math = models.BooleanField(default=False)
 	is_correct = models.BooleanField(default=False)
 	order = models.PositiveSmallIntegerField(default=1)
+	# Tracks which OptionDraft this was created from (used for in-place re-publish)
+	draft_option_id = models.IntegerField(null=True, blank=True, db_index=True)
 
 	def clean(self):
 		"""Validate that option has at least text or image"""

@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -330,6 +331,9 @@
     <div class="instructions-container">
         <!-- Header -->
         <div class="instructions-header">
+            <a href="/" style="display:inline-block; margin-bottom:14px; opacity:0.92;" title="examPattern Home">
+                <img src="{% static 'examPattern.png' %}" alt="examPattern" style="height:36px; width:auto; display:block; margin:0 auto;">
+            </a>
             <h2>{% if test.series %}<span style="font-weight: 500; font-size: 20px;">{{ test.series.name }}</span><br>{% endif %}{{ test.name }}</h2>
             <p style="margin: 10px 0 0 0; font-size: 16px;">Test Instructions</p>
         </div>

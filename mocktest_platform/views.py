@@ -668,6 +668,9 @@ def review_solutions(request, attempt_id):
         status = 'unanswered'
         if is_answered:
             status = 'correct' if is_correct else 'incorrect'
+        # Bonus questions: override status so students see they received bonus marks
+        if question.is_bonus:
+            status = 'bonus'
 
         question_number = section_counters[question.section_id]
         section_counters[question.section_id] += 1
@@ -696,6 +699,7 @@ def review_solutions(request, attempt_id):
             'user_option_ids': selected_ids,
             'response_text': response_text,
             'status': status,
+            'is_bonus': question.is_bonus,
             'solution_explanation': question.explanation or '',
             'solution_image_url': question.solution_image.url if question.solution_image else '',
             'time_spent_seconds': answer.time_spent_seconds if answer else 0,
@@ -737,3 +741,7 @@ def privacy_policy(request):
 
 def terms_of_service(request):
     return render(request, 'terms_of_service.html')
+
+
+def refund_policy(request):
+    return render(request, 'refund_policy.html')

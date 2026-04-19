@@ -123,6 +123,20 @@
         gap: 10px;
     }
 
+    .navbar-logo-link {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+        opacity: 0.92;
+        transition: opacity 0.2s;
+    }
+    .navbar-logo-link:hover { opacity: 1; }
+    .navbar-logo-img {
+        height: 30px;
+        width: auto;
+        display: block;
+    }
+
     .user-profile {
         display: flex;
         align-items: center;
@@ -257,6 +271,11 @@
     .status-unanswered {
         background: #e2e3e5;
         color: #383d41;
+    }
+
+    .status-bonus {
+        background: #fef3c7;
+        color: #92400e;
     }
 
     .question-actions {
@@ -522,6 +541,12 @@
         border: 2px solid #bdbdbd;
     }
 
+    .palette-bonus {
+        background: #f59e0b;
+        color: white;
+        border-color: #f59e0b;
+    }
+
     /* Palette backdrop */
     .palette-backdrop {
         display: none;
@@ -603,6 +628,8 @@
             gap: 6px;
         }
 
+        .navbar-logo-link { display: none; }
+
         .user-photo {
             width: 32px;
             height: 32px;
@@ -663,7 +690,7 @@
         /* ── Question body ── */
         .question-body {
             padding: 16px;
-            padding-bottom: 24px;
+            padding-bottom: 80px; /* ensures content clears fixed bottom nav regardless of solution length */
         }
 
         .palette-grid {
@@ -716,6 +743,9 @@
         </div>
         {% endif %}
         <div class="user-info-bar">
+            <a href="/" class="navbar-logo-link" title="examPattern Home">
+                <img src="{% static 'examPattern.png' %}" alt="examPattern" class="navbar-logo-img">
+            </a>
             <div class="user-profile">
                 {% if request.user.profile.photo %}
                     <img src="{{ request.user.profile.photo.url }}" alt="{{ request.user.username }}" class="user-photo">
@@ -842,18 +872,21 @@
     const statusText = (status) => {
         if (status === 'correct') return 'Correct';
         if (status === 'incorrect') return 'Wrong';
+        if (status === 'bonus') return 'Bonus';
         return 'Not Answered';
     };
 
     const statusClass = (status) => {
         if (status === 'correct') return 'status-correct';
         if (status === 'incorrect') return 'status-incorrect';
+        if (status === 'bonus') return 'status-bonus';
         return 'status-unanswered';
     };
 
     const paletteClass = (status) => {
         if (status === 'correct') return 'palette-correct';
         if (status === 'incorrect') return 'palette-incorrect';
+        if (status === 'bonus') return 'palette-bonus';
         return 'palette-unanswered';
     };
 
@@ -895,6 +928,10 @@
             btn.className = `question-item ${paletteClass(q.status)}`;
             btn.textContent = q.question_number;
             btn.dataset.questionId = q.id;
+            if (q.is_bonus) {
+                btn.title = `Question ${q.question_number} [Bonus]`;
+                btn.style.outline = '2px solid #f59e0b';
+            }
             if (q.id === currentQuestionId) {
                 btn.classList.add('active');
             }
@@ -914,6 +951,14 @@
 
         const displayText = question.extracted_text || question.text || '';
         let html = '';
+
+        // Bonus banner — shown to all students for bonus questions
+        if (question.is_bonus) {
+            html += `<div style="background:#fef3c7;border:1.5px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px;">`;
+            html += `<span style="font-size:20px;flex-shrink:0;">&#127873;</span>`;
+            html += `<div><strong style="color:#92400e;">Bonus Question</strong><br><span style="color:#92400e;font-size:13px;">This question was found to be incorrect. Full marks have been awarded to all students regardless of their attempt.</span></div>`;
+            html += `</div>`;
+        }
 
         if (displayText) {
             html += `<div class="question-text">${escapeHtml(displayText)}</div>`;

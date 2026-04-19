@@ -184,6 +184,8 @@ class Section(models.Model):
 	test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="sections")
 	name = models.CharField(max_length=150)
 	order = models.PositiveSmallIntegerField(default=1)
+	# Tracks which SectionDraft this was created from (used for in-place re-publish)
+	draft_section_id = models.IntegerField(null=True, blank=True, db_index=True)
 
 	# Sectional timing (in seconds). 0/blank means no dedicated cap beyond test level
 	time_limit_seconds = models.PositiveIntegerField(

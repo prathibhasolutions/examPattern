@@ -812,10 +812,7 @@ def publish_test(request, draft_id):
                     messages.error(request, f"❌ Cannot publish: An option in '{name}' has no text or image.")
                     return redirect('live_editor', draft_id=draft_id)
 
-    # ── Phase 2: DB writes — bulk_create for speed ──────────────────────
-    # Using bulk_create reduces 800+ individual INSERTs down to 3 batch
-    # INSERTs (one per model), completing in well under a second.
-    # PostgreSQL returns the PKs from bulk_create so foreign-key chaining works.
+    # ── Phase 2: DB writes ───────────────────────────────────────────────
     try:
         with transaction.atomic():
             series_section = draft.series_section
@@ -839,12 +836,11 @@ def publish_test(request, draft_id):
             if draft.published_test_id:
                 try:
                     published_test = Test.objects.get(id=draft.published_test_id)
-                    # Delete old sections (cascades to questions and options)
-                    published_test.sections.all().delete()
                 except Test.DoesNotExist:
                     published_test = None
 
             if published_test:
+                # ── Re-publish: update test metadata ────────────────────
                 published_test.name = draft.name
                 published_test.description = draft.description
                 published_test.series_section = series_section
@@ -857,7 +853,174 @@ def publish_test(request, draft_id):
                 published_test.is_active = True
                 published_test.save()
                 test = published_test
+
+                # ── Re-publish: update sections/questions/options IN-PLACE ──
+                # This preserves Answer records so we can recalculate marks.
+                # Primary match: draft_section_id / draft_question_id / draft_option_id.
+                # Fallback for objects published before those fields were introduced
+                # (they have NULL draft_*_id): match sections by name, questions and
+                # options by their 1-based order position within the parent.
+                # When a fallback match is found we also set the draft_*_id so that
+                # all subsequent re-publishes use the faster primary-key path.
+
+                all_live_sections = list(test.sections.all())
+                existing_sections_by_draft_id = {
+                    s.draft_section_id: s
+                    for s in all_live_sections
+                    if s.draft_section_id is not None
+                }
+                # Name-based fallback only for sections that still have NULL draft_section_id
+                existing_sections_by_name = {
+                    s.name: s
+                    for s in all_live_sections
+                    if s.draft_section_id is None
+                }
+
+                section_objs = []
+                kept_section_ids = set()
+
+                for seq_order, sd in enumerate(all_sections, start=1):
+                    live_section = existing_sections_by_draft_id.get(sd.id)
+                    if live_section is None:
+                        live_section = existing_sections_by_name.get(sd.name)
+
+                    if live_section:
+                        update_fields = ['name', 'order', 'time_limit_seconds']
+                        live_section.name = sd.name
+                        live_section.order = seq_order
+                        live_section.time_limit_seconds = (
+                            sd.time_limit_minutes * 60
+                            if draft.use_sectional_timing and sd.time_limit_minutes
+                            else 0
+                        )
+                        # Backfill draft_section_id so future re-publishes use primary path
+                        if live_section.draft_section_id is None:
+                            live_section.draft_section_id = sd.id
+                            update_fields.append('draft_section_id')
+                        live_section.save(update_fields=update_fields)
+                    else:
+                        live_section = Section.objects.create(
+                            test=test,
+                            name=sd.name,
+                            order=seq_order,
+                            draft_section_id=sd.id,
+                            time_limit_seconds=(
+                                sd.time_limit_minutes * 60
+                                if draft.use_sectional_timing and sd.time_limit_minutes
+                                else 0
+                            ),
+                        )
+                    section_objs.append((sd, live_section))
+                    kept_section_ids.add(live_section.id)
+
+                # Delete sections removed from draft (cascades to questions/options/answers)
+                test.sections.exclude(id__in=kept_section_ids).delete()
+
+                for sd, live_section in section_objs:
+                    all_live_questions = list(live_section.questions.order_by('id'))
+                    existing_questions_by_draft_id = {
+                        q.draft_question_id: q
+                        for q in all_live_questions
+                        if q.draft_question_id is not None
+                    }
+                    # Position-based fallback for questions with NULL draft_question_id
+                    existing_questions_by_pos = {
+                        i: q
+                        for i, q in enumerate(all_live_questions)
+                        if q.draft_question_id is None
+                    }
+
+                    question_objs_for_section = []
+                    kept_question_ids = set()
+
+                    for pos_idx, qd in enumerate(sd.questions.order_by('order')):
+                        live_q = existing_questions_by_draft_id.get(qd.id)
+                        if live_q is None:
+                            live_q = existing_questions_by_pos.get(pos_idx)
+
+                        if live_q:
+                            update_fields = ['text', 'image', 'explanation', 'solution_image', 'is_bonus']
+                            live_q.text = qd.question_text
+                            live_q.image = qd.question_image
+                            live_q.explanation = qd.solution_text
+                            live_q.solution_image = qd.solution_image
+                            live_q.is_bonus = qd.is_bonus
+                            # Backfill draft_question_id so future re-publishes use primary path
+                            if live_q.draft_question_id is None:
+                                live_q.draft_question_id = qd.id
+                                update_fields.append('draft_question_id')
+                            live_q.save(update_fields=update_fields)
+                        else:
+                            live_q = Question.objects.create(
+                                section=live_section,
+                                text=qd.question_text,
+                                image=qd.question_image,
+                                explanation=qd.solution_text,
+                                solution_image=qd.solution_image,
+                                draft_question_id=qd.id,
+                                is_bonus=qd.is_bonus,
+                            )
+                        question_objs_for_section.append((qd, live_q))
+                        kept_question_ids.add(live_q.id)
+
+                    # Delete questions removed from draft (cascades to options/answers)
+                    live_section.questions.exclude(id__in=kept_question_ids).delete()
+
+                    for qd, live_q in question_objs_for_section:
+                        all_live_options = list(live_q.options.order_by('id'))
+                        existing_options_by_draft_id = {
+                            o.draft_option_id: o
+                            for o in all_live_options
+                            if o.draft_option_id is not None
+                        }
+                        # Position-based fallback for options with NULL draft_option_id
+                        existing_options_by_pos = {
+                            i: o
+                            for i, o in enumerate(all_live_options)
+                            if o.draft_option_id is None
+                        }
+
+                        option_updates = []
+                        kept_option_ids = set()
+
+                        for opt_idx, od in enumerate(qd.options.order_by('order')):
+                            live_opt = existing_options_by_draft_id.get(od.id)
+                            if live_opt is None:
+                                live_opt = existing_options_by_pos.get(opt_idx)
+
+                            if live_opt:
+                                live_opt.text = od.option_text
+                                live_opt.image = od.option_image
+                                live_opt.is_correct = od.is_correct
+                                live_opt.order = od.order
+                                # Backfill draft_option_id so future re-publishes use primary path
+                                if live_opt.draft_option_id is None:
+                                    live_opt.draft_option_id = od.id
+                                option_updates.append(live_opt)
+                                kept_option_ids.add(live_opt.id)
+                            else:
+                                new_opt = Option.objects.create(
+                                    question=live_q,
+                                    text=od.option_text,
+                                    image=od.option_image,
+                                    is_correct=od.is_correct,
+                                    order=od.order,
+                                    draft_option_id=od.id,
+                                )
+                                kept_option_ids.add(new_opt.id)
+
+                        if option_updates:
+                            Option.objects.bulk_update(
+                                option_updates,
+                                ['text', 'image', 'is_correct', 'order', 'draft_option_id'],
+                            )
+
+                        # Delete options removed from draft
+                        live_q.options.exclude(id__in=kept_option_ids).delete()
+
             else:
+                # ── First publish: bulk_create for speed ─────────────────
+                # PostgreSQL returns PKs from bulk_create so FK chaining works.
                 base_slug = slugify(draft.name)
                 slug = base_slug
                 counter = 1
@@ -880,51 +1043,52 @@ def publish_test(request, draft_id):
                     is_active=True
                 )
 
-            # ── Batch INSERT 1: Sections (3 rows) ───────────────────────
-            section_objs = Section.objects.bulk_create([
-                Section(
-                    test=test,
-                    name=sd.name,
-                    order=seq_order,
-                    time_limit_seconds=(sd.time_limit_minutes * 60
-                                        if draft.use_sectional_timing and sd.time_limit_minutes
-                                        else 0),
-                )
-                for seq_order, sd in enumerate(all_sections, start=1)
-            ])
-            # section_objs[i] corresponds to all_sections[i]
+                # Batch INSERT 1: Sections
+                section_objs_new = Section.objects.bulk_create([
+                    Section(
+                        test=test,
+                        name=sd.name,
+                        order=seq_order,
+                        draft_section_id=sd.id,
+                        time_limit_seconds=(sd.time_limit_minutes * 60
+                                            if draft.use_sectional_timing and sd.time_limit_minutes
+                                            else 0),
+                    )
+                    for seq_order, sd in enumerate(all_sections, start=1)
+                ])
 
-            # ── Batch INSERT 2: Questions (160 rows) ─────────────────────
-            # Build flat list of (section_obj, question_draft) pairs
-            section_question_pairs = [
-                (section_objs[i], qd)
-                for i, sd in enumerate(all_sections)
-                for qd in sd.questions.all()
-            ]
-            question_objs = Question.objects.bulk_create([
-                Question(
-                    section=sec,
-                    text=qd.question_text,
-                    image=qd.question_image,
-                    explanation=qd.solution_text,
-                    solution_image=qd.solution_image,
-                )
-                for sec, qd in section_question_pairs
-            ])
-            # question_objs[i] corresponds to section_question_pairs[i]
+                # Batch INSERT 2: Questions
+                section_question_pairs = [
+                    (section_objs_new[i], qd)
+                    for i, sd in enumerate(all_sections)
+                    for qd in sd.questions.all()
+                ]
+                question_objs_new = Question.objects.bulk_create([
+                    Question(
+                        section=sec,
+                        text=qd.question_text,
+                        image=qd.question_image,
+                        explanation=qd.solution_text,
+                        solution_image=qd.solution_image,
+                        draft_question_id=qd.id,
+                        is_bonus=qd.is_bonus,
+                    )
+                    for sec, qd in section_question_pairs
+                ])
 
-            # ── Batch INSERT 3: Options (640 rows) ───────────────────────
-            Option.objects.bulk_create([
-                Option(
-                    question=question_objs[qi],
-                    text=od.option_text,
-                    image=od.option_image,
-                    is_correct=od.is_correct,
-                    order=od.order,
-                )
-                for qi, (_, qd) in enumerate(section_question_pairs)
-                for od in qd.options.all()
-            ])
+                # Batch INSERT 3: Options
+                Option.objects.bulk_create([
+                    Option(
+                        question=question_objs_new[qi],
+                        text=od.option_text,
+                        image=od.option_image,
+                        is_correct=od.is_correct,
+                        order=od.order,
+                        draft_option_id=od.id,
+                    )
+                    for qi, (_, qd) in enumerate(section_question_pairs)
+                    for od in qd.options.all()
+                ])
 
             # Mark draft as published
             draft.is_published = True
@@ -932,8 +1096,23 @@ def publish_test(request, draft_id):
             draft.release_lock()
             draft.save()
 
-        action_type = "updated" if published_test else "published"
-        messages.success(request, f"Test '{test.name}' {action_type} successfully! Students can now take this test.")
+        # ── Post-publish: recalculate marks for existing attempts ────────
+        # Done outside the atomic block so a scoring error doesn't roll back
+        # the publish itself. Runs only on re-publish when students have tried.
+        if published_test:
+            from evaluation.services import recalculate_marks_for_test
+            prior_count = test.attempts.filter(
+                status='submitted'
+            ).count()
+            if prior_count > 0:
+                recalculate_marks_for_test(test)
+                action_type = f"updated and marks recalculated for {prior_count} attempt(s)"
+            else:
+                action_type = "updated"
+        else:
+            action_type = "published"
+
+        messages.success(request, f"✅ Test '{test.name}' {action_type} successfully! Students can now take this test.")
         return redirect('builder_dashboard')
 
     except IntegrityError as e:
@@ -1176,6 +1355,7 @@ def live_editor(request, draft_id):
                 'image_url': question.question_image.url if question.question_image else None,
                 'solution_text': question.solution_text,
                 'solution_image_url': question.solution_image.url if question.solution_image else None,
+                'is_bonus': question.is_bonus,
                 'options': options_data,
             })
         sections_data.append({
@@ -1255,6 +1435,7 @@ def api_save_question(request, draft_id):
 
     question_text = request.POST.get('question_text', '').strip()
     solution_text = request.POST.get('solution_text', '').strip()
+    is_bonus = request.POST.get('is_bonus') == '1'
     question_image = request.FILES.get('question_image')
     solution_image = request.FILES.get('solution_image')
     clear_question_image = request.POST.get('clear_question_image') == '1'
@@ -1294,6 +1475,7 @@ def api_save_question(request, draft_id):
         question = get_object_or_404(QuestionDraft, id=question_id, section=section)
         question.question_text = question_text
         question.solution_text = solution_text
+        question.is_bonus = is_bonus
         if question_image:
             question.question_image = question_image
         elif clear_question_image:
@@ -1325,6 +1507,7 @@ def api_save_question(request, draft_id):
                     solution_text=solution_text,
                     solution_image=solution_image,
                     order=insert_at_order,
+                    is_bonus=is_bonus,
                 )
         else:
             order = section.questions.count() + 1
@@ -1335,6 +1518,7 @@ def api_save_question(request, draft_id):
                 solution_text=solution_text,
                 solution_image=solution_image,
                 order=order,
+                is_bonus=is_bonus,
             )
 
     # Update options: update existing, create new, delete removed
@@ -1382,6 +1566,7 @@ def api_save_question(request, draft_id):
             'image_url': question.question_image.url if question.question_image else None,
             'solution_text': question.solution_text,
             'solution_image_url': question.solution_image.url if question.solution_image else None,
+            'is_bonus': question.is_bonus,
             'options': options_resp,
         }
     }
@@ -1411,6 +1596,90 @@ def api_delete_question(request, draft_id, question_id):
             q.order = i
             q.save(update_fields=['order'])
     return JsonResponse({'success': True})
+
+
+@admin_required
+@login_required
+@require_http_methods(["POST"])
+def api_toggle_bonus(request, draft_id, question_id):
+    """
+    Standalone endpoint to mark/unmark a QuestionDraft as bonus.
+
+    Immediately propagates is_bonus to the linked live Question (if the draft
+    has a published_test_id), then calls recalculate_marks_for_test() so that
+    all past submitted attempts are re-scored right away -- no republish needed.
+
+    Lookup strategy for the live Question:
+      1. Primary: Question.draft_question_id == question_draft.id
+         (set for tests published after the draft_question_id feature was added)
+      2. Fallback: match live section by draft_section_id or name, then find
+         the live question at the same 1-based order position within that section.
+         (for tests originally published before the feature was added)
+    """
+    from django.http import JsonResponse
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+    draft.refresh_lock(request.user)
+    question_draft = get_object_or_404(QuestionDraft, id=question_id, section__test_draft=draft)
+
+    new_is_bonus = request.POST.get('is_bonus') == '1'
+
+    # ── Update draft ─────────────────────────────────────────────────────
+    question_draft.is_bonus = new_is_bonus
+    question_draft.save(update_fields=['is_bonus'])
+
+    # ── Propagate to live Question + recalculate ─────────────────────────
+    recalc_triggered = False
+    if draft.published_test_id:
+        from questions.models import Question as LiveQuestion
+        from evaluation.services import recalculate_marks_for_test
+        from attempts.models import TestAttempt as LiveAttempt
+
+        live_q = LiveQuestion.objects.filter(draft_question_id=question_draft.id).first()
+
+        # Fallback for tests published before draft_question_id was introduced
+        if live_q is None:
+            try:
+                from testseries.models import Test as LiveTest, Section as LiveSection
+                live_test = LiveTest.objects.get(id=draft.published_test_id)
+                section_draft = question_draft.section
+
+                # Try to find the live section by draft_section_id first, then by name
+                live_section = (
+                    live_test.sections.filter(draft_section_id=section_draft.id).first()
+                    or live_test.sections.filter(name=section_draft.name).first()
+                )
+                if live_section:
+                    # Match by 1-based order position within the section (sorted by PK)
+                    live_questions = list(live_section.questions.order_by('id'))
+                    idx = question_draft.order - 1
+                    if 0 <= idx < len(live_questions):
+                        live_q = live_questions[idx]
+            except Exception:
+                pass
+
+        if live_q is not None:
+            live_q.is_bonus = new_is_bonus
+            live_q.save(update_fields=['is_bonus'])
+
+            # Recalculate only if there are submitted attempts
+            try:
+                from testseries.models import Test as LiveTest
+                live_test = LiveTest.objects.get(id=draft.published_test_id)
+                prior_count = LiveAttempt.objects.filter(
+                    test=live_test,
+                    status=LiveAttempt.STATUS_SUBMITTED,
+                ).count()
+                if prior_count > 0:
+                    recalculate_marks_for_test(live_test)
+                    recalc_triggered = True
+            except Exception:
+                pass
+
+    return JsonResponse({
+        'success': True,
+        'is_bonus': new_is_bonus,
+        'recalc_triggered': recalc_triggered,
+    })
 
 
 @admin_required
@@ -1555,6 +1824,26 @@ def api_reorder_questions(request, draft_id):
             QuestionDraft.objects.filter(id=qid).update(order=new_order)
 
     return JsonResponse({'success': True})
+
+
+@admin_required
+@login_required
+def api_prior_attempts_count(request, draft_id):
+    """
+    Return the number of submitted attempts for the test linked to this draft.
+    Used by the live editor to decide whether to show a re-publish warning.
+    """
+    from django.http import JsonResponse
+    from attempts.models import TestAttempt
+
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+    count = 0
+    if draft.published_test_id:
+        count = TestAttempt.objects.filter(
+            test_id=draft.published_test_id,
+            status=TestAttempt.STATUS_SUBMITTED,
+        ).count()
+    return JsonResponse({'count': count})
 
 
 @admin_required

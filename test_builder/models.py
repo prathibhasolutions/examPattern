@@ -131,6 +131,10 @@ class QuestionDraft(models.Model):
     solution_text = models.TextField(blank=True)
     solution_image = models.ImageField(upload_to='draft_solutions/', blank=True, null=True)
     order = models.IntegerField(default=1)
+    is_bonus = models.BooleanField(
+        default=False,
+        help_text="If True, all students get full marks for this question regardless of their answer"
+    )
     
     def clean(self):
         """Validate that question has at least text or image"""

@@ -240,6 +240,34 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
 .le-del-question-btn:hover { background: #fecaca; }
 .le-save-status { font-size: 13px; color: #475569; }
 
+/* ── Bonus toggle button ───────────────────── */
+.le-bonus-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #fff7ed; color: #92400e; border: 2px solid #fbbf24;
+    padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+}
+.le-bonus-btn:hover { background: #fef3c7; }
+.le-bonus-btn.is-bonus {
+    background: #f59e0b; color: #fff; border-color: #d97706;
+}
+.le-bonus-hint { font-size: 12px; color: #92400e; }
+
+/* ── Bonus badge in palette circle ─────────── */
+.le-q-circle.is-bonus {
+    background: #f59e0b; color: #fff; border-color: #d97706;
+    position: relative;
+}
+.le-q-circle.is-bonus::after {
+    content: 'B';
+    position: absolute; top: -5px; right: -5px;
+    background: #7c3aed; color: #fff;
+    border-radius: 50%; width: 13px; height: 13px;
+    font-size: 8px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+}
+
 /* ── Palette panel (right) ──────────────────── */
 .le-palette-panel {
     width: 270px; min-width: 220px; flex-shrink: 0;
@@ -780,6 +808,18 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
                 </button>
             </div>
 
+            <!-- Bonus toggle -->
+            <div class="le-field-group" id="bonusToggleGroup">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <button class="le-bonus-btn" id="bonusToggleBtn" type="button" onclick="toggleBonus()">
+                        <i class="fas fa-gift"></i> <span id="bonusBtnLabel">Mark as Bonus</span>
+                    </button>
+                    <span id="bonusHint" class="le-bonus-hint" style="display:none;">
+                        <i class="fas fa-info-circle"></i> All students (attempted &amp; not attempted) will receive full marks for this question.
+                    </span>
+                </div>
+            </div>
+
             <!-- Solution (collapsible) -->
             <div class="le-solution-block le-field-group">
                 <button class="le-solution-toggle" id="solutionToggle" type="button">
@@ -1020,6 +1060,37 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
     </div>
 </div>
 
+<!-- ── Re-publish warning modal ──────────────────────────────────── -->
+<div class="modal fade" id="republishWarningModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:440px;">
+        <div class="modal-content" style="border-radius:12px;border:none;box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+            <div class="modal-header" style="background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:12px 12px 0 0;border:none;padding:16px 20px;">
+                <h5 class="modal-title" style="color:white;font-weight:700;font-size:15px;margin:0;">
+                    <i class="fas fa-exclamation-triangle"></i> Heads-up before publishing
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding:20px 22px;">
+                <p id="republishWarningText" style="font-size:14px;color:#334155;line-height:1.6;margin-bottom:10px;"></p>
+                <div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:8px;padding:12px 14px;font-size:12.5px;color:#78350f;line-height:1.55;">
+                    <strong>What will happen:</strong><br>
+                    • Questions &amp; options will be updated in-place.<br>
+                    • Students who selected the <em>newly correct</em> answer will gain marks.<br>
+                    • Students who did <em>not</em> attempt a changed question are unaffected.<br>
+                    • The top-10 leaderboard will be recalculated automatically.
+                </div>
+            </div>
+            <div class="modal-footer" style="border:none;padding:12px 20px 16px;">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning btn-sm" id="confirmRepublishBtn"
+                        style="color:white;font-weight:600;" onclick="doPublish()">
+                    <i class="fas fa-upload"></i> Yes, publish &amp; recalculate
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -1171,6 +1242,61 @@ function renderSectionTabs() {
 }
 
 // ── Render: Palette ────────────────────────────────────
+// ── Bonus question toggle ──────────────────────────────
+function setBonusState(isBonus) {
+    const btn = document.getElementById('bonusToggleBtn');
+    const label = document.getElementById('bonusBtnLabel');
+    const hint = document.getElementById('bonusHint');
+    if (isBonus) {
+        btn.classList.add('is-bonus');
+        label.textContent = 'Bonus Active';
+        hint.style.display = 'inline';
+    } else {
+        btn.classList.remove('is-bonus');
+        label.textContent = 'Mark as Bonus';
+        hint.style.display = 'none';
+    }
+}
+async function toggleBonus() {
+    // Bonus cannot be toggled on an unsaved (new) question — the question must
+    // exist in the DB so the dedicated toggle-bonus API can find it.
+    if (activeQuestionId === null || isNewQuestion) {
+        showToast('Save the question first before marking it as bonus.', 'warning');
+        return;
+    }
+    const btn = document.getElementById('bonusToggleBtn');
+    const newState = !btn.classList.contains('is-bonus');
+    btn.disabled = true;
+
+    const fd = new FormData();
+    fd.append('is_bonus', newState ? '1' : '0');
+
+    try {
+        const resp = await csrfPost(`/builder/${DRAFT_ID}/api/question/${activeQuestionId}/toggle-bonus/`, fd);
+        const data = await resp.json();
+        if (data.success) {
+            setBonusState(data.is_bonus);
+            // Update local question data so palette badge reflects change immediately
+            const sec = activeSection();
+            if (sec) {
+                const q = sec.questions.find(x => x.id === activeQuestionId);
+                if (q) q.is_bonus = data.is_bonus;
+            }
+            renderPalette();
+            if (data.recalc_triggered) {
+                showToast('Bonus marks applied — all student scores have been recalculated.', 'success');
+            } else {
+                showToast(data.is_bonus ? 'Question marked as bonus.' : 'Bonus removed.', 'info');
+            }
+        } else {
+            showToast(data.error || 'Failed to update bonus status.', 'danger');
+        }
+    } catch {
+        showToast('Failed to update bonus status. Please try again.', 'danger');
+    }
+    btn.disabled = false;
+}
+
 function renderPalette() {
     const sec = activeSection();
     document.getElementById('paletteSectionTitle').textContent =
@@ -1217,6 +1343,10 @@ function renderPalette() {
         }
 
         circle.textContent = q.order;
+        if (q.is_bonus) {
+            circle.classList.add('is-bonus');
+            circle.title = (circle.title || `Question ${q.order}`) + ' [BONUS]';
+        }
         if (isMultiSelectMode) {
             if (selectedQuestionIds.has(q.id)) circle.classList.add('ms-selected');
             circle.addEventListener('click', () => toggleQuestionSelection(q.id));
@@ -1451,6 +1581,14 @@ function loadEditor(questionData) {
     // Trigger live previews for initial loaded values
     updateLatexPreview(document.getElementById('qText').value, document.getElementById('qTextPreview'));
     updateLatexPreview(document.getElementById('solutionText').value, document.getElementById('solTextPreview'));
+
+    // Set bonus toggle state
+    const isBonus = questionData ? !!questionData.is_bonus : false;
+    setBonusState(isBonus);
+    // Disable bonus toggle for unsaved new questions (no DB record yet)
+    const bonusBtn = document.getElementById('bonusToggleBtn');
+    bonusBtn.disabled = !questionData;
+    bonusBtn.title = questionData ? '' : 'Save the question first before marking as bonus.';
 
     // Collapse solution
     document.getElementById('solutionContent').style.display = 'none';
@@ -1794,15 +1932,28 @@ function renderWarningSummary() {
     });
 }
 
+// ── Shared publish navigation helper ──────────────────────────────
+function doPublish() {
+    // Close any open modal first, then navigate
+    const modalEl = document.getElementById('republishWarningModal');
+    if (modalEl) {
+        const bsModal = bootstrap.Modal.getInstance(modalEl);
+        if (bsModal) bsModal.hide();
+    }
+    const btn = document.getElementById('publishBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing…'; }
+    window.location.href = `/builder/${DRAFT_ID}/publish/`;
+}
+
 // ── Validate & Publish ─────────────────────────────────────────────
 async function validateAndPublish() {
     const btn = document.getElementById('publishBtn');
 
-    // Second click after warnings were shown → user confirmed, proceed to publish
+    // Second click after warnings were shown → check prior attempts then publish
     if (hasWarningsOnly) {
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing…';
-        window.location.href = `/builder/${DRAFT_ID}/publish/`;
+        await checkPriorAttemptsAndPublish();
         return;
     }
 
@@ -1829,9 +1980,9 @@ async function validateAndPublish() {
             });
 
             if (totalWarnings === 0) {
-                // All clear — publish immediately
+                // All clear — check prior attempts then publish
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing…';
-                window.location.href = `/builder/${DRAFT_ID}/publish/`;
+                await checkPriorAttemptsAndPublish();
                 return;
             }
 
@@ -1897,6 +2048,34 @@ async function validateAndPublish() {
 
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-upload"></i> Publish';
+}
+
+// ── Check prior attempts then publish ─────────────────────────────
+async function checkPriorAttemptsAndPublish() {
+    try {
+        const resp = await fetch(`/builder/${DRAFT_ID}/api/prior-attempts-count/`, {
+            headers: { 'X-CSRFToken': CSRF },
+        });
+        const data = await resp.json();
+        if (data.count > 0) {
+            // Show warning modal
+            const warningText = document.getElementById('republishWarningText');
+            if (warningText) {
+                warningText.textContent =
+                    `${data.count} student${data.count > 1 ? 's have' : ' has'} already submitted this test. ` +
+                    `Publishing these changes will recalculate their marks based on the updated correct answers.`;
+            }
+            const btn = document.getElementById('publishBtn');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload"></i> Publish'; }
+            const modalEl = document.getElementById('republishWarningModal');
+            if (modalEl) new bootstrap.Modal(modalEl).show();
+        } else {
+            doPublish();
+        }
+    } catch (e) {
+        // Network error — fall back to direct publish
+        doPublish();
+    }
 }
 
 // ── Delete Question ────────────────────────────────────

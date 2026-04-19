@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Refund Policy — examPattern{% endblock %}
+
+{% block header %}
+<!-- Custom navbar -->
+{% endblock %}
+
+{% block content %}
+<style>
+    main.container-fluid { padding: 0 !important; margin-top: 0 !important; }
+    body { margin: 0; padding: 0; }
+    .navbar-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        width: 100vw;
+        position: relative;
+        left: 50%; right: 50%;
+        margin-left: -50vw !important;
+        margin-right: -50vw !important;
+    }
+    .navbar-custom .navbar-brand {
+        font-weight: 700;
+        font-size: 18px;
+        color: white !important;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .navbar-custom .navbar-brand img { height: 45px; width: auto; }
+    .navbar-profile { display: flex; align-items: center; gap: 8px; }
+    .profile-avatar {
+        width: 42px; height: 42px; border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white; display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 17px; border: 2.5px solid rgba(255,255,255,0.4);
+        cursor: pointer; transition: all 0.25s; flex-shrink: 0;
+    }
+    .profile-avatar:hover { transform: scale(1.08); border-color: white; box-shadow: 0 0 0 4px rgba(255,255,255,0.15); }
+    .profile-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+    .profile-combined {
+        display: flex; align-items: center; gap: 10px;
+        text-decoration: none; padding: 5px 10px; border-radius: 24px; transition: background 0.2s;
+    }
+    .profile-combined:hover { background: rgba(255,255,255,0.12); }
+    .profile-name {
+        color: rgba(255,255,255,0.95); font-size: 13px; font-weight: 600;
+        line-height: 1; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .navbar-divider { width: 1px; height: 32px; background: rgba(255,255,255,0.2); margin: 0 8px; flex-shrink: 0; }
+    .btn-login {
+        background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.4);
+        padding: 7px 20px; border-radius: 20px; font-weight: 600; font-size: 13px; text-decoration: none; transition: all 0.3s;
+    }
+    .btn-login:hover { background: white; color: #1e3c72; }
+    .btn-logout {
+        background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.9);
+        border: 1px solid rgba(255,255,255,0.3); padding: 6px 16px;
+        border-radius: 20px; font-size: 13px; text-decoration: none; transition: all 0.3s; font-weight: 500;
+    }
+    .btn-logout:hover { background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.5); color: #fca5a5; }
+
+    /* Footer */
+    .footer-custom {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white; padding: 40px 0 20px;
+    }
+    .footer-content { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 30px; margin-bottom: 30px; }
+    .footer-logo-section { display: flex; flex-direction: column; gap: 15px; }
+    .footer-logo-section img { width: 180px; max-width: 25vw; height: auto; object-fit: contain; }
+    .footer-logo-section p { color: rgba(255,255,255,0.85); font-size: 14px; margin: 0; }
+    .footer-links { display: flex; flex-direction: column; gap: 10px; }
+    .footer-links h6 { font-weight: 700; font-size: 16px; margin-bottom: 10px; color: white; }
+    .footer-links a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 14px; transition: all 0.3s; }
+    .footer-links a:hover { color: white; padding-left: 5px; }
+    .footer-contact { display: flex; flex-direction: column; gap: 10px; }
+    .footer-contact h6 { font-weight: 700; font-size: 16px; margin-bottom: 10px; color: white; }
+    .footer-contact p { color: rgba(255,255,255,0.8); font-size: 14px; margin: 0; }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px; text-align: center; }
+    .footer-bottom p { margin: 5px 0; font-size: 13px; color: rgba(255,255,255,0.75); }
+    .footer-credit { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 10px; }
+    .footer-credit a { color: #ffc107; text-decoration: none; font-weight: 600; transition: all 0.3s; }
+    .footer-credit a:hover { color: #ffdd57; text-decoration: underline; }
+    @media (max-width: 768px) {
+        .footer-content { grid-template-columns: 1fr; gap: 25px; text-align: center; }
+        .footer-logo-section img { margin: 0 auto; }
+        .footer-custom .container-fluid { padding-left: 20px !important; padding-right: 20px !important; }
+    }
+
+    /* Page content */
+    .policy-page-content { background: #f6f8fb; min-height: 100vh; padding: 40px 20px 60px; }
+    .policy-section-title {
+        font-size: 1.15rem; font-weight: 700; color: #1a1a2e;
+        border-left: 4px solid #4f46e5; padding-left: 0.75rem; margin-bottom: 0.75rem;
+    }
+    .policy-body p, .policy-body li { color: #374151; line-height: 1.8; }
+    .policy-list { padding-left: 1.5rem; line-height: 1.9; }
+    .alert-no-refund {
+        background: #fef2f2; border: 1.5px solid #fca5a5; border-radius: 10px;
+        padding: 16px 20px; margin-bottom: 24px;
+        display: flex; align-items: flex-start; gap: 14px;
+    }
+    .alert-no-refund i { color: #dc2626; font-size: 1.3rem; flex-shrink: 0; margin-top: 2px; }
+    .alert-no-refund strong { color: #dc2626; }
+    .alert-info-box {
+        background: #eff6ff; border: 1.5px solid #93c5fd; border-radius: 10px;
+        padding: 16px 20px; margin-bottom: 24px;
+        display: flex; align-items: flex-start; gap: 14px;
+    }
+    .alert-info-box i { color: #2563eb; font-size: 1.3rem; flex-shrink: 0; margin-top: 2px; }
+    .step-badge {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 28px; height: 28px; border-radius: 50%;
+        background: #4f46e5; color: white; font-weight: 700; font-size: 13px;
+        flex-shrink: 0; margin-top: 1px;
+    }
+    .step-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+    .step-row p { margin: 0; color: #374151; line-height: 1.7; }
+</style>
+
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <div class="container-fluid" style="padding-left: 20px; padding-right: 20px;">
+        <a class="navbar-brand" href="{% url 'tests_list' %}">
+            <img src="{% static 'examPattern.png' %}" alt="examPattern">
+        </a>
+        <div class="navbar-profile ms-auto">
+            {% if user.is_authenticated %}
+                <a href="{% url 'profile' %}" class="profile-combined" title="{{ user.get_full_name|default:user.username }}">
+                    <div class="profile-avatar">
+                        {% if user.photo %}
+                            <img src="{{ user.photo.url }}" alt="{{ user.username }}">
+                        {% else %}
+                            {{ user.username|first|upper }}
+                        {% endif %}
+                    </div>
+                    <span class="profile-name">{{ user.username }}</span>
+                </a>
+                {% if user.is_staff and user.is_superuser %}
+                    <a href="/builder/" class="nav-link" style="color: #ffc107 !important;">
+                        <i class="fas fa-tools"></i> Builder
+                    </a>
+                {% endif %}
+                <div class="navbar-divider"></div>
+                <a href="{% url 'logout' %}" class="btn btn-logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-login">Login</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<div class="policy-page-content">
+<div class="container" style="max-width: 860px;">
+
+  <h1 class="fw-bold mb-1" style="color: #1a1a2e;">Refund Policy</h1>
+  
+
+  <div class="policy-body">
+
+    <!-- No-refund callout -->
+    <div class="alert-no-refund">
+      <i class="fas fa-ban"></i>
+      <div>
+        <strong>No Refunds on Completed Purchases</strong><br>
+        <span style="color:#374151; font-size:14px;">
+          All payments made on examPattern for test series subscriptions are <strong>final and non-refundable</strong>.
+          Once a purchase is confirmed and your test series is activated, we do not offer refunds, partial credits, or exchanges under any circumstances.
+        </span>
+      </div>
+    </div>
+
+    <section class="mb-5">
+      <h2 class="policy-section-title">1. Why We Have a No-Refund Policy</h2>
+      <p>
+        examPattern provides digital educational content — specifically, access to mock tests, question banks, and
+        detailed solutions. Because this content is made available to you immediately upon payment confirmation,
+        it cannot be "returned" like a physical product. To maintain fairness for all students and to sustain our
+        platform, all sales are final.
+      </p>
+    </section>
+
+    <section class="mb-5">
+      <h2 class="policy-section-title">2. What Is Covered Under This Policy</h2>
+      <ul class="policy-list">
+        <li>One-time payments for individual test series subscriptions.</li>
+        <li>Any future subscription plans or bundled packages offered on examPattern.</li>
+        <li>Payments made through Razorpay or any other payment gateway integrated on this platform.</li>
+      </ul>
+    </section>
+
+    <section class="mb-5">
+      <h2 class="policy-section-title">3. Exception — Payment Deducted but Test Series Not Activated</h2>
+
+      <div class="alert-info-box">
+        <i class="fas fa-info-circle"></i>
+        <div>
+          <strong style="color:#1d4ed8;">Payment Failure / Activation Issue?</strong><br>
+          <span style="color:#374151; font-size:14px;">
+            If your money was deducted but your test series was <strong>not activated</strong> in your account,
+            you are entitled to a full resolution. Please raise a support request as described below.
+          </span>
+        </div>
+      </div>
+
+      <p>
+        Technical failures can sometimes occur during payment processing — your bank may deduct the amount
+        but our system may not receive a successful confirmation from the payment gateway. In such cases,
+        we will investigate and resolve the issue promptly.
+      </p>
+
+      <h3 style="font-size:1rem; font-weight:700; color:#1a1a2e; margin-bottom:14px;">How to raise a request:</h3>
+
+      <div class="step-row">
+        <span class="step-badge">1</span>
+        <p>Email us at <strong>prathibhainstitutions@gmail.com</strong> with the subject line: <em>"Payment Deducted — Test Series Not Activated"</em>.</p>
+      </div>
+      <div class="step-row">
+        <span class="step-badge">2</span>
+        <p>Include your <strong>registered email address</strong>, the <strong>Razorpay Payment ID</strong> (found in your bank SMS or email receipt), the <strong>name of the test series</strong> you purchased, and the <strong>date and amount</strong> of the transaction.</p>
+      </div>
+      <div class="step-row">
+        <span class="step-badge">3</span>
+        <p>Our team will verify the transaction with Razorpay and check your account status. We will respond within <strong>2–3 business days</strong>.</p>
+      </div>
+      <div class="step-row">
+        <span class="step-badge">4</span>
+        <p>If the payment is confirmed but the activation failed on our end, we will immediately activate your test series <strong>or</strong> initiate a full refund, whichever you prefer.</p>
+      </div>
+
+      <p style="margin-top:10px; font-size:13px; color:#6b7280;">
+        <i class="fas fa-clock"></i>&nbsp;
+        Resolution typically takes <strong>2–3 business days</strong> from the date we receive your request.
+        Refunds, if applicable, are processed back to your original payment method and may take an additional
+        3–5 business days to reflect depending on your bank.
+      </p>
+    </section>
+
+    <section class="mb-5">
+      <h2 class="policy-section-title">4. Duplicate Payments</h2>
+      <p>
+        If you were charged more than once for the same order due to a technical error, please contact us at
+        <strong>prathibhainstitutions@gmail.com</strong> with proof of both transactions. After verification,
+        the duplicate charge will be fully refunded within <strong>5–7 business days</strong>.
+      </p>
+    </section>
+
+    <section class="mb-5">
+      <h2 class="policy-section-title">5. Subscription Cancellations</h2>
+      <p>
+        Currently, examPattern offers one-time access purchases (not recurring subscriptions). If subscription
+        plans are introduced in the future, a separate cancellation policy will be published and users will be
+        notified in advance.
+      </p>
+    </section>
+
+    <section class="mb-5">
+      <h2 class="policy-section-title">6. Changes to This Policy</h2>
+      <p>
+        We reserve the right to update this Refund Policy at any time. Any changes will be posted on this page.
+        Continued use of the platform after changes are posted constitutes your acceptance of the revised policy.
+      </p>
+    </section>
+
+    <section class="mb-5">
+      <h2 class="policy-section-title">7. Contact Us</h2>
+      <p>
+        For any payment-related queries or disputes, please reach out to us:
+      </p>
+      <ul class="policy-list">
+        <li><strong>Email:</strong> prathibhainstitutions@gmail.com</li>
+        <li><strong>Phone:</strong> +91 9030941099</li>
+        <li><strong>Address:</strong> Beside Bank of Maharashtra, Namdevwada, Nizamabad</li>
+      </ul>
+      <p style="margin-top:10px; font-size:13px; color:#6b7280;">
+        We aim to respond to all queries within 2 business days.
+      </p>
+    </section>
+
+  </div>
+</div>
+</div>
+
+<footer class="footer-custom">
+    <div class="container-fluid" style="padding-left: 60px; padding-right: 60px;">
+        <div class="footer-content">
+            <div class="footer-logo-section">
+                <img src="{% static 'examPattern.png' %}" alt="examPattern">
+                <p>Learn. Thrive. Succeed.</p>
+            </div>
+            <div class="footer-links">
+                <h6>Quick Links</h6>
+                <a href="{% url 'tests_list' %}"><i class="fas fa-home"></i> Home</a>
+                <a href="{% url 'profile' %}"><i class="fas fa-user"></i> Profile</a>
+                {% if user.is_staff and user.is_superuser %}
+                    <a href="/builder/"><i class="fas fa-tools"></i> Test Builder</a>
+                {% endif %}
+                <a href="{% url 'privacy_policy' %}"><i class="fas fa-shield-alt"></i> Privacy Policy</a>
+                <a href="{% url 'terms_of_service' %}"><i class="fas fa-file-contract"></i> Terms of Service</a>
+                <a href="{% url 'refund_policy' %}"><i class="fas fa-undo-alt"></i> Refund Policy</a>
+            </div>
+            <div class="footer-contact">
+                <h6>Contact Us</h6>
+                <p><i class="fas fa-envelope"></i> prathibhainstitutions@gmail.com</p>
+                <p><i class="fas fa-phone"></i> +91 9030941099</p>
+                <p><i class="fas fa-map-marker-alt"></i> Beside Bank of Maharashtra, Namdevwada, Nizamabad</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; {% now "Y" %} examPattern. All rights reserved.</p>
+            <p class="footer-credit">Made by <a href="https://www.prathibhasolutions.com" target="_blank" rel="noopener noreferrer">Prathibha Solutions</a></p>
+        </div>
+    </div>
+</footer>
+{% endblock %}
+{% block footer %}{% endblock %}
