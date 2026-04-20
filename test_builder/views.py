@@ -657,7 +657,8 @@ def manage_questions(request, draft_id, section_id):
                 question_image=question_image,
                 solution_text=solution_text,
                 solution_image=solution_image,
-                order=order
+                order=order,
+                is_bonus=False,
             )
             
             # Add options

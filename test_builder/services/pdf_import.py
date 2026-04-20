@@ -551,6 +551,7 @@ def import_pdf_into_section(
                 section=section,
                 question_text=stem,
                 order=base_order + imported_count + 1,
+                is_bonus=False,
             )
 
             image_path = _pick_question_image(page_map, candidate, page_question_counts)
