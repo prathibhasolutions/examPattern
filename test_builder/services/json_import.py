@@ -90,6 +90,7 @@ def import_json_into_section(section, json_text: str) -> dict:
             question_text=question_text,
             solution_text=solution_text,
             order=base_order + imported_count + 1,
+            is_bonus=False,
         )
 
         for j, opt in enumerate(options_data):

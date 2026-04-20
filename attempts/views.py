@@ -1,13 +1,43 @@
+import logging
+import threading
+
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db.models import Prefetch
+from django.db import transaction
 
 from .models import TestAttempt, Answer
 from .serializers import TestAttemptSerializer, AnswerSerializer
 from evaluation.services import evaluate_attempt
+
+logger = logging.getLogger(__name__)
+
+
+def _run_evaluation_in_background(attempt_id: int) -> None:
+    """
+    Spawn a background thread to evaluate an attempt after submission so the
+    submit endpoint can return immediately without blocking the HTTP worker.
+
+    The thread gets a fresh database connection because Django's connection
+    objects are not safe to share across threads.
+    """
+    def _worker():
+        from django.db import connection
+        try:
+            attempt = TestAttempt.objects.select_related('test', 'user').get(pk=attempt_id)
+            evaluate_attempt(attempt)
+        except Exception:
+            logger.exception('Background evaluate_attempt failed for attempt %s', attempt_id)
+        finally:
+            # Always close the DB connection opened by this thread so it is
+            # returned to the pool and not leaked.
+            connection.close()
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
 
 
 class TestAttemptViewSet(viewsets.ModelViewSet):
@@ -103,6 +133,11 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
         """
         Submit a test attempt.
         POST /api/attempts/{id}/submit/
+
+        Returns immediately after marking the attempt as submitted.
+        Evaluation runs in a background thread so the HTTP worker is freed
+        instantly — critical for handling simultaneous submissions without
+        server memory spikes.
         """
         attempt = self.get_object()
 
@@ -112,47 +147,49 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Compute actual active elapsed time:
-        # If we have a saved timer value (set by heartbeat), use it for accuracy
-        # so resumed tests aren't penalised for the offline gap.
+        # Compute actual active elapsed time.
+        # Use the saved heartbeat timer value when available — more accurate
+        # than wall-clock for tests that were paused or resumed.
         test_duration = attempt.test.duration_seconds or 0
         if attempt.time_remaining_seconds is not None and test_duration > 0:
             elapsed = test_duration - attempt.time_remaining_seconds
         else:
             elapsed = int((timezone.now() - attempt.started_at).total_seconds())
 
-        # Mark as submitted
+        # Commit the submission status immediately so the response is fast.
         attempt.status = TestAttempt.STATUS_SUBMITTED
         attempt.submitted_at = timezone.now()
         attempt.duration_seconds = max(0, int(elapsed))
         attempt.time_remaining_seconds = None
         attempt.save()
 
-        # Evaluate — if this crashes the submission is already committed, so
-        # catch the error, log it, and still return 200 so the client redirects
-        # to the results page.  The admin can re-trigger evaluation later.
-        import logging
-        logger = logging.getLogger(__name__)
-        try:
-            evaluation = evaluate_attempt(attempt)
-        except Exception:
-            logger.exception('evaluate_attempt failed for attempt %s', attempt.id)
-            serializer = self.get_serializer(attempt)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+        # Kick off evaluation in a background thread — the student is already
+        # redirected to the submitted page which polls for results.
+        _run_evaluation_in_background(attempt.id)
 
         serializer = self.get_serializer(attempt)
-        return Response(
-            {
-                **serializer.data,
-                'evaluation': {
-                    'total_score': str(evaluation.total_score),
-                    'section_scores': evaluation.section_scores,
-                    'rank': evaluation.rank,
-                    'percentile': str(evaluation.percentile) if evaluation.percentile is not None else None,
-                },
-            },
-            status=status.HTTP_200_OK,
-        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def evaluation_status(self, request, pk=None):
+        """
+        Poll for evaluation completion.
+        GET /api/attempts/{id}/evaluation_status/
+
+        The submitted page calls this every 1.5 seconds until
+        evaluation_ready is true, then redirects to the results page.
+
+        Returns:
+        {
+            "evaluation_ready": true | false
+        }
+        """
+        attempt = self.get_object()
+
+        # Only the attempt owner can poll (admins are allowed via get_queryset override)
+        from evaluation.models import EvaluationResult
+        ready = EvaluationResult.objects.filter(attempt=attempt).exists()
+        return Response({'evaluation_ready': ready})
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def save_timer(self, request, pk=None):

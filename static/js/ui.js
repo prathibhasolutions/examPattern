@@ -15,6 +15,8 @@ const UI = {
         status: answer.status || 'not_visited',
         selected_option_ids: answer.selected_option_ids || [],
         timeSpentSeconds: answer.time_spent_seconds,
+        _savedToServer: true,  // loaded from server — already clean
+        _saveSeq: 0,
       };
     });
   },
@@ -208,6 +210,10 @@ const UI = {
       answer.status = 'visited';
     }
 
+    // Mark dirty: increment sequence so any in-flight "visited" save that
+    // completes after this point will NOT overwrite _savedToServer back to true.
+    answer._saveSeq = (answer._saveSeq || 0) + 1;
+    answer._savedToServer = false;
     UI.answers[questionId] = answer;
     Palette.updateStatus(questionId, answer.status);
 
@@ -242,6 +248,8 @@ const UI = {
 
     answer.selected_option_ids = selectedOptions;
     answer.response_text = responseText;
+    answer._saveSeq = (answer._saveSeq || 0) + 1;
+    answer._savedToServer = false;
     UI.answers[questionId] = answer;
     Palette.updateStatus(questionId, answer.status);
 
@@ -252,11 +260,13 @@ const UI = {
     Navigation.next();
   },
 
-  // Debounced save (save after 2 seconds of inactivity)
-  saveTimeout: null,
+  // Debounced save (save after 2 seconds of inactivity per question)
+  // Uses a per-question timeout map so navigating to Q2 never cancels Q1's save.
+  saveTimeouts: {},
   debouncedSaveAnswer: (questionId) => {
-    clearTimeout(UI.saveTimeout);
-    UI.saveTimeout = setTimeout(() => {
+    clearTimeout(UI.saveTimeouts[questionId]);
+    UI.saveTimeouts[questionId] = setTimeout(() => {
+      delete UI.saveTimeouts[questionId];
       UI.saveAnswer(questionId);
     }, 2000);
   },
@@ -268,6 +278,10 @@ const UI = {
     const answer = UI.answers[questionId];
     if (!answer) return;
 
+    // Capture the sequence number BEFORE the async fetch so we can detect
+    // whether the answer was dirtied again while the request was in flight.
+    const seqAtSend = answer._saveSeq || 0;
+
     const payload = {
       question: questionId,
       selected_option_ids: answer.selected_option_ids || [],
@@ -278,7 +292,12 @@ const UI = {
 
     try {
       await API.saveAnswer(ATTEMPT_ID, payload);
-      if (UI.answers[questionId]) UI.answers[questionId]._savedToServer = true;
+      // Only mark clean if no newer mutation arrived while we were waiting.
+      // If _saveSeq advanced, onAnswerChange already set _savedToServer=false
+      // and we must NOT override that back to true.
+      if (UI.answers[questionId] && (UI.answers[questionId]._saveSeq || 0) === seqAtSend) {
+        UI.answers[questionId]._savedToServer = true;
+      }
     } catch (error) {
       console.error('Failed to save answer:', error);
       // Queue for retry when internet returns
@@ -311,6 +330,8 @@ const UI = {
     answer.response_text = '';
     const wasMarked = answer.status === 'marked_for_review' || answer.status === 'answered_and_marked';
     answer.status = wasMarked ? 'marked_for_review' : 'visited';
+    answer._saveSeq = (answer._saveSeq || 0) + 1;
+    answer._savedToServer = false;
 
     UI.answers[questionId] = answer;
     Palette.updateStatus(questionId, answer.status);

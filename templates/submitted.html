@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Test Submitted — examPattern{% endblock %}
+
+{% block header %}<!-- No navbar on this page -->{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block extra_css %}
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  main.container-fluid {
+    background: transparent !important;
+    min-height: unset !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .submitted-card {
+    background: white;
+    border-radius: 24px;
+    padding: 52px 48px 44px;
+    max-width: 520px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
+    animation: slideUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(36px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Animated checkmark circle ── */
+  .checkmark-circle {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: #e8f5e9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 28px;
+    animation: popIn 0.5s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0.4); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+  }
+
+  .checkmark-circle svg {
+    width: 52px;
+    height: 52px;
+  }
+
+  .checkmark-path {
+    stroke-dasharray: 80;
+    stroke-dashoffset: 80;
+    animation: drawCheck 0.5s 0.6s ease forwards;
+  }
+
+  @keyframes drawCheck {
+    to { stroke-dashoffset: 0; }
+  }
+
+  /* ── Typography ── */
+  .submitted-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #1a2a4a;
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+
+  .submitted-subtitle {
+    font-size: 1rem;
+    color: #5c6b8a;
+    margin-bottom: 28px;
+    line-height: 1.5;
+  }
+
+  .test-name {
+    font-weight: 700;
+    color: #2a5298;
+  }
+
+  /* ── Result computing section ── */
+  .computing-box {
+    background: #f5f7ff;
+    border: 1.5px solid #dde3f8;
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-bottom: 28px;
+  }
+
+  .computing-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #3a4a6b;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .dots span {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #2a5298;
+    margin: 0 3px;
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+  .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0);    opacity: 0.4; }
+    30%            { transform: translateY(-8px); opacity: 1;   }
+  }
+
+  /* Progress bar */
+  .progress-track {
+    height: 6px;
+    background: #dde3f8;
+    border-radius: 9999px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 30%;
+    background: linear-gradient(90deg, #2a5298, #667eea);
+    border-radius: 9999px;
+    animation: progressPulse 1.8s ease-in-out infinite;
+  }
+
+  @keyframes progressPulse {
+    0%   { width: 15%; margin-left: 0; }
+    50%  { width: 40%; margin-left: 30%; }
+    100% { width: 15%; margin-left: 85%; }
+  }
+
+  /* ── Info pills ── */
+  .info-pills {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+
+  .info-pill {
+    background: #f0f4ff;
+    border: 1px solid #c8d3f5;
+    border-radius: 9999px;
+    padding: 6px 16px;
+    font-size: 0.82rem;
+    color: #3a4a6b;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .info-pill i {
+    color: #2a5298;
+    font-size: 0.78rem;
+  }
+
+  /* ── Redirect notice ── */
+  .redirect-notice {
+    font-size: 0.82rem;
+    color: #8a9bb5;
+    margin-top: 4px;
+  }
+
+  /* ── Error state (shown if evaluation fails to start) ── */
+  .error-box {
+    display: none;
+    background: #fff5f5;
+    border: 1.5px solid #fcd5d5;
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 28px;
+    font-size: 0.88rem;
+    color: #b91c1c;
+  }
+
+  .error-box a {
+    color: #2a5298;
+    font-weight: 600;
+    text-decoration: underline;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="submitted-card">
+
+  <!-- Animated green checkmark -->
+  <div class="checkmark-circle">
+    <svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="26" cy="26" r="25" stroke="#4caf50" stroke-width="2" fill="#e8f5e9"/>
+      <polyline class="checkmark-path"
+        points="14,27 22,35 38,19"
+        fill="none"
+        stroke="#4caf50"
+        stroke-width="3.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <h1 class="submitted-title">Test Submitted!</h1>
+  <p class="submitted-subtitle">
+    Your answers have been saved successfully.<br>
+    <span class="test-name">{{ attempt.test.name }}</span>
+  </p>
+
+  <!-- Info pills -->
+  <div class="info-pills">
+    <div class="info-pill">
+      <i class="fas fa-user"></i>
+      {{ attempt.user.get_full_name|default:attempt.user.email }}
+    </div>
+    <div class="info-pill">
+      <i class="fas fa-calendar-check"></i>
+      Attempt #{{ attempt.attempt_number }}
+    </div>
+  </div>
+
+  <!-- Computing box -->
+  <div class="computing-box" id="computing-box">
+    <div class="computing-label">
+      <i class="fas fa-calculator" style="color:#2a5298;"></i>
+      Calculating your results
+      <span class="dots">
+        <span></span><span></span><span></span>
+      </span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill"></div>
+    </div>
+  </div>
+
+  <!-- Error fallback (shown after 30 s if evaluation hasn't finished) -->
+  <div class="error-box" id="error-box">
+    Results are taking longer than usual.
+    <a href="{% url 'results_page' attempt_id=attempt.id %}">Click here to view your results</a>
+    once they are ready.
+  </div>
+
+  <p class="redirect-notice">You will be redirected automatically.</p>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const ATTEMPT_ID   = {{ attempt_id }};
+  const RESULTS_URL  = "{% url 'results_page' attempt_id=attempt.id %}";
+  const STATUS_URL   = `/api/v1/attempts/${ATTEMPT_ID}/evaluation_status/`;
+  const CSRF_TOKEN   = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+  const POLL_INTERVAL_MS = 1500;   // poll every 1.5 s
+  const TIMEOUT_MS       = 30000;  // show fallback link after 30 s
+
+  let pollTimer   = null;
+  let timeoutTimer = null;
+
+  function poll() {
+    fetch(STATUS_URL, {
+      headers: {
+        'X-CSRFToken': CSRF_TOKEN,
+        'Accept': 'application/json',
+      },
+      credentials: 'same-origin',
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.evaluation_ready) {
+        clearTimeout(timeoutTimer);
+        // Smooth transition: brief pause so the user sees the success screen
+        setTimeout(() => {
+          window.location.replace(RESULTS_URL);
+        }, 600);
+      } else {
+        pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
+      }
+    })
+    .catch(() => {
+      // Network hiccup — retry anyway
+      pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
+    });
+  }
+
+  // Start polling after a short delay so the animation is visible first
+  pollTimer = setTimeout(poll, 800);
+
+  // After TIMEOUT_MS, stop polling and show the manual link
+  timeoutTimer = setTimeout(() => {
+    clearTimeout(pollTimer);
+    document.getElementById('computing-box').style.display = 'none';
+    document.getElementById('error-box').style.display = 'block';
+  }, TIMEOUT_MS);
+</script>
+{% endblock %}

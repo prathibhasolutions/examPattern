@@ -40,9 +40,17 @@ def _score_answer(answer):
 
     marks, negative = _get_marking_scheme(question)
 
-    # Objective question with options
-    if question.options.exists():
+    # Objective question: use the correct_option_ids cache (populated at publish
+    # time) so no extra DB query is needed. Fall back to a live options query
+    # only for legacy questions that pre-date the cache field.
+    if question.correct_option_ids:
+        correct_ids = set(question.correct_option_ids)
+    elif question.options.exists():
         correct_ids = {opt.id for opt in question.options.all() if opt.is_correct}
+    else:
+        correct_ids = None
+
+    if correct_ids is not None:
         selected_ids = {opt.id for opt in answer.selected_options.all()}
 
         if not selected_ids:
@@ -62,11 +70,28 @@ def _score_answer(answer):
 
 @transaction.atomic
 def evaluate_attempt(attempt: TestAttempt) -> EvaluationResult:
+    # .only() loads the minimum fields needed for scoring — avoids pulling
+    # large text/image/explanation columns into memory for every answer.
     answers = (
         Answer.objects
         .filter(attempt=attempt)
         .select_related('question__section__test')
-        .prefetch_related('selected_options', 'question__options')
+        .prefetch_related('selected_options')
+        .only(
+            'id', 'attempt_id', 'response_text', 'marks_obtained',
+            # question fields needed for scoring
+            'question__id', 'question__is_bonus',
+            'question__marks_override', 'question__negative_marks_override',
+            'question__correct_option_ids',
+            # section fields needed for marking scheme
+            'question__section__id', 'question__section__name',
+            'question__section__marks_per_question',
+            'question__section__negative_marks_per_question',
+            # test-level fallback marks
+            'question__section__test__id',
+            'question__section__test__marks_per_question',
+            'question__section__test__negative_marks_per_question',
+        )
     )
 
     section_scores = {}
@@ -187,13 +212,36 @@ def recalculate_marks_for_test(test):
     )
 
     # ── Step 1: Re-score each attempt ────────────────────────────────────
-    for attempt in submitted_attempts:
-        answers = list(
-            Answer.objects
-            .filter(attempt=attempt)
-            .select_related('question__section__test')
-            .prefetch_related('selected_options', 'question__options')
+    # Fetch ALL answers for ALL attempts in one query — eliminates N+1.
+    # .only() keeps memory lean by skipping text/image columns.
+    attempt_ids = [a.id for a in submitted_attempts]
+    all_answers = list(
+        Answer.objects
+        .filter(attempt_id__in=attempt_ids)
+        .select_related('question__section__test')
+        .prefetch_related('selected_options')
+        .only(
+            'id', 'attempt_id', 'response_text', 'marks_obtained',
+            'question__id', 'question__is_bonus',
+            'question__marks_override', 'question__negative_marks_override',
+            'question__correct_option_ids',
+            'question__section__id', 'question__section__name',
+            'question__section__marks_per_question',
+            'question__section__negative_marks_per_question',
+            'question__section__test__id',
+            'question__section__test__marks_per_question',
+            'question__section__test__negative_marks_per_question',
         )
+    )
+
+    # Group answers by attempt_id for O(1) lookup per attempt
+    from collections import defaultdict
+    answers_by_attempt = defaultdict(list)
+    for ans in all_answers:
+        answers_by_attempt[ans.attempt_id].append(ans)
+
+    for attempt in submitted_attempts:
+        answers = answers_by_attempt[attempt.id]
 
         section_scores = {}
         total_score = DECIMAL_ZERO

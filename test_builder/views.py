@@ -1090,6 +1090,24 @@ def publish_test(request, draft_id):
                     for od in qd.options.all()
                 ])
 
+            # ── Cache correct_option_ids on every question ───────────────
+            # 2 queries at publish time → 0 option queries at evaluation time.
+            correct_opts = (
+                Option.objects
+                .filter(question__section__test=test, is_correct=True)
+                .values('question_id', 'id')
+            )
+            correct_by_q = {}
+            for row in correct_opts:
+                correct_by_q.setdefault(row['question_id'], []).append(row['id'])
+
+            q_updates = []
+            for q in Question.objects.filter(section__test=test):
+                q.correct_option_ids = correct_by_q.get(q.id, [])
+                q_updates.append(q)
+            if q_updates:
+                Question.objects.bulk_update(q_updates, ['correct_option_ids'])
+
             # Mark draft as published
             draft.is_published = True
             draft.published_test_id = test.id

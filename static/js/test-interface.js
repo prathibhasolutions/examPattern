@@ -47,6 +47,34 @@ const OfflineQueue = {
     }
   },
 
+  // Flush every in-memory answer that has not yet been confirmed saved.
+  // Sends all unsaved answers IN PARALLEL (Promise.allSettled) so even 160
+  // answers complete in one round-trip time instead of 160 sequential ones.
+  // This must be awaited before calling API.submitAttempt().
+  flushUnsavedAnswers: async () => {
+    const answers = UI.answers || {};
+    const tasks = [];
+    for (const [qId, answer] of Object.entries(answers)) {
+      if (answer.status === 'not_visited') continue;
+      if (answer._savedToServer) continue; // already confirmed on server
+      const payload = {
+        question: parseInt(qId),
+        selected_option_ids: answer.selected_option_ids || [],
+        response_text: answer.response_text || '',
+        status: answer.status || 'visited',
+        // time_spent_seconds intentionally omitted — tracked exclusively via
+        // track_question_time which accumulates; sending 0 here would overwrite it.
+      };
+      tasks.push(
+        API.saveAnswer(ATTEMPT_ID, payload)
+          .then(() => { if (UI.answers[qId]) UI.answers[qId]._savedToServer = true; })
+          .catch(() => { /* network error — submit will handle offline case */ })
+      );
+    }
+    if (tasks.length) await Promise.allSettled(tasks);
+    localStorage.removeItem(OfflineQueue.queueKey());
+  },
+
   // Flush every in-memory answer to server (called just before submitting)
   flushAllAnswers: async () => {
     const answers = UI.answers || {};
@@ -58,8 +86,6 @@ const OfflineQueue = {
           selected_option_ids: answer.selected_option_ids || [],
           response_text: answer.response_text || '',
           status: answer.status || 'visited',
-          // time_spent_seconds intentionally omitted — tracked exclusively via
-          // track_question_time which accumulates; sending 0 here would overwrite it.
         });
         if (UI.answers[qId]) UI.answers[qId]._savedToServer = true;
       } catch (e) {
@@ -516,20 +542,16 @@ const testApp = {
       const submitOverlay = document.getElementById('submit-overlay');
       if (submitOverlay) submitOverlay.style.display = 'flex';
 
-      // Record and sync time tracker before submitting
+      // Record and stop time tracking — fire sync in the background without
+      // waiting so it doesn't block the submit response. Time-spent data is
+      // analytics only and does not affect scoring.
       if (window.TimeTracker && typeof window.TimeTracker.recordCurrentQuestion === 'function') {
         TimeTracker.recordCurrentQuestion();
-
-        // Stop periodic sync to avoid conflicts
         if (typeof TimeTracker.stopPeriodicSync === 'function') {
           TimeTracker.stopPeriodicSync();
         }
-
-        // Sync time updates and wait for completion
-        await TimeTracker.syncTimeUpdates();
-
-        // Small delay to ensure requests are processed
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Fire-and-forget: do not await — this could be 160 sequential requests
+        TimeTracker.syncTimeUpdates();
       }
 
       Timer.stop();
@@ -538,14 +560,19 @@ const testApp = {
         testApp.timerHeartbeatId = null;
       }
 
-      // Flush all in-memory answers to the server before submitting
-      // so nothing that was written offline gets lost
-      await OfflineQueue.flushAllAnswers();
+      // Flush answers not yet confirmed saved to the server.
+      // Fast students who answered quickly may have answers whose debounced
+      // save timers haven't fired yet — this catches them all in one parallel
+      // round-trip. Also flushes any offline-queued retries.
+      await OfflineQueue.flushUnsavedAnswers();
+      await OfflineQueue.flush();
 
       try {
         await API.submitAttempt(ATTEMPT_ID);
         OfflineQueue.clearPendingSubmission();
-        window.location.replace(`/results/${ATTEMPT_ID}/?submitted=true`);
+        // Redirect to the submitted page — evaluation runs in the background
+        // there, so this redirect is instant and the student sees a nice screen.
+        window.location.replace(`/submitted/${ATTEMPT_ID}/`);
       } catch (submitError) {
         // TypeError means a true network failure (fetch couldn't reach the server).
         // Any other error means the server responded with a non-2xx status, which
@@ -575,10 +602,10 @@ const testApp = {
           document.body.appendChild(pendingToast);
         } else {
           // Server responded with an error — the attempt status was most likely
-          // already saved as submitted on the backend.  Redirect to results so
-          // the student isn't stuck on a dead test page.
+          // already saved as submitted on the backend.  Redirect to submitted
+          // page so the student sees the success screen and results are polled.
           OfflineQueue.clearPendingSubmission();
-          window.location.replace(`/results/${ATTEMPT_ID}/?submitted=true`);
+          window.location.replace(`/submitted/${ATTEMPT_ID}/`);
         }
       }
     } catch (error) {

@@ -20,7 +20,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.http import HttpResponse
 
-from .views import tests_list, tests_series_detail, tests_series_about, test_instructions, test_interface, results_page, download_result_pdf, review_solutions, test_results_analysis, series_suggest, privacy_policy, terms_of_service, about_page, refund_policy
+from .views import tests_list, tests_series_detail, tests_series_about, test_instructions, test_interface, results_page, submitted_page, download_result_pdf, review_solutions, test_results_analysis, series_suggest, privacy_policy, terms_of_service, about_page, refund_policy
 from django.views.generic import RedirectView
 
 def health_check(request):
@@ -39,6 +39,7 @@ urlpatterns = [
     path('test/<int:test_id>/instructions/', test_instructions, name='test_instructions'),
     path('test/<int:test_id>/', test_interface, name='test_interface'),
     path('test/<int:test_id>/results/', test_results_analysis, name='test_results_analysis'),
+    path('submitted/<int:attempt_id>/', submitted_page, name='submitted_page'),
     path('results/<int:attempt_id>/', results_page, name='results_page'),
     path('results/<int:attempt_id>/download-pdf/', download_result_pdf, name='download_result_pdf'),
     path('results/<int:attempt_id>/solutions/', review_solutions, name='review_solutions'),

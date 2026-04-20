@@ -521,6 +521,29 @@ results_page = attempt_results
 
 @login_required
 @require_http_methods(["GET"])
+def submitted_page(request, attempt_id):
+    """
+    Intermediate page shown immediately after a student submits.
+    Displays a success animation and polls /api/v1/attempts/{id}/evaluation_status/
+    every 1.5 seconds. Redirects to results page once evaluation is ready.
+    """
+    if request.user.is_staff or request.user.is_superuser:
+        attempt = get_object_or_404(TestAttempt, id=attempt_id)
+    else:
+        attempt = get_object_or_404(TestAttempt, id=attempt_id, user=request.user)
+
+    # If evaluation already done (e.g. user refreshed), go straight to results
+    if EvaluationResult.objects.filter(attempt=attempt).exists():
+        return redirect('results_page', attempt_id=attempt_id)
+
+    return render(request, 'submitted.html', {
+        'attempt': attempt,
+        'attempt_id': attempt_id,
+    })
+
+
+@login_required
+@require_http_methods(["GET"])
 def download_result_pdf(request, attempt_id):
     """Generate and download test result as PDF."""
     # Import WeasyPrint here to catch errors

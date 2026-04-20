@@ -38,6 +38,14 @@ class Question(models.Model):
 		help_text="If True, all students get full marks regardless of their answer"
 	)
 
+	# Cached list of correct Option PKs — populated at publish time so evaluation
+	# needs zero extra DB queries to know the answer (pure Python set comparison).
+	correct_option_ids = models.JSONField(
+		default=list,
+		blank=True,
+		help_text="Auto-populated on publish. Do not edit manually.",
+	)
+
 	is_active = models.BooleanField(default=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
