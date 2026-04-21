@@ -150,6 +150,10 @@ class Test(models.Model):
 		default=False,
 		help_text="If True, questions and options are shuffled into a unique random order per student"
 	)
+	continuous_numbering = models.BooleanField(
+		default=False,
+		help_text="If True, question numbers continue across sections (1, 2, …, N) instead of resetting to 1 per section"
+	)
 
 	# Default marking scheme (can be overridden at section/question level)
 	marks_per_question = models.DecimalField(max_digits=6, decimal_places=2, default=1.0)

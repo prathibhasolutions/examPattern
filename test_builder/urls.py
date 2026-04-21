@@ -23,6 +23,7 @@ urlpatterns = [
     path('<int:draft_id>/api/validate/', views.api_validate_draft, name='api_validate_draft'),
     path('<int:draft_id>/api/prior-attempts-count/', views.api_prior_attempts_count, name='api_prior_attempts_count'),
     path('<int:draft_id>/api/toggle-shuffle/', views.api_toggle_shuffle, name='api_toggle_shuffle'),
+    path('<int:draft_id>/api/toggle-continuous-numbering/', views.api_toggle_continuous_numbering, name='api_toggle_continuous_numbering'),
     path('<int:draft_id>/api/copy-source-list/', views.api_copy_source_list, name='api_copy_source_list'),
     path('<int:draft_id>/api/copy-questions/', views.api_copy_questions, name='api_copy_questions'),
     path('<int:draft_id>/publish/', views.publish_test, name='builder_publish_test'),

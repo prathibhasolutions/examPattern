@@ -72,6 +72,46 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
 .le-shuffle-toggle.on .le-shuffle-track { background: #4ade80; }
 .le-shuffle-toggle.on .le-shuffle-track::after { left: 17px; }
 .le-shuffle-label { color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.le-cont-num-toggle {
+    display: flex; align-items: center; gap: 7px;
+    background: rgba(255,255,255,0.1); border-radius: 20px;
+    padding: 5px 12px; cursor: pointer; user-select: none;
+    border: 1px solid rgba(255,255,255,0.2); transition: background 0.2s;
+}
+.le-cont-num-toggle:hover { background: rgba(255,255,255,0.2); }
+.le-cont-num-toggle input[type=checkbox] { display: none; }
+.le-cont-num-track {
+    width: 32px; height: 18px; border-radius: 9px; background: rgba(255,255,255,0.25);
+    position: relative; transition: background 0.25s; flex-shrink: 0;
+}
+.le-cont-num-track::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 12px; height: 12px; border-radius: 50%; background: white;
+    transition: left 0.2s;
+}
+.le-cont-num-toggle.on .le-cont-num-track { background: #4ade80; }
+.le-cont-num-toggle.on .le-cont-num-track::after { left: 17px; }
+.le-cont-num-label { color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.le-cont-num-toggle {
+    display: flex; align-items: center; gap: 7px;
+    background: rgba(255,255,255,0.1); border-radius: 20px;
+    padding: 5px 12px; cursor: pointer; user-select: none;
+    border: 1px solid rgba(255,255,255,0.2); transition: background 0.2s;
+}
+.le-cont-num-toggle:hover { background: rgba(255,255,255,0.2); }
+.le-cont-num-toggle input[type=checkbox] { display: none; }
+.le-cont-num-track {
+    width: 32px; height: 18px; border-radius: 9px; background: rgba(255,255,255,0.25);
+    position: relative; transition: background 0.25s; flex-shrink: 0;
+}
+.le-cont-num-track::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 12px; height: 12px; border-radius: 50%; background: white;
+    transition: left 0.2s;
+}
+.le-cont-num-toggle.on .le-cont-num-track { background: #4ade80; }
+.le-cont-num-toggle.on .le-cont-num-track::after { left: 17px; }
+.le-cont-num-label { color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 600; white-space: nowrap; }
 
 /* ── Section tabs bar ───────────────────────── */
 .le-tabs-bar {
@@ -645,6 +685,12 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
             <span class="le-shuffle-track"></span>
             <span class="le-shuffle-label"><i class="fas fa-random"></i> Shuffle</span>
         </label>
+        <!-- Continuous Numbering toggle -->
+        <label class="le-cont-num-toggle{% if draft.continuous_numbering %} on{% endif %}" id="contNumToggle" title="When ON, question numbers continue across sections (e.g. TG ICET style)">
+            <input type="checkbox" id="contNumCheckbox"{% if draft.continuous_numbering %} checked{% endif %}>
+            <span class="le-cont-num-track"></span>
+            <span class="le-cont-num-label"><i class="fas fa-list-ol"></i> Continuous Numbering</span>
+        </label>
         <a href="{% url 'manage_sections' draft.id %}" class="le-topbar-btn le-topbar-btn-back">
             ← Back
         </a>
@@ -1104,6 +1150,42 @@ const DRAFT_ID = {{ draft.id }};
 const CSRF = '{{ csrf_token }}';
 let sections = {{ sections_json|safe }};
 
+// ── Continuous Numbering toggle ──────────────────────────────────────
+let continuousNumbering = {{ draft.continuous_numbering|yesno:'true,false' }};
+
+function getGlobalOffset(sectionId) {
+    let offset = 0;
+    for (const s of sections) {
+        if (s.id === sectionId) break;
+        offset += s.questions.length;
+    }
+    return offset;
+}
+const contNumCheckbox = document.getElementById('contNumCheckbox');
+const contNumToggle = document.getElementById('contNumToggle');
+contNumCheckbox.addEventListener('change', async () => {
+    const enabled = contNumCheckbox.checked;
+    contNumToggle.classList.toggle('on', enabled);
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF);
+    fd.append('enabled', enabled ? 'true' : 'false');
+    try {
+        const resp = await fetch(`/builder/${DRAFT_ID}/api/toggle-continuous-numbering/`, { method: 'POST', body: fd });
+        const data = await resp.json();
+        if (!data.success) throw new Error();
+        continuousNumbering = enabled;
+        renderPalette();
+        showToast(
+            enabled ? 'Continuous numbering ON — question numbers will run across all sections' : 'Continuous numbering OFF — each section starts from 1',
+            enabled ? 'success' : 'warning', 3500
+        );
+    } catch {
+        contNumCheckbox.checked = !enabled;
+        contNumToggle.classList.toggle('on', !enabled);
+        showToast('Failed to save continuous numbering setting', 'danger');
+    }
+});
+
 // ── Shuffle toggle ───────────────────────────────────
 const shuffleCheckbox = document.getElementById('shuffleCheckbox');
 const shuffleToggle = document.getElementById('shuffleToggle');
@@ -1306,6 +1388,15 @@ function renderPalette() {
     grid.innerHTML = '';
     if (!sec) return;
 
+    // ── Compute global offset for continuous numbering ──
+    let globalOffset = 0;
+    if (continuousNumbering) {
+        for (const s of sections) {
+            if (s.id === sec.id) break;
+            globalOffset += s.questions.length;
+        }
+    }
+
     // ── Reorder mode: show vertical drag list instead of circles ──
     if (isReorderMode) {
         grid.classList.add('reorder-mode');
@@ -1322,6 +1413,8 @@ function renderPalette() {
         const isActive = !isNewQuestion && q.id === activeQuestionId;
         circle.className = 'le-q-circle' + (isActive ? ' active' : ' saved');
 
+        const displayNum = continuousNumbering ? globalOffset + q.order : q.order;
+
         // Error indicator: purple dot — show if this specific question has an error
         // OR if its parent section has a section-level error (e.g. duplicate name/order).
         const secErr = validationErrors[sec.id];
@@ -1333,19 +1426,19 @@ function renderPalette() {
         if (qErrMsg || sectionErrMsg) {
             circle.classList.add('has-error');
             circle.title = qErrMsg
-                ? `Q${q.order}: ${qErrMsg}`
-                : `Q${q.order}: section issue — ${sectionErrMsg}`;
+                ? `Q${displayNum}: ${qErrMsg}`
+                : `Q${displayNum}: section issue — ${sectionErrMsg}`;
         } else if (qWarnMsg) {
             circle.classList.add('has-warning');
-            circle.title = `Q${q.order}: ⚠ ${qWarnMsg}`;
+            circle.title = `Q${displayNum}: ⚠ ${qWarnMsg}`;
         } else {
-            circle.title = `Question ${q.order}`;
+            circle.title = `Question ${displayNum}`;
         }
 
-        circle.textContent = q.order;
+        circle.textContent = displayNum;
         if (q.is_bonus) {
             circle.classList.add('is-bonus');
-            circle.title = (circle.title || `Question ${q.order}`) + ' [BONUS]';
+            circle.title = (circle.title || `Question ${displayNum}`) + ' [BONUS]';
         }
         if (isMultiSelectMode) {
             if (selectedQuestionIds.has(q.id)) circle.classList.add('ms-selected');
@@ -1561,7 +1654,7 @@ function loadEditor(questionData) {
 
     const sec = activeSection();
     if (questionData) {
-        document.getElementById('qHeaderLabel').textContent = `Question ${questionData.order}`;
+        document.getElementById('qHeaderLabel').textContent = `Question ${continuousNumbering ? getGlobalOffset(sec.id) + questionData.order : questionData.order}`;
         document.getElementById('deleteQuestionBtn').style.display = 'inline-flex';
         document.getElementById('qText').value = questionData.question_text || '';
         setImagePreview('q', questionData.image_url);
@@ -1570,7 +1663,8 @@ function loadEditor(questionData) {
         setImagePreview('sol', questionData.solution_image_url);
     } else {
         const newOrder = insertAtOrder !== null ? insertAtOrder : (sec ? sec.questions.length + 1 : 1);
-        document.getElementById('qHeaderLabel').textContent = `Question ${newOrder} — New`;
+        const newDisplayNum = continuousNumbering ? getGlobalOffset(sec ? sec.id : 0) + newOrder : newOrder;
+        document.getElementById('qHeaderLabel').textContent = `Question ${newDisplayNum} — New`;
         document.getElementById('deleteQuestionBtn').style.display = 'none';
         document.getElementById('qText').value = '';
         setImagePreview('q', null);
@@ -1790,7 +1884,7 @@ async function saveQuestion() {
             }
             insertAtOrder = null;
             activeQuestionId = q.id; isDirty = false;
-            document.getElementById('qHeaderLabel').textContent = `Question ${q.order}`;
+            document.getElementById('qHeaderLabel').textContent = `Question ${continuousNumbering ? getGlobalOffset(sec.id) + q.order : q.order}`;
             document.getElementById('deleteQuestionBtn').style.display = 'inline-flex';
             // Clear any error marker for this question now that it's been saved
             clearQuestionError(sec.id, q.id);

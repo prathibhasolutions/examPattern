@@ -160,6 +160,7 @@ const testApp = {
       console.log('Sections:', testApp.test.sections);
 
       testApp.useSectionalTiming = !!testApp.test.use_sectional_timing;
+      testApp.continuousNumbering = !!testApp.test.continuous_numbering;
 
       // Build question list with section context and current status/answers
       const answersByQuestion = Object.fromEntries(
@@ -224,6 +225,11 @@ const testApp = {
         });
       });
       testApp.questions = questions;
+
+      // If continuous numbering is enabled, override question_number with global sequence
+      if (testApp.continuousNumbering) {
+        testApp.questions.forEach(q => { q.question_number = q.global_question_number; });
+      }
 
       console.log('Questions loaded:', questions.length);
       console.log('First question:', questions[0]);

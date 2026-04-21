@@ -851,6 +851,7 @@ def publish_test(request, draft_id):
                 published_test.negative_marks_per_question = draft.negative_marks
                 published_test.use_sectional_timing = draft.use_sectional_timing
                 published_test.shuffle_questions = draft.shuffle_questions
+                published_test.continuous_numbering = draft.continuous_numbering
                 published_test.is_active = True
                 published_test.save()
                 test = published_test
@@ -1041,6 +1042,7 @@ def publish_test(request, draft_id):
                     negative_marks_per_question=draft.negative_marks,
                     use_sectional_timing=draft.use_sectional_timing,
                     shuffle_questions=draft.shuffle_questions,
+                    continuous_numbering=draft.continuous_numbering,
                     is_active=True
                 )
 
@@ -1810,6 +1812,20 @@ def api_toggle_shuffle(request, draft_id):
     draft.shuffle_questions = enabled
     draft.save(update_fields=['shuffle_questions'])
     return JsonResponse({'success': True, 'shuffle_questions': draft.shuffle_questions})
+
+
+@admin_required
+@login_required
+@require_http_methods(["POST"])
+def api_toggle_continuous_numbering(request, draft_id):
+    """Toggle continuous_numbering flag on a draft. Returns new state."""
+    from django.http import JsonResponse
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+    draft.refresh_lock(request.user)
+    enabled = request.POST.get('enabled', '').lower() == 'true'
+    draft.continuous_numbering = enabled
+    draft.save(update_fields=['continuous_numbering'])
+    return JsonResponse({'success': True, 'continuous_numbering': draft.continuous_numbering})
 
 
 @admin_required

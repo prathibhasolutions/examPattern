@@ -37,6 +37,10 @@ class TestDraft(models.Model):
         default=False,
         help_text="If True, questions and options are shuffled into a unique random order per student"
     )
+    continuous_numbering = models.BooleanField(
+        default=False,
+        help_text="If True, question numbers continue across sections (1, 2, …, N) instead of resetting to 1 per section"
+    )
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     is_published = models.BooleanField(default=False)
