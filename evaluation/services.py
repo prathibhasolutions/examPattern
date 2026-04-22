@@ -1,10 +1,10 @@
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Count
 
 from attempts.models import TestAttempt, Answer
-from .models import EvaluationResult
+from .models import EvaluationResult, EvaluationSectionResult
 
 
 DECIMAL_ZERO = Decimal('0.00')
@@ -155,8 +155,12 @@ def evaluate_attempt(attempt: TestAttempt) -> EvaluationResult:
 
     # Only calculate rank/percentile for first attempts of non-admin users
     if attempt.attempt_number == 1 and not (attempt.user.is_staff or attempt.user.is_superuser):
-        total_attempts = submitted.count()
-        higher_count = submitted.filter(score__gt=total_score).count()
+        stats = submitted.aggregate(
+            total_attempts=Count('id'),
+            higher_count=Count('id', filter=Q(score__gt=total_score)),
+        )
+        total_attempts = stats['total_attempts'] or 0
+        higher_count = stats['higher_count'] or 0
 
         rank = higher_count + 1 if total_attempts > 0 else None
         # Percentile = ((total - rank + 1) / total) * 100
@@ -191,7 +195,30 @@ def evaluate_attempt(attempt: TestAttempt) -> EvaluationResult:
         },
     )
 
+    _sync_section_rows(result, section_scores)
+
     return result
+
+
+def _sync_section_rows(result: EvaluationResult, section_scores: dict) -> None:
+    EvaluationSectionResult.objects.filter(evaluation_result=result).delete()
+    rows = []
+    for data in section_scores.values():
+        rows.append(
+            EvaluationSectionResult(
+                evaluation_result=result,
+                section_id=data['section_id'],
+                score=data['score'],
+                correct_count=data['correct'],
+                incorrect_count=data['incorrect'],
+                unanswered_count=data['unanswered'],
+                subjective_count=data['subjective'],
+                bonus_count=data['bonus'],
+                total_questions=data['total_questions'],
+            )
+        )
+    if rows:
+        EvaluationSectionResult.objects.bulk_create(rows, batch_size=200)
 
 
 @transaction.atomic
@@ -329,6 +356,10 @@ def recalculate_marks_for_test(test):
             section_scores=serializable_section_scores,
         )
 
+        result = EvaluationResult.objects.filter(attempt=attempt).first()
+        if result:
+            _sync_section_rows(result, section_scores)
+
     # ── Step 2: Re-rank first attempts of non-admin users ────────────────
     first_attempts = (
         EvaluationResult.objects
@@ -344,10 +375,16 @@ def recalculate_marks_for_test(test):
     )
 
     total = first_attempts.count()
+    rank_updates = []
     for i, result in enumerate(first_attempts):
         rank = i + 1
         percentile = (
             Decimal(str(((total - rank + 1) / total) * 100)).quantize(Decimal('0.01'))
             if total > 0 else None
         )
-        EvaluationResult.objects.filter(pk=result.pk).update(rank=rank, percentile=percentile)
+        result.rank = rank
+        result.percentile = percentile
+        rank_updates.append(result)
+
+    if rank_updates:
+        EvaluationResult.objects.bulk_update(rank_updates, ['rank', 'percentile'])

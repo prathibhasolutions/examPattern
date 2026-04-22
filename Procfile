@@ -1,1 +1,1 @@
-web: gunicorn mocktest_platform.wsgi:application --workers 2 --timeout 300
+web: gunicorn mocktest_platform.wsgi:application --workers 6 --timeout 300

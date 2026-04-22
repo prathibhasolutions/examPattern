@@ -710,6 +710,9 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
         <button type="button" class="le-import-tab active" id="importTabPdf" onclick="switchImportTab('pdf')">
             <i class="fas fa-file-pdf"></i> Import PDF
         </button>
+        <button type="button" class="le-import-tab" id="importTabImage" onclick="switchImportTab('image')">
+            <i class="fas fa-image"></i> Import Image OCR
+        </button>
         <button type="button" class="le-import-tab" id="importTabJson" onclick="switchImportTab('json')">
             <i class="fas fa-code"></i> Paste JSON
         </button>
@@ -739,6 +742,30 @@ main.container-fluid { padding: 0 !important; margin: 0 !important; background: 
         </form>
         <div class="le-import-note">
             PDF import only adds high-confidence single-correct MCQs to drafts. Ambiguous questions are skipped so you can review accuracy manually. Enable Auto LaTeX to convert math-like text (x^2, H2SO4, sqrt(...), &lt;=/&gt;= symbols) into MathJax-friendly format.
+        </div>
+    </div>
+
+    <!-- Image OCR panel (hidden by default) -->
+    <div class="le-import-panel" id="importImagePanel" style="display:none;">
+        <form class="le-import-form" method="post" enctype="multipart/form-data" action="{% url 'import_images_to_draft' draft.id %}">
+            {% csrf_token %}
+            <select name="section_id" class="le-import-select" required>
+                <option value="">Choose section</option>
+                {% for section in sections_for_import %}
+                    <option value="{{ section.id }}">{{ section.name }}</option>
+                {% endfor %}
+            </select>
+            <input type="file" name="image_files" class="le-import-file" accept="image/*" multiple required>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#334155;white-space:nowrap;">
+                <input type="checkbox" name="auto_latex" value="1" checked>
+                Auto LaTeX math
+            </label>
+            <button type="submit" class="le-import-btn">
+                <i class="fas fa-wand-magic-sparkles"></i> Import Images
+            </button>
+        </form>
+        <div class="le-import-note">
+            Upload one or more question images. OCR extracts high-confidence single-correct MCQs and adds them to drafts. If one clear question is found in an image, that image is attached to the imported question for manual review.
         </div>
     </div>
 
@@ -1211,9 +1238,11 @@ shuffleCheckbox.addEventListener('change', async () => {
 // ── Import tab switcher ────────────────────────────────
 function switchImportTab(tab) {
     document.getElementById('importPdfPanel').style.display = tab === 'pdf' ? '' : 'none';
+    document.getElementById('importImagePanel').style.display = tab === 'image' ? '' : 'none';
     document.getElementById('importJsonPanel').style.display = tab === 'json' ? '' : 'none';
     document.getElementById('importCopyPanel').style.display = tab === 'copy' ? '' : 'none';
     document.getElementById('importTabPdf').classList.toggle('active', tab === 'pdf');
+    document.getElementById('importTabImage').classList.toggle('active', tab === 'image');
     document.getElementById('importTabJson').classList.toggle('active', tab === 'json');
     document.getElementById('importTabCopy').classList.toggle('active', tab === 'copy');
 }

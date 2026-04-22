@@ -1545,7 +1545,7 @@ function submitCreateTest() {
         name,
         duration_minutes: parseInt(document.getElementById('stCreateTestDuration').value) || 180,
         marks_per_question: parseFloat(document.getElementById('stCreateTestMarks').value) || 4,
-        negative_marks: parseFloat(document.getElementById('stCreateTestNegative').value) || 1
+        negative_marks: parseFloat(document.getElementById('stCreateTestNegative').value) ?? 0
     };
     fetch('/builder/api/inline/test/create/', {
         method: 'POST',
@@ -1564,7 +1564,7 @@ function openRenameTestModal(id, name, durationSeconds, marksPerQ, negativeMarks
     document.getElementById('stInputRenameTestName').value = name;
     document.getElementById('stEditTestDuration').value = durationSeconds ? Math.round(durationSeconds / 60) : '';
     document.getElementById('stEditTestMarks').value = marksPerQ || '';
-    document.getElementById('stEditTestNegative').value = negativeMarks || '';
+    document.getElementById('stEditTestNegative').value = (negativeMarks !== null && negativeMarks !== undefined) ? negativeMarks : '';
     // Show Live Editor link if a linked draft exists
     const draftId = TEST_DRAFT_MAP[id];
     const liveEditorBtn = document.getElementById('stLiveEditorBtn');

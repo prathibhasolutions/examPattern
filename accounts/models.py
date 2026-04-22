@@ -101,6 +101,10 @@ class ForgotPasswordRequest(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['user', 'status']),
+        ]
 
     def __str__(self):
         return f"Password request by {self.user.username} ({self.status})"

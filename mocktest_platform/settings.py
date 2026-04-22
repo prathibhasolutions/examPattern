@@ -70,6 +70,7 @@ SITE_DOMAIN = os.getenv('SITE_DOMAIN', 'localhost:8000')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'mocktest_platform.middleware.CSRFExemptAPIMiddleware',  # Exempt /api/ from CSRF
@@ -107,13 +108,12 @@ WSGI_APPLICATION = 'mocktest_platform.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'postgres'),
-        'USER': os.getenv('DB_USER', 'postgres'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'sherLOCKED123$%^'),
-        'HOST': os.getenv('DB_HOST', 'exampattern-db.c922kmuauwy1.ap-south-1.rds.amazonaws.com'),
-        'PORT': '5432',
-        'CONN_MAX_AGE': 60,
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+        'CONN_MAX_AGE': 0,
+        'OPTIONS': {
+            'timeout': int(os.getenv('SQLITE_TIMEOUT_SECONDS', '30')),
+        },
     }
 }
 
@@ -123,16 +123,8 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        'OPTIONS': {'min_length': 8},
     },
 ]
 
@@ -169,6 +161,15 @@ REST_FRAMEWORK = {
     ],
 }
 
+EVALUATION_QUEUE_BACKEND = os.getenv('EVALUATION_QUEUE_BACKEND', 'local').lower()
+EVALUATION_LOCAL_MAX_WORKERS = int(os.getenv('EVALUATION_LOCAL_MAX_WORKERS', '4'))
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
+SQLITE_JOURNAL_MODE = os.getenv('SQLITE_JOURNAL_MODE', 'WAL')
+SQLITE_SYNCHRONOUS = os.getenv('SQLITE_SYNCHRONOUS', 'NORMAL')
+EVALUATION_AUTO_RETRY_FAILED = os.getenv('EVALUATION_AUTO_RETRY_FAILED', 'true').lower() == 'true'
+EVALUATION_LOCAL_MAX_RETRIES = int(os.getenv('EVALUATION_LOCAL_MAX_RETRIES', '2'))
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
@@ -183,15 +184,15 @@ AUTH_USER_MODEL = 'accounts.CustomUser'
 if DEBUG:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 else:
-    # Production: Configure with your email service
+    # Production: Configure with Gmail SMTP
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_HOST = 'smtp.gmail.com'  # Replace with your email provider
+    EMAIL_HOST = 'smtp.gmail.com'
     EMAIL_PORT = 587
     EMAIL_USE_TLS = True
-    EMAIL_HOST_USER = 'your-email@gmail.com'  # Replace with your email
-    EMAIL_HOST_PASSWORD = 'your-app-password'  # Replace with app-specific password
+    EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'your-email@gmail.com')
+    EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'your-app-password')
 
-DEFAULT_FROM_EMAIL = 'noreply@mocktestapp.com'
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@mocktestapp.com')
 
 
 # Static files (CSS, JavaScript)
@@ -205,6 +206,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Reverse-proxy / HTTPS support
 # On Lightsail (and Elastic Beanstalk) nginx terminates SSL and forwards requests

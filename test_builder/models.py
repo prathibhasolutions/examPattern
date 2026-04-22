@@ -108,6 +108,11 @@ class TestDraft(models.Model):
                 name='unique_test_draft_per_user_series'
             )
         ]
+        indexes = [
+            models.Index(fields=['created_by', 'is_published']),
+            models.Index(fields=['locked_by', 'locked_at']),
+            models.Index(fields=['created_at']),
+        ]
 
 
 class SectionDraft(models.Model):
@@ -205,6 +210,11 @@ class PDFImportJob(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['draft', 'status']),
+            models.Index(fields=['section', 'status']),
+        ]
 
     def __str__(self):
         return f"PDF import for {self.draft.name} -> {self.section.name} ({self.status})"

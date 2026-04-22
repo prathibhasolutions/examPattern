@@ -18,7 +18,7 @@ except Exception as e:
 
 from testseries.models import Test, TestSeries, SeriesSection, SeriesSubsection
 from django.db.models import Count, Q, Prefetch, Avg
-from attempts.models import TestAttempt, Answer
+from attempts.models import TestAttempt, Answer, AttemptSectionTiming
 from evaluation.models import EvaluationResult
 from testseries.models import TestSeriesExamSection, TestSeriesHighlight
 
@@ -495,6 +495,11 @@ def attempt_results(request, attempt_id):
     # which matches what the JS lookup expects via data-section-id attributes.
     total_time_spent = attempt.duration_seconds or 0
     section_times = attempt.section_timings or {}   # already string-keyed
+    if not section_times:
+        section_times = {
+            str(row['section_id']): row['time_spent_seconds']
+            for row in AttemptSectionTiming.objects.filter(attempt=attempt).values('section_id', 'time_spent_seconds')
+        }
     test_duration = attempt.test.duration_seconds or 0
 
     timing_data = {
@@ -525,7 +530,7 @@ def submitted_page(request, attempt_id):
     """
     Intermediate page shown immediately after a student submits.
     Displays a success animation and polls /api/v1/attempts/{id}/evaluation_status/
-    every 1.5 seconds. Redirects to results page once evaluation is ready.
+    every few seconds with backoff. Redirects to results page once evaluation is ready.
     """
     if request.user.is_staff or request.user.is_superuser:
         attempt = get_object_or_404(TestAttempt, id=attempt_id)

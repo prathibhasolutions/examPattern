@@ -37,18 +37,30 @@ class TestAttemptSerializer(serializers.ModelSerializer):
             'test',
             'attempt_number',
             'status',
+            'evaluation_state',
+            'evaluation_started_at',
+            'evaluation_finished_at',
             'started_at',
             'submitted_at',
             'duration_seconds',
             'section_timings',
             'time_remaining_seconds',
             'score',
+            'evaluation_error',
             'elapsed_seconds',
             'question_order',
             'option_order',
             'answers',
         ]
-        read_only_fields = ['started_at', 'submitted_at', 'score']
+        read_only_fields = [
+            'started_at',
+            'submitted_at',
+            'score',
+            'evaluation_state',
+            'evaluation_started_at',
+            'evaluation_finished_at',
+            'evaluation_error',
+        ]
 
     def get_elapsed_seconds(self, obj):
         """Calculate elapsed time in seconds if attempt is in progress."""

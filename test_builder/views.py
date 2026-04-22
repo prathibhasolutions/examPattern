@@ -9,7 +9,7 @@ from django.utils import timezone
 import logging
 
 from .models import TestDraft, SectionDraft, QuestionDraft, OptionDraft, PDFImportJob
-from .services.pdf_import import import_pdf_into_section
+from .services.pdf_import import import_pdf_into_section, import_images_into_section
 from .services.json_import import import_json_into_section
 from testseries.models import TestSeries, TestSeriesExamSection, TestSeriesHighlight, Test, Section, SeriesSection, SeriesSubsection
 from questions.models import Question, Option
@@ -1120,14 +1120,16 @@ def publish_test(request, draft_id):
         # ── Post-publish: recalculate marks for existing attempts ────────
         # Done outside the atomic block so a scoring error doesn't roll back
         # the publish itself. Runs only on re-publish when students have tried.
+        # Recalculation runs in the background thread pool — the publish
+        # response returns immediately while scoring continues in the background.
         if published_test:
-            from evaluation.services import recalculate_marks_for_test
+            from attempts.evaluation_queue import enqueue_recalculation_for_test
             prior_count = test.attempts.filter(
                 status='submitted'
             ).count()
             if prior_count > 0:
-                recalculate_marks_for_test(test)
-                action_type = f"updated and marks recalculated for {prior_count} attempt(s)"
+                enqueue_recalculation_for_test(test.id)
+                action_type = f"updated — recalculating marks for {prior_count} attempt(s) in background"
             else:
                 action_type = "updated"
         else:
@@ -1652,7 +1654,6 @@ def api_toggle_bonus(request, draft_id, question_id):
     recalc_triggered = False
     if draft.published_test_id:
         from questions.models import Question as LiveQuestion
-        from evaluation.services import recalculate_marks_for_test
         from attempts.models import TestAttempt as LiveAttempt
 
         live_q = LiveQuestion.objects.filter(draft_question_id=question_draft.id).first()
@@ -1682,16 +1683,17 @@ def api_toggle_bonus(request, draft_id, question_id):
             live_q.is_bonus = new_is_bonus
             live_q.save(update_fields=['is_bonus'])
 
-            # Recalculate only if there are submitted attempts
+            # Recalculate only if there are submitted attempts — runs in background
             try:
                 from testseries.models import Test as LiveTest
+                from attempts.evaluation_queue import enqueue_recalculation_for_test
                 live_test = LiveTest.objects.get(id=draft.published_test_id)
                 prior_count = LiveAttempt.objects.filter(
                     test=live_test,
                     status=LiveAttempt.STATUS_SUBMITTED,
                 ).count()
                 if prior_count > 0:
-                    recalculate_marks_for_test(live_test)
+                    enqueue_recalculation_for_test(live_test.id)
                     recalc_triggered = True
             except Exception:
                 pass
@@ -2051,6 +2053,99 @@ def import_pdf_to_draft(request, draft_id):
         messages.warning(
             request,
             'No questions were imported because the parser could not find any high-confidence single-correct MCQs.',
+        )
+
+    if skipped_count:
+        summary = ', '.join(skip_summary[:4])
+        if len(skip_summary) > 4:
+            summary += ', ...'
+        messages.warning(
+            request,
+            f"Skipped {skipped_count} question{'s' if skipped_count != 1 else ''} to preserve accuracy"
+            + (f': {summary}.' if summary else '.'),
+        )
+
+    if auto_latex and latex_converted_fields:
+        messages.info(
+            request,
+            f'Applied LaTeX conversion to {latex_converted_fields} imported field'
+            f"{'s' if latex_converted_fields != 1 else ''} for better math formatting.",
+        )
+
+    return redirect('live_editor', draft_id=draft.id)
+
+
+@admin_required
+@login_required
+@require_http_methods(["POST"])
+def import_images_to_draft(request, draft_id):
+    draft = get_object_or_404(TestDraft, id=draft_id, created_by=request.user)
+
+    if not draft.can_edit(request.user):
+        messages.error(
+            request,
+            f"This test is currently being edited by {draft.locked_by.username}. Please wait until they finish.",
+        )
+        return redirect('builder_dashboard')
+
+    draft.acquire_lock(request.user)
+
+    section_id = request.POST.get('section_id', '').strip()
+    image_files = request.FILES.getlist('image_files')
+    auto_latex = request.POST.get('auto_latex') == '1'
+
+    if not section_id:
+        messages.error(request, 'Select a section before importing images.')
+        return redirect('live_editor', draft_id=draft.id)
+
+    section = get_object_or_404(SectionDraft, id=section_id, test_draft=draft)
+
+    if not image_files:
+        messages.error(request, 'Choose at least one image file to import.')
+        return redirect('live_editor', draft_id=draft.id)
+
+    allowed_extensions = {'.png', '.jpg', '.jpeg', '.webp', '.bmp', '.tif', '.tiff'}
+    invalid_files = []
+    for image_file in image_files:
+        filename = (image_file.name or '').strip()
+        ext = filename.lower().rsplit('.', 1)
+        suffix = f".{ext[-1]}" if len(ext) > 1 else ''
+        content_type = (getattr(image_file, 'content_type', '') or '').lower()
+        if suffix not in allowed_extensions and not content_type.startswith('image/'):
+            invalid_files.append(filename or 'unnamed file')
+
+    if invalid_files:
+        messages.error(
+            request,
+            'Only image files are allowed for OCR import. Invalid files: ' + ', '.join(invalid_files[:4]),
+        )
+        return redirect('live_editor', draft_id=draft.id)
+
+    try:
+        result = import_images_into_section(
+            section,
+            image_files,
+            auto_latex=auto_latex,
+        )
+    except Exception as exc:
+        messages.error(request, f'Image OCR import failed: {exc}')
+        return redirect('live_editor', draft_id=draft.id)
+
+    imported_count = result.get('imported_count', 0)
+    skipped_count = result.get('skipped_count', 0)
+    skip_summary = result.get('skip_summary', [])
+    provider_name = result.get('provider_name', 'unknown')
+    latex_converted_fields = result.get('latex_converted_fields', 0)
+
+    if imported_count:
+        messages.success(
+            request,
+            f"Imported {imported_count} question{'s' if imported_count != 1 else ''} into '{section.name}' using {provider_name} OCR.",
+        )
+    else:
+        messages.warning(
+            request,
+            'No questions were imported because OCR could not find any high-confidence single-correct MCQs.',
         )
 
     if skipped_count:

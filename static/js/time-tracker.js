@@ -7,7 +7,7 @@ const TimeTracker = {
   currentlyViewingQuestionId: null,
   questionViewStartTime: null,
   attemptId: null,
-  updateInterval: 5000, // Send time to server every 5 seconds
+  updateInterval: 15000, // Send time to server every 15 seconds
   pendingTimeUpdates: {}, // Track accumulated time: { questionId: seconds }
   intervalId: null,
 
@@ -136,7 +136,7 @@ const TimeTracker = {
    * Start periodic sync of time updates
    */
   startPeriodicSync: () => {
-    // Sync every 5 seconds
+    // Sync every 15 seconds
     TimeTracker.intervalId = setInterval(() => {
       TimeTracker.syncTimeUpdates();
     }, TimeTracker.updateInterval);

@@ -280,11 +280,13 @@
   const STATUS_URL   = `/api/v1/attempts/${ATTEMPT_ID}/evaluation_status/`;
   const CSRF_TOKEN   = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
 
-  const POLL_INTERVAL_MS = 1500;   // poll every 1.5 s
+  const POLL_INTERVAL_MS = 3000;   // base poll every 3 s
   const TIMEOUT_MS       = 30000;  // show fallback link after 30 s
+  const MAX_POLL_INTERVAL_MS = 8000;
 
   let pollTimer   = null;
   let timeoutTimer = null;
+  let startedAtMs = Date.now();
 
   function poll() {
     fetch(STATUS_URL, {
@@ -302,8 +304,20 @@
         setTimeout(() => {
           window.location.replace(RESULTS_URL);
         }, 600);
+      } else if (data.evaluation_state === 'failed') {
+        clearTimeout(timeoutTimer);
+        document.getElementById('computing-box').style.display = 'none';
+        const errorBox = document.getElementById('error-box');
+        errorBox.style.display = 'block';
+        if (data.evaluation_error) {
+          errorBox.innerHTML = `${data.evaluation_error} <a href="${RESULTS_URL}">Click here to view your results</a> once they are ready.`;
+        }
       } else {
-        pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
+        const elapsedMs = Date.now() - startedAtMs;
+        const nextInterval = elapsedMs > 15000
+          ? Math.min(MAX_POLL_INTERVAL_MS, POLL_INTERVAL_MS + Math.floor((elapsedMs - 15000) / 5000) * 1000)
+          : POLL_INTERVAL_MS;
+        pollTimer = setTimeout(poll, nextInterval);
       }
     })
     .catch(() => {

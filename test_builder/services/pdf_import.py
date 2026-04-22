@@ -27,6 +27,30 @@ except ImportError:
     pytesseract = None
 
 
+def _configure_tesseract_cmd():
+    if pytesseract is None:
+        return False
+
+    candidates = [
+        os.getenv('TESSERACT_CMD'),
+        shutil.which('tesseract'),
+        r'C:\Program Files\Tesseract-OCR\tesseract.exe',
+        r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
+    ]
+
+    for candidate in candidates:
+        if not candidate:
+            continue
+        if os.path.exists(candidate) or candidate == 'tesseract':
+            try:
+                pytesseract.pytesseract.tesseract_cmd = candidate
+                pytesseract.get_tesseract_version()
+                return True
+            except Exception:
+                continue
+    return False
+
+
 QUESTION_START_RE = re.compile(r'^(?:q(?:uestion)?\s*)?(\d{1,3})\s*([\).:-])\s*(.+)?$', re.IGNORECASE)
 OPTION_START_RE = re.compile(
     r'^(?:\(?([A-Ea-e1-5])\)|([A-Ea-e1-5])[\).:-])\s*(.+)?$'
@@ -354,6 +378,8 @@ def _extract_with_textract(pages):
 def _extract_with_tesseract(pages):
     if pytesseract is None:
         return None
+    if not _configure_tesseract_cmd():
+        return None
 
     try:
         from PIL import Image
@@ -424,6 +450,75 @@ def _select_best_extraction(pdf_path, persistent_dir):
 
     if best_provider == 'native-text' and native_text_size < 200:
         return native_pages, native_candidates, 'native-text'
+
+    return best_pages, best_candidates, best_provider
+
+
+def _persist_uploaded_images(image_files, persistent_dir):
+    pages = []
+    for index, image_file in enumerate(image_files, start=1):
+        if not image_file:
+            continue
+
+        suffix = Path(getattr(image_file, 'name', '') or '').suffix.lower()
+        if not suffix or len(suffix) > 8:
+            suffix = '.png'
+
+        image_path = Path(persistent_dir) / f'upload-{index}{suffix}'
+        with image_path.open('wb') as target:
+            for chunk in image_file.chunks():
+                target.write(chunk)
+
+        pages.append(
+            ExtractedPage(
+                page_number=index,
+                lines=[],
+                image_path=str(image_path),
+            )
+        )
+
+    return pages
+
+
+def _select_best_image_extraction(image_pages):
+    preferred_provider = (os.getenv('IMAGE_IMPORT_PREFERRED_PROVIDER') or '').strip().lower()
+    if not preferred_provider:
+        preferred_provider = (os.getenv('PDF_IMPORT_PREFERRED_PROVIDER') or '').strip().lower()
+
+    best_pages = None
+    best_candidates = []
+    best_provider = None
+    best_score = -1
+
+    textract_pages = _extract_with_textract(image_pages)
+    if textract_pages:
+        textract_candidates = _parse_candidates(textract_pages)
+        textract_score = sum(1 for candidate in textract_candidates if candidate.confidence >= IMPORT_CONFIDENCE_CUTOFF)
+        best_pages = textract_pages
+        best_candidates = textract_candidates
+        best_provider = 'aws-textract'
+        best_score = textract_score
+
+    tesseract_pages = _extract_with_tesseract(image_pages)
+    if tesseract_pages:
+        tesseract_candidates = _parse_candidates(tesseract_pages)
+        tesseract_score = sum(1 for candidate in tesseract_candidates if candidate.confidence >= IMPORT_CONFIDENCE_CUTOFF)
+        if (
+            best_pages is None
+            or tesseract_score > best_score
+            or (tesseract_score == best_score and preferred_provider == 'tesseract')
+            or (best_score == 0 and len(tesseract_candidates) > len(best_candidates))
+        ):
+            best_pages = tesseract_pages
+            best_candidates = tesseract_candidates
+            best_provider = 'tesseract'
+            best_score = tesseract_score
+
+    if best_pages is None:
+        raise RuntimeError(
+            'No OCR provider is available for image import. '
+            'Install/configure pytesseract or AWS Textract.'
+        )
 
     return best_pages, best_candidates, best_provider
 
@@ -606,4 +701,132 @@ def import_pdf_into_section(
         raise
     finally:
         temp_pdf_path.unlink(missing_ok=True)
+        shutil.rmtree(persistent_dir, ignore_errors=True)
+
+
+@transaction.atomic
+def import_images_into_section(
+    section: SectionDraft,
+    image_files,
+    auto_latex: bool = False,
+) -> dict:
+    persistent_dir = Path(tempfile.mkdtemp(prefix='exampattern-image-import-'))
+
+    try:
+        native_pages = _persist_uploaded_images(image_files, persistent_dir)
+        if not native_pages:
+            raise ValueError('No image files were uploaded.')
+
+        pages, candidates, provider_name = _select_best_image_extraction(native_pages)
+        page_map = {page.page_number: page for page in pages}
+        page_question_counts = Counter(page for candidate in candidates for page in candidate.source_pages)
+
+        base_order = section.questions.count()
+        imported_count = 0
+        skipped_count = 0
+        skipped_reasons = Counter()
+        auto_adjusted_count = 0
+        latex_converted_fields = 0
+
+        for candidate in candidates:
+            stem = _normalize_text(candidate.stem)
+            options = candidate.options or []
+            correct_label = _normalize_label(candidate.correct_label)
+
+            if candidate.confidence < IMPORT_CONFIDENCE_CUTOFF:
+                skipped_count += 1
+                skipped_reasons['low confidence parse'] += 1
+                continue
+
+            if not stem:
+                skipped_count += 1
+                skipped_reasons['missing stem'] += 1
+                continue
+
+            if auto_latex:
+                latex_stem = _auto_latex_text(stem)
+                if latex_stem != stem:
+                    latex_converted_fields += 1
+                stem = latex_stem
+
+            if len(options) == 0:
+                options = [{'label': 'A', 'text': 'Option A (auto-generated)'}]
+                auto_adjusted_count += 1
+
+            if _stem_contains_option_markers(stem):
+                skipped_count += 1
+                skipped_reasons['stem still contains option markers'] += 1
+                continue
+
+            normalized_options = []
+            correct_matches = 0
+            for option in options:
+                option_text = _normalize_text(option.get('text'))
+                option_label = _normalize_label(option.get('label'))
+                if not option_text:
+                    skipped_count += 1
+                    skipped_reasons['empty option text'] += 1
+                    normalized_options = []
+                    break
+                if len(option_text) > 500:
+                    skipped_count += 1
+                    skipped_reasons['option text exceeds draft limit'] += 1
+                    normalized_options = []
+                    break
+
+                if auto_latex:
+                    latex_option = _auto_latex_text(option_text)
+                    if latex_option != option_text:
+                        latex_converted_fields += 1
+                    option_text = latex_option
+
+                is_correct = option_label == correct_label
+                if is_correct:
+                    correct_matches += 1
+
+                normalized_options.append({
+                    'text': option_text,
+                    'is_correct': is_correct,
+                })
+
+            if not normalized_options:
+                normalized_options = [{'text': 'Option A (auto-generated)', 'is_correct': True}]
+                auto_adjusted_count += 1
+
+            if correct_matches != 1:
+                for index, option in enumerate(normalized_options):
+                    option['is_correct'] = index == 0
+                auto_adjusted_count += 1
+
+            question = QuestionDraft.objects.create(
+                section=section,
+                question_text=stem,
+                order=base_order + imported_count + 1,
+                is_bonus=False,
+            )
+
+            image_path = _pick_question_image(page_map, candidate, page_question_counts)
+            if image_path:
+                with image_path.open('rb') as image_handle:
+                    question.question_image.save(image_path.name, File(image_handle), save=True)
+
+            for option_index, option in enumerate(normalized_options, start=1):
+                OptionDraft.objects.create(
+                    question=question,
+                    option_text=option['text'],
+                    is_correct=option['is_correct'],
+                    order=option_index,
+                )
+
+            imported_count += 1
+
+        return {
+            'provider_name': provider_name,
+            'imported_count': imported_count,
+            'skipped_count': skipped_count,
+            'auto_adjusted_count': auto_adjusted_count,
+            'latex_converted_fields': latex_converted_fields,
+            'skip_summary': [f"{count} {reason}" for reason, count in sorted(skipped_reasons.items())],
+        }
+    finally:
         shutil.rmtree(persistent_dir, ignore_errors=True)

@@ -174,7 +174,10 @@ def logout_view(request):
 
 @require_http_methods(["GET", "POST"])
 def forgot_password(request):
-    """2-step forgot password flow: identify user → confirm → create ForgotPasswordRequest."""
+    """2-step forgot password flow: check email → send reset link by email."""
+    from django.contrib.auth.forms import PasswordResetForm
+    from django.conf import settings
+
     if request.user.is_authenticated:
         return redirect('profile')
 
@@ -193,17 +196,31 @@ def forgot_password(request):
                 context['target_username'] = target.username
                 context['is_google_user'] = not target.has_usable_password()
             except CustomUser.DoesNotExist:
-                context['error'] = 'No account found with that email address.'
+                context['error'] = 'No account found with that email address. Please register first.'
 
         elif step == '2':
             email = request.POST.get('email', '').strip().lower()
             try:
                 target = CustomUser.objects.get(email=email)
-                # Remove any existing request and create a fresh pending one
-                ForgotPasswordRequest.objects.filter(user=target, status='pending').delete()
-                ForgotPasswordRequest.objects.create(user=target)
-                context['request_sent'] = True
-                context['target_username'] = target.username
+                if not target.has_usable_password():
+                    context['show_confirm'] = True
+                    context['confirm_email'] = email
+                    context['target_username'] = target.username
+                    context['is_google_user'] = True
+                    context['error'] = 'This account uses Google Sign-In. Password reset by email is not applicable.'
+                else:
+                    # Send password reset email using Django's built-in form
+                    reset_form = PasswordResetForm({'email': email})
+                    if reset_form.is_valid():
+                        reset_form.save(
+                            request=request,
+                            use_https=request.is_secure(),
+                            email_template_name='registration/password_reset_email.txt',
+                            subject_template_name='registration/password_reset_subject.txt',
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                        )
+                    context['request_sent'] = True
+                    context['target_username'] = target.username
             except CustomUser.DoesNotExist:
                 context['error'] = 'Invalid request. Please try again.'
 

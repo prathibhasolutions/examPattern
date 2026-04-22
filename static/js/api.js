@@ -64,7 +64,7 @@ const API = {
   },
 
   // Submit attempt
-  submitAttempt: async (attemptId) => {
+  submitAttempt: async (attemptId, payload = {}) => {
     try {
       const response = await fetch(`${API_BASE}/attempts/${attemptId}/submit/`, {
         method: 'POST',
@@ -73,6 +73,7 @@ const API = {
           'Content-Type': 'application/json',
           'X-CSRFToken': CSRF_TOKEN,
         },
+        body: JSON.stringify(payload),
         credentials: 'same-origin',
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);

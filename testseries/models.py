@@ -175,7 +175,6 @@ class Test(models.Model):
 			)
 		]
 		indexes = [
-			models.Index(fields=["series"]),
 			models.Index(fields=["is_active"]),
 			models.Index(fields=["starts_at"]),
 		]
@@ -217,7 +216,6 @@ class Section(models.Model):
 			),
 		]
 		indexes = [
-			models.Index(fields=["test"]),
 			models.Index(fields=["is_active"]),
 		]
 

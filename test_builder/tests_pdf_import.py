@@ -6,6 +6,7 @@ from test_builder.services.pdf_import import (
     QuestionCandidate,
     _auto_latex_text,
     _parse_candidates,
+    _select_best_image_extraction,
     _select_best_extraction,
 )
 
@@ -119,3 +120,60 @@ class PDFImportParserTests(SimpleTestCase):
         self.assertEqual(provider, 'aws-textract')
         self.assertEqual(pages, textract_pages)
         self.assertEqual(candidates, textract_candidates)
+
+    @patch('test_builder.services.pdf_import._extract_with_tesseract')
+    @patch('test_builder.services.pdf_import._extract_with_textract')
+    @patch('test_builder.services.pdf_import._parse_candidates')
+    def test_select_best_image_extraction_prefers_higher_confidence_provider(
+        self,
+        mock_parse_candidates,
+        mock_textract,
+        mock_tesseract,
+    ):
+        native_pages = [ExtractedPage(page_number=1, lines=[], image_path='img1.png')]
+        textract_pages = [ExtractedPage(page_number=1, lines=['1. Test', 'A. a', 'B. b', 'Answer: B'], image_path='img1.png')]
+        tesseract_pages = [ExtractedPage(page_number=1, lines=['1. Test', 'A. a', 'B. b', 'Answer: B'], image_path='img1.png')]
+        textract_candidates = [
+            QuestionCandidate(
+                number=1,
+                stem='Test',
+                options=[{'label': 'A', 'text': 'a'}, {'label': 'B', 'text': 'b'}],
+                correct_label='B',
+                source_pages=[1],
+                confidence=0.5,
+            )
+        ]
+        tesseract_candidates = [
+            QuestionCandidate(
+                number=1,
+                stem='Test',
+                options=[{'label': 'A', 'text': 'a'}, {'label': 'B', 'text': 'b'}],
+                correct_label='B',
+                source_pages=[1],
+                confidence=0.8,
+            )
+        ]
+
+        mock_textract.return_value = textract_pages
+        mock_tesseract.return_value = tesseract_pages
+        mock_parse_candidates.side_effect = [textract_candidates, tesseract_candidates]
+
+        pages, candidates, provider = _select_best_image_extraction(native_pages)
+
+        self.assertEqual(provider, 'tesseract')
+        self.assertEqual(pages, tesseract_pages)
+        self.assertEqual(candidates, tesseract_candidates)
+
+    @patch('test_builder.services.pdf_import._extract_with_tesseract')
+    @patch('test_builder.services.pdf_import._extract_with_textract')
+    def test_select_best_image_extraction_raises_when_no_provider_available(
+        self,
+        mock_textract,
+        mock_tesseract,
+    ):
+        native_pages = [ExtractedPage(page_number=1, lines=[], image_path='img1.png')]
+        mock_textract.return_value = None
+        mock_tesseract.return_value = None
+
+        with self.assertRaises(RuntimeError):
+            _select_best_image_extraction(native_pages)

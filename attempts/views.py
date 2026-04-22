@@ -1,5 +1,4 @@
 import logging
-import threading
 
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -7,37 +6,53 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db.models import Prefetch
-from django.db import transaction
+from django.db.models import F
+from django.db import transaction, IntegrityError
 
-from .models import TestAttempt, Answer
+from .models import TestAttempt, Answer, AttemptSectionTiming
 from .serializers import TestAttemptSerializer, AnswerSerializer
-from evaluation.services import evaluate_attempt
+from .evaluation_queue import enqueue_attempt_evaluation
 
 logger = logging.getLogger(__name__)
 
 
-def _run_evaluation_in_background(attempt_id: int) -> None:
-    """
-    Spawn a background thread to evaluate an attempt after submission so the
-    submit endpoint can return immediately without blocking the HTTP worker.
+def _increment_section_timing(attempt_id: int, section_id: int, delta_seconds: int) -> None:
+    if delta_seconds <= 0:
+        return
 
-    The thread gets a fresh database connection because Django's connection
-    objects are not safe to share across threads.
-    """
-    def _worker():
-        from django.db import connection
-        try:
-            attempt = TestAttempt.objects.select_related('test', 'user').get(pk=attempt_id)
-            evaluate_attempt(attempt)
-        except Exception:
-            logger.exception('Background evaluate_attempt failed for attempt %s', attempt_id)
-        finally:
-            # Always close the DB connection opened by this thread so it is
-            # returned to the pool and not leaked.
-            connection.close()
+    updated = AttemptSectionTiming.objects.filter(
+        attempt_id=attempt_id,
+        section_id=section_id,
+    ).update(time_spent_seconds=F('time_spent_seconds') + delta_seconds)
+    if updated:
+        return
 
-    t = threading.Thread(target=_worker, daemon=True)
-    t.start()
+    try:
+        AttemptSectionTiming.objects.create(
+            attempt_id=attempt_id,
+            section_id=section_id,
+            time_spent_seconds=delta_seconds,
+        )
+    except IntegrityError:
+        AttemptSectionTiming.objects.filter(
+            attempt_id=attempt_id,
+            section_id=section_id,
+        ).update(time_spent_seconds=F('time_spent_seconds') + delta_seconds)
+
+
+def _materialize_section_timings_json(attempt: TestAttempt) -> dict:
+    base_timings = {
+        str(section_id): int(seconds)
+        for section_id, seconds in (attempt.section_timings or {}).items()
+    }
+    rows = AttemptSectionTiming.objects.filter(attempt=attempt).values('section_id', 'time_spent_seconds')
+    section_timings = dict(base_timings)
+    for row in rows:
+        section_key = str(row['section_id'])
+        section_timings[section_key] = section_timings.get(section_key, 0) + int(row['time_spent_seconds'])
+    attempt.section_timings = section_timings
+    attempt.save(update_fields=['section_timings'])
+    return section_timings
 
 
 class TestAttemptViewSet(viewsets.ModelViewSet):
@@ -147,6 +162,24 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        final_answers = request.data.get('final_answers') or []
+        if isinstance(final_answers, list) and final_answers:
+            for item in final_answers:
+                if not isinstance(item, dict):
+                    continue
+                question_id = item.get('question')
+                if not question_id:
+                    continue
+                answer, _ = Answer.objects.get_or_create(
+                    attempt=attempt,
+                    question_id=question_id,
+                )
+                answer.response_text = item.get('response_text', '') or ''
+                answer.status = item.get('status', answer.status) or answer.status
+                answer.save(update_fields=['response_text', 'status'])
+                if 'selected_option_ids' in item:
+                    answer.selected_options.set(item.get('selected_option_ids') or [])
+
         # Compute actual active elapsed time.
         # Use the saved heartbeat timer value when available — more accurate
         # than wall-clock for tests that were paused or resumed.
@@ -161,11 +194,16 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
         attempt.submitted_at = timezone.now()
         attempt.duration_seconds = max(0, int(elapsed))
         attempt.time_remaining_seconds = None
+        attempt.evaluation_state = TestAttempt.EVAL_PENDING
+        attempt.evaluation_started_at = None
+        attempt.evaluation_finished_at = None
+        attempt.evaluation_error = ''
+        _materialize_section_timings_json(attempt)
         attempt.save()
 
         # Kick off evaluation in a background thread — the student is already
         # redirected to the submitted page which polls for results.
-        _run_evaluation_in_background(attempt.id)
+        transaction.on_commit(lambda: enqueue_attempt_evaluation(attempt.id))
 
         serializer = self.get_serializer(attempt)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -181,15 +219,31 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
 
         Returns:
         {
-            "evaluation_ready": true | false
+            "evaluation_ready": true | false,
+            "evaluation_state": "pending|running|success|failed"
         }
         """
         attempt = self.get_object()
 
         # Only the attempt owner can poll (admins are allowed via get_queryset override)
         from evaluation.models import EvaluationResult
+        from evaluation.models import EvaluationJob
         ready = EvaluationResult.objects.filter(attempt=attempt).exists()
-        return Response({'evaluation_ready': ready})
+
+        pending_jobs = EvaluationJob.objects.filter(status=EvaluationJob.STATUS_PENDING)
+        queue_depth = pending_jobs.count()
+        queue_position = (
+            pending_jobs.filter(queued_at__lt=attempt.submitted_at).count() + 1
+            if attempt.evaluation_state == TestAttempt.EVAL_PENDING and attempt.submitted_at
+            else None
+        )
+        return Response({
+            'evaluation_ready': ready,
+            'evaluation_state': attempt.evaluation_state,
+            'evaluation_error': attempt.evaluation_error,
+            'queue_depth': queue_depth,
+            'queue_position': queue_position,
+        })
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def save_timer(self, request, pk=None):
@@ -231,7 +285,7 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
             )
         
         question_id = request.data.get('question')
-        time_spent = request.data.get('time_spent_seconds', 0)
+        time_spent = int(request.data.get('time_spent_seconds', 0) or 0)
         
         if not question_id:
             return Response(
@@ -249,16 +303,12 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
         answer.time_spent_seconds += time_spent
         answer.save(update_fields=['time_spent_seconds'])
         
-        # Update section timings
+        # Update section timings in a normalized hot table to avoid rewriting
+        # the full JSON blob on every 5-second heartbeat.
         from questions.models import Question
-        question = Question.objects.get(id=question_id)
-        section_id = str(question.section.id)
-        
-        if section_id not in attempt.section_timings:
-            attempt.section_timings[section_id] = 0
-        
-        attempt.section_timings[section_id] += time_spent
-        attempt.save(update_fields=['section_timings'])
+        section_id = Question.objects.filter(id=question_id).values_list('section_id', flat=True).first()
+        if section_id is not None:
+            _increment_section_timing(attempt.id, int(section_id), time_spent)
         
         return Response(
             {
@@ -268,6 +318,25 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK,
         )
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def retry_evaluation(self, request, pk=None):
+        attempt = self.get_object()
+        if attempt.status != TestAttempt.STATUS_SUBMITTED:
+            return Response(
+                {'error': 'Attempt is not submitted'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if attempt.evaluation_state in {TestAttempt.EVAL_PENDING, TestAttempt.EVAL_RUNNING}:
+            return Response({'queued': True, 'evaluation_state': attempt.evaluation_state})
+
+        attempt.evaluation_state = TestAttempt.EVAL_PENDING
+        attempt.evaluation_error = ''
+        attempt.evaluation_started_at = None
+        attempt.evaluation_finished_at = None
+        attempt.save(update_fields=['evaluation_state', 'evaluation_error', 'evaluation_started_at', 'evaluation_finished_at'])
+        transaction.on_commit(lambda: enqueue_attempt_evaluation(attempt.id))
+        return Response({'queued': True, 'evaluation_state': attempt.evaluation_state})
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def check_timing(self, request, pk=None):

@@ -573,8 +573,20 @@ const testApp = {
       await OfflineQueue.flushUnsavedAnswers();
       await OfflineQueue.flush();
 
+      const finalAnswers = [];
+      const answers = UI.answers || {};
+      for (const [qId, answer] of Object.entries(answers)) {
+        if ((answer.status || 'not_visited') === 'not_visited') continue;
+        finalAnswers.push({
+          question: parseInt(qId),
+          selected_option_ids: answer.selected_option_ids || [],
+          response_text: answer.response_text || '',
+          status: answer.status || 'visited',
+        });
+      }
+
       try {
-        await API.submitAttempt(ATTEMPT_ID);
+        await API.submitAttempt(ATTEMPT_ID, { final_answers: finalAnswers });
         OfflineQueue.clearPendingSubmission();
         // Redirect to the submitted page — evaluation runs in the background
         // there, so this redirect is instant and the student sees a nice screen.

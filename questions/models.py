@@ -63,7 +63,6 @@ class Question(models.Model):
 	class Meta:
 		ordering = ["section", "id"]
 		indexes = [
-			models.Index(fields=["section"]),
 			models.Index(fields=["is_active"]),
 			models.Index(fields=["created_at"]),
 		]
