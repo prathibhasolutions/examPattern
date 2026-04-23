@@ -66,7 +66,7 @@ INSTALLED_APPS = [
 
 SITE_ID = 1
 # Automatically fix the Site domain after migrations (avoids stale "example.com")
-SITE_DOMAIN = os.getenv('SITE_DOMAIN', 'localhost:8000')
+SITE_DOMAIN = os.getenv('SITE_DOMAIN', 'localhost:8000' if DEBUG else 'exampattern.in')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

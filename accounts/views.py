@@ -212,9 +212,12 @@ def forgot_password(request):
                     # Send password reset email using Django's built-in form
                     reset_form = PasswordResetForm({'email': email})
                     if reset_form.is_valid():
+                        site_domain = getattr(settings, 'SITE_DOMAIN', '').strip()
+                        use_https = request.is_secure() or (not settings.DEBUG)
                         reset_form.save(
                             request=request,
-                            use_https=request.is_secure(),
+                            use_https=use_https,
+                            domain_override=site_domain or None,
                             email_template_name='registration/password_reset_email.txt',
                             subject_template_name='registration/password_reset_subject.txt',
                             from_email=settings.DEFAULT_FROM_EMAIL,
