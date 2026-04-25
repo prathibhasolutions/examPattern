@@ -731,6 +731,24 @@
             <p>{{ series.description|default:"No description available." }}</p>
         </div>
 
+        {% if not has_access and series.price and not user.is_staff %}
+        <div style="max-width:1200px;margin:0 auto 22px;background:linear-gradient(135deg,#fff8e1,#fff3cd);border:1.5px solid #ffc107;border-radius:14px;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <span style="font-size:28px;">🔓</span>
+            <div>
+              <div style="font-weight:700;font-size:15px;color:#7b4f00;">Unlock Full Access to {{ series.name }}</div>
+              <div style="font-size:13px;color:#8a6800;margin-top:2px;">
+                You get <strong>1 free test</strong> to try. Pay once for <strong>lifetime access</strong> to all tests in this series.
+              </div>
+            </div>
+          </div>
+          <a href="{% url 'series_payment' series.slug %}"
+             style="background:linear-gradient(135deg,#1e3c72,#2a5298);color:#fff;text-decoration:none;padding:10px 22px;border-radius:10px;font-weight:700;font-size:14px;white-space:nowrap;box-shadow:0 4px 12px rgba(30,60,114,0.3);">
+            Buy Access — ₹{{ series.price|floatformat:0 }} <i class="fas fa-arrow-right" style="margin-left:6px;"></i>
+          </a>
+        </div>
+        {% endif %}
+
         <div class="nav-pills-container">
             <ul class="nav custom-nav-pills" id="sectionTabs">
                 {% for data in sectional_data %}

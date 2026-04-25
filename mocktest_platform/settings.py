@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'evaluation',
     'reports',
     'test_builder',
+    'payments',
 ]
 
 SITE_ID = 1
@@ -249,7 +250,15 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
-# ── Logging ──────────────────────────────────────────────────────────────────
+# ── Razorpay ──────────────────────────────────────────────────────────────────
+# Obtain keys from: Razorpay Dashboard → Settings → API Keys
+# Use TEST keys during development (rzp_test_...) and LIVE keys in production.
+RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', '')
+RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '')
+# Optional: set in Razorpay Dashboard → Settings → Webhooks → Secret
+RAZORPAY_WEBHOOK_SECRET = os.getenv('RAZORPAY_WEBHOOK_SECRET', '')
+
+# ── Logging ───────────────────────────────────────────────────────────────────
 # Send Django application errors (500-level) to a file so they are visible
 # even when DEBUG=False.  Gunicorn stderr also captures these, but a dedicated
 # file is much easier to tail on the server.

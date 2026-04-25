@@ -100,7 +100,7 @@ class TestViewSet(viewsets.ReadOnlyModelViewSet):
         
         return Response(attempts_data)
 
-    @action(detail=True, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def start_attempt(self, request, pk=None):
         """
         Start a new test attempt.
@@ -109,18 +109,21 @@ class TestViewSet(viewsets.ReadOnlyModelViewSet):
         Requires authentication.
         """
         test = self.get_object()
-        
-        # For demo: allow if logged in, otherwise use a demo user
-        if request.user.is_authenticated:
-            user = request.user
-        else:
-            # For demo purposes - in production, redirect to login
-            from django.contrib.auth.models import User
-            # Create or get a demo user
-            user, _ = User.objects.get_or_create(
-                username='demo_user',
-                defaults={'email': 'demo@example.com'}
+        user = request.user
+
+        # ── Access gate ───────────────────────────────────────────────────────
+        from payments.utils import user_has_series_access
+        has_access, _ = user_has_series_access(user, test.series)
+        if not has_access:
+            return Response(
+                {
+                    'error': 'payment_required',
+                    'message': 'Please purchase access to this test series to continue.',
+                    'payment_url': f'/pay/{test.series.slug}/',
+                },
+                status=status.HTTP_402_PAYMENT_REQUIRED,
             )
+        # ─────────────────────────────────────────────────────────────────────
 
         # Import here to avoid circular imports
         from attempts.models import TestAttempt, Answer

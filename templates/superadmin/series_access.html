@@ -1,0 +1,232 @@
+{% extends "superadmin/base.html" %}
+{% block title %}Series Access Management{% endblock %}
+
+{% block content %}
+<div class="sa-page-header">
+  <h1><i class="fas fa-key"></i> Series Access Management</h1>
+  <p>Grant or revoke per-user access to test series. Also manage legacy access flags.</p>
+</div>
+
+<!-- Grant Access Form -->
+<div class="sa-card" style="margin-bottom:24px;overflow:visible;">
+  <h3 style="margin:0 0 18px;font-size:16px;font-weight:700;color:#1e3c72;">
+    <i class="fas fa-plus-circle"></i> Grant Access Manually
+  </h3>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+    <div style="position:relative;">
+      <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px;">User (username / email / UID)</label>
+      <input type="text" id="grantUserSearch" placeholder="Search user…"
+             style="padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;width:260px;font-size:14px;"
+             oninput="searchUsers(this.value)">
+      <div id="userDropdown" style="position:absolute;top:100%;left:0;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12);max-height:200px;overflow-y:auto;z-index:1000;display:none;min-width:260px;"></div>
+      <input type="hidden" id="selectedUserId">
+    </div>
+    <div>
+      <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px;">Test Series</label>
+      <select id="grantSeriesSelect" style="padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;min-width:240px;">
+        <option value="">— Select series —</option>
+        {% for s in all_series %}
+        <option value="{{ s.id }}">{{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px;">Duration (days)</label>
+      <input type="number" id="grantDuration" value="90" min="1"
+             style="padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;width:110px;font-size:14px;"
+             placeholder="e.g. 90">
+    </div>
+    <button class="sa-btn sa-btn-primary" onclick="grantAccess()" style="padding:10px 22px;">
+      <i class="fas fa-unlock-alt"></i> Grant Access
+    </button>
+    <span id="grantStatus" style="font-size:13px;display:none;"></span>
+  </div>
+</div>
+
+<!-- Filter Row -->
+<div class="sa-card" style="margin-bottom:20px;">
+  <form method="get" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+    <div>
+      <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px;">Filter by user</label>
+      <input type="text" name="user" value="{{ filter_user_q }}" placeholder="username / email / UID"
+             style="padding:8px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;width:240px;">
+    </div>
+    <div>
+      <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px;">Filter by series</label>
+      <select name="series" style="padding:8px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;min-width:200px;">
+        <option value="">— All series —</option>
+        {% for s in all_series %}
+        <option value="{{ s.id }}" {% if filter_series_id == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="sa-btn sa-btn-secondary" style="padding:9px 20px;">
+      <i class="fas fa-filter"></i> Filter
+    </button>
+    {% if filter_user_q or filter_series_id %}
+    <a href="{% url 'superadmin:series_access' %}" class="sa-btn" style="padding:9px 16px;background:#eee;color:#333;border-radius:8px;text-decoration:none;font-size:13px;">
+      Clear
+    </a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Access Table -->
+<div class="sa-card">
+  <table class="sa-table">
+    <thead>
+      <tr>
+        <th>User</th>
+        <th>Series</th>
+        <th>Type</th>
+        <th>Status</th>
+        <th>Amount Paid</th>
+        <th>Granted At</th>
+        <th>Expires At</th>
+        <th>Granted By</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="accessTableBody">
+      {% for a in accesses %}
+      <tr id="access-row-{{ a.id }}">
+        <td>
+          <strong>{{ a.user.username }}</strong>
+          <div style="font-size:12px;color:#888;">{{ a.user.email }}</div>
+          {% if a.user.uid %}<div style="font-size:11px;color:#aaa;">{{ a.user.uid }}</div>{% endif %}
+        </td>
+        <td>{{ a.series.name }}</td>
+        <td>
+          {% if a.access_type == 'paid' %}
+            <span class="sa-badge" style="background:#e8f5e9;color:#2e7d32;">Paid</span>
+          {% else %}
+            <span class="sa-badge" style="background:#e3f2fd;color:#1565c0;">Admin Granted</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if a.is_active %}
+            <span class="sa-badge sa-badge-green" id="status-badge-{{ a.id }}">Active</span>
+          {% else %}
+            <span class="sa-badge sa-badge-red" id="status-badge-{{ a.id }}">Revoked</span>
+          {% endif %}
+        </td>
+        <td>{% if a.amount_paid %}₹{{ a.amount_paid|floatformat:0 }}{% else %}—{% endif %}</td>
+        <td style="font-size:13px;white-space:nowrap;">{{ a.granted_at|date:"d M Y H:i" }}</td>
+        <td style="font-size:13px;white-space:nowrap;">
+          {% if a.expires_at %}
+            {% now "Y-m-d H:i:s" as now_str %}
+            {% if a.expires_at|date:"Y-m-d H:i:s" < now_str %}
+              <span style="color:#c62828;font-weight:600;">{{ a.expires_at|date:"d M Y" }} <span style="font-size:11px;">(Expired)</span></span>
+            {% else %}
+              <span style="color:#2e7d32;">{{ a.expires_at|date:"d M Y" }}</span>
+            {% endif %}
+          {% else %}
+            <span style="color:#888;">&#8734; Never</span>
+          {% endif %}
+        </td>
+        <td style="font-size:13px;">{{ a.granted_by.username|default:"—" }}</td>
+        <td>
+          {% if a.is_active %}
+          <button class="sa-btn sa-btn-danger" style="padding:6px 14px;font-size:12px;"
+                  onclick="revokeAccess({{ a.id }})">
+            <i class="fas fa-ban"></i> Revoke
+          </button>
+          {% else %}
+          <span style="color:#aaa;font-size:13px;">Revoked</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" style="text-align:center;color:#888;padding:40px;">No access records found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if accesses|length == 200 %}
+  <p style="text-align:center;color:#888;font-size:13px;margin-top:12px;">Showing first 200 results. Use filters to narrow down.</p>
+  {% endif %}
+</div>
+
+<script>
+function getCsrfToken() {
+    return document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
+let userSearchTimer = null;
+function searchUsers(q) {
+    clearTimeout(userSearchTimer);
+    if (!q.trim()) { document.getElementById('userDropdown').style.display = 'none'; return; }
+    userSearchTimer = setTimeout(async () => {
+        const resp = await fetch(`/accounts/admin-search/?q=${encodeURIComponent(q)}`, { credentials: 'same-origin' });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const users = data.results || data;
+        const dd = document.getElementById('userDropdown');
+        if (!users.length) { dd.style.display = 'none'; return; }
+        dd.innerHTML = users.map(u =>
+            `<div onclick="selectUser(${u.id}, '${u.username}')"
+                  style="padding:9px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid #f0f0f0;"
+                  onmouseover="this.style.background='#f0f4ff'" onmouseout="this.style.background='#fff'">
+               <strong>${u.username}</strong> <span style="color:#888;font-size:12px;">${u.email}</span>
+             </div>`
+        ).join('');
+        dd.style.display = 'block';
+    }, 300);
+}
+
+function selectUser(id, username) {
+    document.getElementById('selectedUserId').value = id;
+    document.getElementById('grantUserSearch').value = username;
+    document.getElementById('userDropdown').style.display = 'none';
+}
+
+async function grantAccess() {
+    const userId = document.getElementById('selectedUserId').value;
+    const seriesId = document.getElementById('grantSeriesSelect').value;
+    const durationDays = document.getElementById('grantDuration').value.trim();
+
+    if (!userId) { showGrantStatus('Please search and select a user.', '#dc3545'); return; }
+    if (!seriesId) { showGrantStatus('Please select a series.', '#dc3545'); return; }
+    if (!durationDays || parseInt(durationDays) < 1) { showGrantStatus('Enter a valid duration in days.', '#dc3545'); return; }
+
+    const form = new FormData();
+    form.append('user_id', userId);
+    form.append('series_id', seriesId);
+    form.append('duration_days', durationDays);
+    form.append('csrfmiddlewaretoken', getCsrfToken());
+
+    const resp = await fetch(`/superadmin/series-access/grant/`, {
+        method: 'POST', body: form, credentials: 'same-origin'
+    });
+    const data = await resp.json();
+    if (data.success) {
+        showGrantStatus('✓ Access granted. Refresh to see updated table.', '#28a745');
+    } else {
+        showGrantStatus('✗ ' + (data.error || 'Error'), '#dc3545');
+    }
+}
+
+function showGrantStatus(msg, color) {
+    const el = document.getElementById('grantStatus');
+    el.style.display = 'inline';
+    el.style.color = color;
+    el.textContent = msg;
+    setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+async function revokeAccess(accessId) {
+    if (!confirm('Revoke access? The user will no longer be able to take tests in this series.')) return;
+    const form = new FormData();
+    form.append('csrfmiddlewaretoken', getCsrfToken());
+    const resp = await fetch(`/superadmin/series-access/${accessId}/revoke/`, {
+        method: 'POST', body: form, credentials: 'same-origin'
+    });
+    const data = await resp.json();
+    if (data.success) {
+        document.getElementById(`status-badge-${accessId}`).outerHTML =
+            '<span class="sa-badge sa-badge-red" id="status-badge-' + accessId + '">Revoked</span>';
+        const btn = document.querySelector(`#access-row-${accessId} .sa-btn-danger`);
+        if (btn) btn.outerHTML = '<span style="color:#aaa;font-size:13px;">Revoked</span>';
+    }
+}
+</script>
+{% endblock %}

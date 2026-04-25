@@ -184,12 +184,18 @@ def tests_series_detail(request, slug):
         ).values('published_test_id', 'id')
         test_draft_map = {d['published_test_id']: d['id'] for d in linked_drafts}
 
+    has_access = True
+    if request.user.is_authenticated and not request.user.is_staff:
+        from payments.utils import user_has_series_access
+        has_access, _ = user_has_series_access(request.user, series)
+
     return render(request, 'testseries/series_tests.html', {
         'series': series,
         'sectional_data': sectional_data,
         'all_tests': all_tests,
         'attempt_map': attempt_map,
         'test_draft_map': test_draft_map,
+        'has_access': has_access,
     })
 
 
@@ -223,6 +229,13 @@ def tests_series_about(request, slug):
 def test_instructions(request, test_id):
     """Display test instructions before starting the test."""
     test = get_object_or_404(Test, id=test_id, is_active=True)
+
+    # ── Access gate ───────────────────────────────────────────────────────────
+    from payments.utils import user_has_series_access
+    has_access, _ = user_has_series_access(request.user, test.series)
+    if not has_access:
+        return redirect('series_payment', slug=test.series.slug)
+    # ─────────────────────────────────────────────────────────────────────────
 
     # Single query: fetch all sections with annotated question counts
     sections = (

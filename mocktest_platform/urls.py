@@ -50,6 +50,7 @@ urlpatterns = [
     path('builder/', include('test_builder.urls')),
     path('superadmin/', include('superadmin.urls')),
     path('monitor/', include('monitor.urls')),
+    path('pay/', include('payments.urls')),
     path('api/v1/', include([
         path('', include('testseries.urls')),
         path('', include('attempts.urls')),

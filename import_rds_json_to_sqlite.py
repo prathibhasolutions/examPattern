@@ -194,6 +194,31 @@ def main() -> int:
             imported_total += count
             print(f"Imported {table}: {count} rows")
 
+        # ── Clean up any FK violations that came from the production DB ──────
+        # The production server may have orphaned rows (e.g. from direct SQL deletes
+        # that bypassed Django's cascade).  Detect and delete them before committing
+        # so that Django's migrate / check_constraints never sees them.
+        cur = conn.cursor()
+        cur.execute("PRAGMA foreign_key_check")
+        violations = cur.fetchall()
+        # Each row: (table, rowid, parent_table, fkid)
+        if violations:
+            from collections import defaultdict
+            rowids_by_table: dict[str, list] = defaultdict(list)
+            for row in violations:
+                rowids_by_table[row[0]].append(row[1])
+            for table, rowids in rowids_by_table.items():
+                placeholders = ",".join("?" * len(rowids))
+                conn.execute(
+                    f"DELETE FROM {quote_ident(table)} WHERE rowid IN ({placeholders})",
+                    rowids,
+                )
+                print(f"  Cleaned {len(rowids)} orphaned row(s) from {table}")
+            print(f"  Total orphans removed: {sum(len(v) for v in rowids_by_table.values())}")
+        else:
+            print("  FK check: no violations found.")
+        # ─────────────────────────────────────────────────────────────────────
+
         conn.commit()
         conn.execute("PRAGMA foreign_keys = ON")
 

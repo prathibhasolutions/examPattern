@@ -498,6 +498,20 @@
                     </div>
                     <div class="series-card-body">
                         <div class="series-description">{{ s.description|default:"No description available." }}</div>
+                        {% if s.price %}
+                        <div style="margin-top:8px;">
+                          <span style="background:linear-gradient(135deg,#1e3c72,#2a5298);color:#fff;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:0.3px;">
+                            <i class="fas fa-lock" style="font-size:10px;margin-right:3px;"></i> ₹{{ s.price|floatformat:0 }}
+                          </span>
+                          <span style="font-size:11px;color:#888;margin-left:6px;">1 free test included</span>
+                        </div>
+                        {% else %}
+                        <div style="margin-top:8px;">
+                          <span style="background:#e8f5e9;color:#2e7d32;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;">
+                            <i class="fas fa-unlock" style="font-size:10px;margin-right:3px;"></i> Free
+                          </span>
+                        </div>
+                        {% endif %}
                         <div class="series-stats">
                             <span>Total Tests</span>
                             <span>{{ s.test_count }}</span>

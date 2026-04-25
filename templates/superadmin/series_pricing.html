@@ -1,0 +1,115 @@
+{% extends "superadmin/base.html" %}
+{% block title %}Series Pricing{% endblock %}
+
+{% block content %}
+<div class="sa-page-header">
+  <h1><i class="fas fa-tags"></i> Series Pricing</h1>
+  <p>Set the price for each test series. Set to ₹0 to make a series free.</p>
+</div>
+
+<div class="sa-card">
+  <table class="sa-table" id="pricingTable">
+    <thead>
+      <tr>
+        <th>Test Series</th>
+        <th>Status</th>
+        <th>Active Purchases</th>
+        <th style="width:200px">Price (₹) <small style="font-weight:400;color:#888;">(fallback)</small></th>
+        <th>Save Price</th>
+        <th>Plans</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in series_qs %}
+      <tr id="row-{{ s.id }}">
+        <td>
+          <strong>{{ s.name }}</strong>
+          <div style="font-size:12px;color:#888;margin-top:2px;">{{ s.slug }}</div>
+        </td>
+        <td>
+          {% if s.is_active %}
+            <span class="sa-badge sa-badge-green">Active</span>
+          {% else %}
+            <span class="sa-badge sa-badge-red">Inactive</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{% url 'superadmin:series_access' %}?series={{ s.id }}" style="color:#2a5298;font-weight:600;">
+            {{ s.access_count }}
+          </a>
+        </td>
+        <td>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="color:#555;font-weight:600;">₹</span>
+            <input type="number"
+                   id="price-{{ s.id }}"
+                   value="{{ s.price|floatformat:0 }}"
+                   min="0"
+                   step="1"
+                   style="width:110px;padding:7px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-weight:600;"
+                   onkeydown="if(event.key==='Enter') savePrice({{ s.id }})"
+            >
+          </div>
+        </td>
+        <td>
+          <button class="sa-btn sa-btn-primary" style="padding:7px 18px;font-size:13px;" onclick="savePrice({{ s.id }})">
+            <i class="fas fa-save"></i> Save
+          </button>
+          <span id="status-{{ s.id }}" style="font-size:12px;margin-left:8px;display:none;"></span>
+        </td>
+        <td>
+          <a href="{% url 'superadmin:series_plans' s.id %}"
+             class="sa-btn" style="padding:7px 16px;font-size:13px;background:#f0f4ff;color:#1e3c72;border:1px solid #c5d3f0;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+            <i class="fas fa-layer-group"></i> Manage Plans
+          </a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" style="text-align:center;color:#888;padding:40px;">No test series found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+function getCsrfToken() {
+    return document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
+async function savePrice(seriesId) {
+    const input = document.getElementById(`price-${seriesId}`);
+    const statusEl = document.getElementById(`status-${seriesId}`);
+    const price = input.value.trim();
+
+    if (price === '' || isNaN(price) || parseFloat(price) < 0) {
+        showStatus(statusEl, '✗ Invalid price', '#dc3545');
+        return;
+    }
+
+    showStatus(statusEl, 'Saving…', '#888', true);
+
+    const form = new FormData();
+    form.append('price', price);
+    form.append('csrfmiddlewaretoken', getCsrfToken());
+
+    const resp = await fetch(`/superadmin/series-pricing/${seriesId}/set-price/`, {
+        method: 'POST', body: form, credentials: 'same-origin'
+    });
+    const data = await resp.json();
+
+    if (data.success) {
+        input.value = parseInt(data.price, 10);
+        showStatus(statusEl, '✓ Saved', '#28a745');
+    } else {
+        showStatus(statusEl, '✗ ' + (data.error || 'Error'), '#dc3545');
+    }
+}
+
+function showStatus(el, msg, color, spinner) {
+    el.style.display = 'inline';
+    el.style.color = color;
+    el.textContent = msg;
+    if (!spinner) setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
+</script>
+{% endblock %}

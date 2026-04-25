@@ -88,6 +88,14 @@
                       title="{% if u.is_active %}Disable account{% else %}Enable account{% endif %}">
                 <i class="fas {% if u.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
               </button>
+              <!-- Legacy access toggle -->
+              <button class="sa-btn sa-btn-sm"
+                      id="legacy-btn-{{ u.id }}"
+                      onclick="toggleLegacy({{ u.id }}, this)"
+                      title="{% if u.has_legacy_access %}Legacy access ON — click to revoke{% else %}Legacy access OFF — click to grant{% endif %}"
+                      style="background:{% if u.has_legacy_access %}#6f42c1{% else %}#dee2e6{% endif %};color:{% if u.has_legacy_access %}#fff{% else %}#555{% endif %};border:none;">
+                <i class="fas fa-infinity"></i>
+              </button>
               <!-- Delete -->
               <button class="sa-btn sa-btn-danger sa-btn-sm"
                       onclick="confirmDeleteUser({{ u.id }}, '{{ u.username|escapejs }}')"
@@ -150,6 +158,22 @@ function toggleUser(userId, btn) {
   if (!confirm(`Are you sure you want to ${action} this account?`)) return;
   postJSON(`/superadmin/users/${userId}/toggle-active/`, {},
     data => location.reload(),
+    err => alert('Error: ' + err)
+  );
+}
+
+// ── Legacy access toggle ─────────────────────────────────────────────────────
+function toggleLegacy(userId, btn) {
+  const isOn = btn.style.background === 'rgb(111, 66, 193)';
+  const action = isOn ? 'revoke legacy access from' : 'grant legacy access to';
+  if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+  postJSON(`/superadmin/users/${userId}/toggle-legacy/`, {},
+    data => {
+      const on = data.has_legacy_access;
+      btn.style.background = on ? '#6f42c1' : '#dee2e6';
+      btn.style.color = on ? '#fff' : '#555';
+      btn.title = on ? 'Legacy access ON — click to revoke' : 'Legacy access OFF — click to grant';
+    },
     err => alert('Error: ' + err)
   );
 }

@@ -1,0 +1,183 @@
+{% extends "superadmin/base.html" %}
+{% block title %}Plans — {{ series.name }}{% endblock %}
+
+{% block content %}
+<div class="sa-page-header">
+  <h1><i class="fas fa-layer-group"></i> Plans for "{{ series.name }}"</h1>
+  <p>Define purchasable plans. Each plan has its own price and access duration. Users will pick a plan on the payment page.</p>
+  <a href="{% url 'superadmin:series_pricing' %}" class="sa-btn" style="padding:9px 18px;background:#eee;color:#333;border-radius:8px;text-decoration:none;font-size:13px;">
+    <i class="fas fa-arrow-left"></i> Back to Pricing
+  </a>
+</div>
+
+<!-- Add Plan Form -->
+<div class="sa-card" style="margin-bottom:24px;">
+  <h3 style="margin:0 0 18px;font-size:16px;font-weight:700;color:#1e3c72;">
+    <i class="fas fa-plus-circle"></i> Add New Plan
+  </h3>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
+    <div>
+      <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px;">Plan Name</label>
+      <input type="text" id="planName" placeholder="e.g. 3 Months, Half Year, 1 Year"
+             style="padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;width:220px;font-size:14px;">
+    </div>
+    <div>
+      <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px;">Duration (days)</label>
+      <input type="number" id="planDays" min="1" placeholder="e.g. 90, 180, 365"
+             style="padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;width:150px;font-size:14px;">
+    </div>
+    <div>
+      <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px;">Price (₹)</label>
+      <input type="number" id="planPrice" min="0" step="1" placeholder="e.g. 199"
+             style="padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;width:130px;font-size:14px;">
+    </div>
+    <button class="sa-btn sa-btn-primary" onclick="addPlan()" style="padding:10px 22px;">
+      <i class="fas fa-plus"></i> Add Plan
+    </button>
+    <span id="addStatus" style="font-size:13px;display:none;"></span>
+  </div>
+</div>
+
+<!-- Plans Table -->
+<div class="sa-card">
+  <table class="sa-table" id="plansTable">
+    <thead>
+      <tr>
+        <th>Plan Name</th>
+        <th>Duration</th>
+        <th>Price</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="plansBody">
+      {% for plan in plans %}
+      <tr id="plan-row-{{ plan.id }}">
+        <td><strong>{{ plan.name }}</strong></td>
+        <td>{{ plan.duration_days }} days</td>
+        <td>₹{{ plan.price|floatformat:0 }}</td>
+        <td>
+          {% if plan.is_active %}
+            <span class="sa-badge sa-badge-green" id="plan-status-{{ plan.id }}">Active</span>
+          {% else %}
+            <span class="sa-badge sa-badge-red" id="plan-status-{{ plan.id }}">Inactive</span>
+          {% endif %}
+        </td>
+        <td style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="sa-btn" style="padding:6px 14px;font-size:12px;background:#f0f4ff;color:#1e3c72;border:1px solid #c5d3f0;"
+                  onclick="togglePlan({{ plan.id }})">
+            <i class="fas fa-toggle-on"></i> Toggle
+          </button>
+          <button class="sa-btn sa-btn-danger" style="padding:6px 14px;font-size:12px;"
+                  onclick="deletePlan({{ plan.id }}, '{{ plan.name|escapejs }}')">
+            <i class="fas fa-trash"></i> Delete
+          </button>
+        </td>
+      </tr>
+      {% empty %}
+      <tr id="empty-row"><td colspan="5" style="text-align:center;color:#888;padding:40px;">No plans yet. Add one above.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+function getCsrfToken() {
+    return document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
+async function addPlan() {
+    const name = document.getElementById('planName').value.trim();
+    const days = document.getElementById('planDays').value.trim();
+    const price = document.getElementById('planPrice').value.trim();
+    const statusEl = document.getElementById('addStatus');
+
+    if (!name || !days || !price) {
+        showSt(statusEl, '✗ All fields required', '#dc3545'); return;
+    }
+
+    showSt(statusEl, 'Saving…', '#888', true);
+    const form = new FormData();
+    form.append('name', name);
+    form.append('duration_days', days);
+    form.append('price', price);
+    form.append('csrfmiddlewaretoken', getCsrfToken());
+
+    const resp = await fetch("{% url 'superadmin:series_plan_add' series.id %}", {
+        method: 'POST', body: form, credentials: 'same-origin',
+    });
+    const data = await resp.json();
+    if (data.success) {
+        showSt(statusEl, '✓ Plan added', '#28a745');
+        document.getElementById('planName').value = '';
+        document.getElementById('planDays').value = '';
+        document.getElementById('planPrice').value = '';
+        // Remove empty-row if exists
+        const emptyRow = document.getElementById('empty-row');
+        if (emptyRow) emptyRow.remove();
+        // Append new row
+        const p = data.plan;
+        const tbody = document.getElementById('plansBody');
+        const tr = document.createElement('tr');
+        tr.id = 'plan-row-' + p.id;
+        tr.innerHTML = `
+            <td><strong>${escHtml(p.name)}</strong></td>
+            <td>${p.duration_days} days</td>
+            <td>₹${parseInt(p.price)}</td>
+            <td><span class="sa-badge sa-badge-green" id="plan-status-${p.id}">Active</span></td>
+            <td style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="sa-btn" style="padding:6px 14px;font-size:12px;background:#f0f4ff;color:#1e3c72;border:1px solid #c5d3f0;"
+                        onclick="togglePlan(${p.id})"><i class="fas fa-toggle-on"></i> Toggle</button>
+                <button class="sa-btn sa-btn-danger" style="padding:6px 14px;font-size:12px;"
+                        onclick="deletePlan(${p.id}, ${JSON.stringify(p.name)})"><i class="fas fa-trash"></i> Delete</button>
+            </td>`;
+        tbody.appendChild(tr);
+    } else {
+        showSt(statusEl, '✗ ' + (data.error || 'Error'), '#dc3545');
+    }
+}
+
+async function togglePlan(planId) {
+    const form = new FormData();
+    form.append('csrfmiddlewaretoken', getCsrfToken());
+    const resp = await fetch(`/superadmin/series-plans/plan/${planId}/toggle/`, {
+        method: 'POST', body: form, credentials: 'same-origin',
+    });
+    const data = await resp.json();
+    if (data.success) {
+        const badge = document.getElementById('plan-status-' + planId);
+        if (data.is_active) {
+            badge.textContent = 'Active';
+            badge.className = 'sa-badge sa-badge-green';
+        } else {
+            badge.textContent = 'Inactive';
+            badge.className = 'sa-badge sa-badge-red';
+        }
+    }
+}
+
+async function deletePlan(planId, planName) {
+    if (!confirm(`Delete plan "${planName}"? This cannot be undone.`)) return;
+    const form = new FormData();
+    form.append('csrfmiddlewaretoken', getCsrfToken());
+    const resp = await fetch(`/superadmin/series-plans/plan/${planId}/delete/`, {
+        method: 'POST', body: form, credentials: 'same-origin',
+    });
+    const data = await resp.json();
+    if (data.success) {
+        document.getElementById('plan-row-' + planId)?.remove();
+    }
+}
+
+function showSt(el, msg, color, spin=false) {
+    el.style.display = 'inline';
+    el.style.color = color;
+    el.textContent = msg;
+    if (!spin) setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
+
+function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+{% endblock %}

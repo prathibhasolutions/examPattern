@@ -589,7 +589,11 @@
                     const data = await response.json();
                     overlay.style.display = 'none';
                     startBtn.disabled = false;
-                    alert(data.error || 'Failed to start test');
+                    if (response.status === 402 && data.payment_url) {
+                        window.location.href = data.payment_url;
+                    } else {
+                        alert(data.error || 'Failed to start test');
+                    }
                     return;
                 }
 

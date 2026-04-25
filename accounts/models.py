@@ -27,6 +27,11 @@ class CustomUser(AbstractUser):
     active_session_key = models.CharField(max_length=40, null=True, blank=True)
     uid = models.CharField(max_length=11, unique=True, null=True, blank=True, db_index=True,
                            help_text="Unique user ID in format EXP{YEAR}{4 chars}, e.g. EXP2026A3F9")
+    has_legacy_access = models.BooleanField(
+        default=False,
+        help_text="If True, user has unlimited access to all test series without payment. "
+                  "Set automatically for all accounts created before the paywall was introduced."
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
