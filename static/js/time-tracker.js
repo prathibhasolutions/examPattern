@@ -7,9 +7,11 @@ const TimeTracker = {
   currentlyViewingQuestionId: null,
   questionViewStartTime: null,
   attemptId: null,
-  updateInterval: 15000, // Send time to server every 15 seconds
+  updateInterval: 30000, // Send time to server every 30 seconds
   pendingTimeUpdates: {}, // Track accumulated time: { questionId: seconds }
   intervalId: null,
+  startupTimeoutId: null,
+  isSyncing: false,
 
   /**
    * Initialize time tracker
@@ -104,11 +106,13 @@ const TimeTracker = {
    * Send accumulated time to server periodically
    */
   syncTimeUpdates: async () => {
+    if (TimeTracker.isSyncing) return;
     if (Object.keys(TimeTracker.pendingTimeUpdates).length === 0) {
       console.log('No pending time updates to sync');
       return;
     }
 
+    TimeTracker.isSyncing = true;
     const updates = { ...TimeTracker.pendingTimeUpdates };
     TimeTracker.pendingTimeUpdates = {};
     
@@ -117,18 +121,16 @@ const TimeTracker = {
     try {
       for (const [questionId, timeSpent] of Object.entries(updates)) {
         try {
-          const response = await API.trackQuestionTime(TimeTracker.attemptId, parseInt(questionId), timeSpent);
+          await API.trackQuestionTime(TimeTracker.attemptId, parseInt(questionId), timeSpent);
           console.log(`Synced time for question ${questionId}: ${timeSpent}s`);
         } catch (error) {
           console.error(`Failed to sync time for question ${questionId}:`, error);
-          // Re-add to pending if failed
+          // Re-add only failed items to pending.
           TimeTracker.pendingTimeUpdates[questionId] = (TimeTracker.pendingTimeUpdates[questionId] || 0) + timeSpent;
-          throw error;
         }
       }
-    } catch (error) {
-      console.error('Failed to sync time updates:', error);
-      throw error;
+    } finally {
+      TimeTracker.isSyncing = false;
     }
   },
 
@@ -136,10 +138,15 @@ const TimeTracker = {
    * Start periodic sync of time updates
    */
   startPeriodicSync: () => {
-    // Sync every 15 seconds
-    TimeTracker.intervalId = setInterval(() => {
+    // Add small random jitter so many students do not sync at the same second.
+    const jitterMs = Math.floor(Math.random() * 5000);
+    TimeTracker.startupTimeoutId = setTimeout(() => {
       TimeTracker.syncTimeUpdates();
-    }, TimeTracker.updateInterval);
+      TimeTracker.intervalId = setInterval(() => {
+        TimeTracker.syncTimeUpdates();
+      }, TimeTracker.updateInterval);
+      TimeTracker.startupTimeoutId = null;
+    }, jitterMs);
 
     // Also sync when page is about to unload
     window.addEventListener('beforeunload', () => {
@@ -152,10 +159,15 @@ const TimeTracker = {
    * Stop periodic sync
    */
   stopPeriodicSync: () => {
+    if (TimeTracker.startupTimeoutId) {
+      clearTimeout(TimeTracker.startupTimeoutId);
+      TimeTracker.startupTimeoutId = null;
+    }
     if (TimeTracker.intervalId) {
       clearInterval(TimeTracker.intervalId);
       TimeTracker.intervalId = null;
     }
+    TimeTracker.isSyncing = false;
   },
 
   /**

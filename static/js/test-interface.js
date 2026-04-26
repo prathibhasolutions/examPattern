@@ -6,6 +6,7 @@
 const OfflineQueue = {
   queueKey: () => `exam_answer_queue_${ATTEMPT_ID}`,
   pendingKey: () => `exam_pending_submission_${ATTEMPT_ID}`,
+  snapshotKey: () => `exam_answer_snapshot_${ATTEMPT_ID}`,
 
   // Add a failed answer to the retry queue
   enqueue: (questionId, payload) => {
@@ -54,6 +55,7 @@ const OfflineQueue = {
   flushUnsavedAnswers: async () => {
     const answers = UI.answers || {};
     const tasks = [];
+    const failed = {};
     for (const [qId, answer] of Object.entries(answers)) {
       if (answer.status === 'not_visited') continue;
       if (answer._savedToServer) continue; // already confirmed on server
@@ -68,11 +70,26 @@ const OfflineQueue = {
       tasks.push(
         API.saveAnswer(ATTEMPT_ID, payload)
           .then(() => { if (UI.answers[qId]) UI.answers[qId]._savedToServer = true; })
-          .catch(() => { /* network error — submit will handle offline case */ })
+          .catch(() => {
+            failed[qId] = payload;
+            if (UI.answers[qId]) UI.answers[qId]._savedToServer = false;
+          })
       );
     }
     if (tasks.length) await Promise.allSettled(tasks);
-    localStorage.removeItem(OfflineQueue.queueKey());
+
+    if (Object.keys(failed).length) {
+      let existing = {};
+      try {
+        const raw = localStorage.getItem(OfflineQueue.queueKey());
+        existing = raw ? JSON.parse(raw) : {};
+      } catch (_e) {
+        existing = {};
+      }
+      localStorage.setItem(OfflineQueue.queueKey(), JSON.stringify({ ...existing, ...failed }));
+    } else {
+      localStorage.removeItem(OfflineQueue.queueKey());
+    }
   },
 
   // Flush every in-memory answer to server (called just before submitting)
@@ -98,9 +115,18 @@ const OfflineQueue = {
   // Persist full answer state + metadata for deferred submission
   savePendingSubmission: (attemptId, answers, timerRemaining) => {
     try {
+      const cleanAnswers = {};
+      for (const [qId, answer] of Object.entries(answers || {})) {
+        cleanAnswers[qId] = {
+          question: parseInt(qId),
+          selected_option_ids: answer.selected_option_ids || [],
+          response_text: answer.response_text || '',
+          status: answer.status || 'not_visited',
+        };
+      }
       localStorage.setItem(OfflineQueue.pendingKey(), JSON.stringify({
         attemptId,
-        answers,
+        answers: cleanAnswers,
         timerRemaining,
         savedAt: Date.now(),
       }));
@@ -113,8 +139,51 @@ const OfflineQueue = {
   clearPendingSubmission: () => {
     localStorage.removeItem(OfflineQueue.pendingKey());
     localStorage.removeItem(OfflineQueue.queueKey());
+    localStorage.removeItem(OfflineQueue.snapshotKey());
+  },
+
+  // Persist a durable local snapshot of answers so a browser restart or
+  // backend outage does not lose in-progress work.
+  saveAnswerSnapshot: (answers) => {
+    try {
+      const cleanAnswers = {};
+      for (const [qId, answer] of Object.entries(answers || {})) {
+        cleanAnswers[qId] = {
+          question: parseInt(qId),
+          selected_option_ids: answer.selected_option_ids || [],
+          response_text: answer.response_text || '',
+          status: answer.status || 'not_visited',
+        };
+      }
+      localStorage.setItem(OfflineQueue.snapshotKey(), JSON.stringify({
+        savedAt: Date.now(),
+        answers: cleanAnswers,
+      }));
+    } catch (e) {
+      console.warn('OfflineQueue.saveAnswerSnapshot failed:', e);
+    }
+  },
+
+  loadAnswerSnapshot: () => {
+    try {
+      const raw = localStorage.getItem(OfflineQueue.snapshotKey());
+      return raw ? JSON.parse(raw) : null;
+    } catch (_e) {
+      return null;
+    }
+  },
+
+  loadPendingSubmission: () => {
+    try {
+      const raw = localStorage.getItem(OfflineQueue.pendingKey());
+      return raw ? JSON.parse(raw) : null;
+    } catch (_e) {
+      return null;
+    }
   },
 };
+
+window.OfflineQueue = OfflineQueue;
 
 /**
  * Main Test Interface App
@@ -137,6 +206,7 @@ const testApp = {
   timerHeartbeatId: null,
   isOffline: false,
   pendingSubmitOnReconnect: false,
+  answerSnapshotHeartbeatId: null,
 
   // Initialize app
   init: async () => {
@@ -247,7 +317,72 @@ const testApp = {
       // Initialize modules
       Navigation.init(questions.length);
       UI.initAnswers(testApp.attempt.answers);
+
+      // Merge a local snapshot captured on this device (if any). This recovers
+      // answers that never reached the backend during transient outages.
+      const localSnapshot = OfflineQueue.loadAnswerSnapshot();
+      if (localSnapshot && localSnapshot.answers) {
+        for (const [qId, snapshotAnswer] of Object.entries(localSnapshot.answers)) {
+          const hasMeaningfulValue =
+            (snapshotAnswer.response_text || '').trim().length > 0 ||
+            (snapshotAnswer.selected_option_ids || []).length > 0 ||
+            (snapshotAnswer.status && snapshotAnswer.status !== 'not_visited');
+          if (!hasMeaningfulValue) continue;
+
+          UI.answers[qId] = {
+            ...(UI.answers[qId] || { question: parseInt(qId) }),
+            selected_option_ids: snapshotAnswer.selected_option_ids || [],
+            response_text: snapshotAnswer.response_text || '',
+            status: snapshotAnswer.status || 'visited',
+            _savedToServer: false,
+            _saveSeq: (UI.answers[qId]?._saveSeq || 0) + 1,
+          };
+        }
+      }
+
+      // Recover a pending submission captured during a prior outage/reload.
+      const pendingSubmission = OfflineQueue.loadPendingSubmission();
+      if (pendingSubmission && pendingSubmission.answers) {
+        for (const [qId, pendingAnswer] of Object.entries(pendingSubmission.answers)) {
+          const hasMeaningfulValue =
+            (pendingAnswer.response_text || '').trim().length > 0 ||
+            (pendingAnswer.selected_option_ids || []).length > 0 ||
+            (pendingAnswer.status && pendingAnswer.status !== 'not_visited');
+          if (!hasMeaningfulValue) continue;
+
+          UI.answers[qId] = {
+            ...(UI.answers[qId] || { question: parseInt(qId) }),
+            selected_option_ids: pendingAnswer.selected_option_ids || [],
+            response_text: pendingAnswer.response_text || '',
+            status: pendingAnswer.status || 'visited',
+            _savedToServer: false,
+            _saveSeq: (UI.answers[qId]?._saveSeq || 0) + 1,
+          };
+        }
+
+        if (testApp.attempt?.status === 'in_progress') {
+          const existing = document.getElementById('pending-submit-toast');
+          if (existing) existing.remove();
+
+          const recoverToast = document.createElement('div');
+          recoverToast.id = 'pending-submit-toast';
+          recoverToast.className = 'alert alert-warning position-fixed bottom-0 start-50 translate-middle-x mb-3';
+          recoverToast.style.zIndex = '9999';
+          recoverToast.style.maxWidth = '560px';
+          recoverToast.style.fontSize = '14px';
+          recoverToast.innerHTML =
+            '<i class="fas fa-history me-2"></i>' +
+            '<strong>Recovered unsent answers from this device.</strong> Please click Submit again to safely finalize.';
+          document.body.appendChild(recoverToast);
+        }
+      }
+
       Palette.init(questions, sections);
+
+      // Keep a periodic snapshot of current UI answers in localStorage.
+      testApp.answerSnapshotHeartbeatId = setInterval(() => {
+        OfflineQueue.saveAnswerSnapshot(UI.answers || {});
+      }, 5000);
 
       // Render section tabs
       testApp.renderSectionTabs();
@@ -565,6 +700,10 @@ const testApp = {
         clearInterval(testApp.timerHeartbeatId);
         testApp.timerHeartbeatId = null;
       }
+      if (testApp.answerSnapshotHeartbeatId) {
+        clearInterval(testApp.answerSnapshotHeartbeatId);
+        testApp.answerSnapshotHeartbeatId = null;
+      }
 
       // Flush answers not yet confirmed saved to the server.
       // Fast students who answered quickly may have answers whose debounced
@@ -572,35 +711,54 @@ const testApp = {
       // round-trip. Also flushes any offline-queued retries.
       await OfflineQueue.flushUnsavedAnswers();
       await OfflineQueue.flush();
+      OfflineQueue.saveAnswerSnapshot(UI.answers || {});
 
       const finalAnswers = [];
       const answers = UI.answers || {};
       for (const [qId, answer] of Object.entries(answers)) {
         if ((answer.status || 'not_visited') === 'not_visited') continue;
-        finalAnswers.push({
-          question: parseInt(qId),
-          selected_option_ids: answer.selected_option_ids || [],
-          response_text: answer.response_text || '',
-          status: answer.status || 'visited',
-        });
+
+        const compact = {
+          q: parseInt(qId),
+          s: answer.status || 'visited',
+        };
+        if ((answer.selected_option_ids || []).length) {
+          compact.o = answer.selected_option_ids;
+        }
+        if ((answer.response_text || '').trim().length) {
+          compact.t = answer.response_text;
+        }
+        finalAnswers.push(compact);
       }
 
       try {
-        await API.submitAttempt(ATTEMPT_ID, { final_answers: finalAnswers });
+        await API.submitAttempt(ATTEMPT_ID, { fa: finalAnswers });
         OfflineQueue.clearPendingSubmission();
         // Redirect to the submitted page — evaluation runs in the background
         // there, so this redirect is instant and the student sees a nice screen.
         window.location.replace(`/submitted/${ATTEMPT_ID}/`);
       } catch (submitError) {
-        // TypeError means a true network failure (fetch couldn't reach the server).
-        // Any other error means the server responded with a non-2xx status, which
-        // can include 400 "already submitted" or 500 from an evaluation crash —
-        // in both cases the submission was likely saved; redirect to results.
-        const isNetworkError = submitError instanceof TypeError;
+        // Never assume submission succeeded when backend returns 5xx.
+        // We first probe latest attempt status, then decide whether to redirect.
+        const status = submitError?.status;
+        const isNetworkError = submitError instanceof TypeError || !status;
+        let latestAttempt = null;
+        try {
+          latestAttempt = await API.getAttempt(ATTEMPT_ID);
+        } catch (_e) {
+          latestAttempt = null;
+        }
+
+        if (latestAttempt?.status === 'submitted') {
+          OfflineQueue.clearPendingSubmission();
+          window.location.replace(`/submitted/${ATTEMPT_ID}/`);
+          return;
+        }
 
         if (isNetworkError) {
           // Truly offline — queue for auto-retry on reconnect
           OfflineQueue.savePendingSubmission(ATTEMPT_ID, UI.answers, Timer.remainingSeconds);
+          OfflineQueue.saveAnswerSnapshot(UI.answers || {});
           testApp.pendingSubmitOnReconnect = true;
           testApp.isSubmitting = false;
           if (submitOverlay) submitOverlay.style.display = 'none';
@@ -618,12 +776,35 @@ const testApp = {
             '<i class="fas fa-cloud-upload-alt me-2"></i>' +
             '<strong>No internet.</strong> Your answers are saved on this device and will be submitted automatically once you\'re back online.';
           document.body.appendChild(pendingToast);
+        } else if (status >= 500) {
+          OfflineQueue.savePendingSubmission(ATTEMPT_ID, UI.answers, Timer.remainingSeconds);
+          OfflineQueue.saveAnswerSnapshot(UI.answers || {});
+          testApp.isSubmitting = false;
+          if (submitOverlay) submitOverlay.style.display = 'none';
+
+          const existing = document.getElementById('pending-submit-toast');
+          if (existing) existing.remove();
+
+          const retryToast = document.createElement('div');
+          retryToast.id = 'pending-submit-toast';
+          retryToast.className = 'alert alert-warning position-fixed bottom-0 start-50 translate-middle-x mb-3';
+          retryToast.style.zIndex = '9999';
+          retryToast.style.maxWidth = '560px';
+          retryToast.style.fontSize = '14px';
+          retryToast.innerHTML =
+            '<i class="fas fa-server me-2"></i>' +
+            '<strong>Server is temporarily unavailable.</strong> Your answers are safe on this device. Please click Submit again in a minute.';
+          document.body.appendChild(retryToast);
         } else {
-          // Server responded with an error — the attempt status was most likely
-          // already saved as submitted on the backend.  Redirect to submitted
-          // page so the student sees the success screen and results are polled.
-          OfflineQueue.clearPendingSubmission();
-          window.location.replace(`/submitted/${ATTEMPT_ID}/`);
+          testApp.isSubmitting = false;
+          if (submitOverlay) submitOverlay.style.display = 'none';
+          const msg = submitError?.data?.error || 'Submission failed. Please review and try again.';
+          const errorToast = document.createElement('div');
+          errorToast.className = 'alert alert-danger position-fixed top-0 start-50 translate-middle-x mt-3';
+          errorToast.style.zIndex = '9999';
+          errorToast.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i>${msg}`;
+          document.body.appendChild(errorToast);
+          setTimeout(() => errorToast.remove(), 4000);
         }
       }
     } catch (error) {
@@ -711,6 +892,8 @@ const testApp = {
 
     // Replace default beforeunload with modal
     window.addEventListener('beforeunload', (e) => {
+      OfflineQueue.saveAnswerSnapshot(UI.answers || {});
+
       // Save timer FIRST — sendBeacon is fire-and-forget and must be called
       // before any return/prevent-default that would block further execution
       if (!testApp.isSubmitting && Timer.remainingSeconds > 0) {

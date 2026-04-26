@@ -216,6 +216,9 @@ const UI = {
     answer._savedToServer = false;
     UI.answers[questionId] = answer;
     Palette.updateStatus(questionId, answer.status);
+    if (window.OfflineQueue && typeof window.OfflineQueue.saveAnswerSnapshot === 'function') {
+      window.OfflineQueue.saveAnswerSnapshot(UI.answers);
+    }
 
     // Debounce auto-save
     UI.debouncedSaveAnswer(questionId);
@@ -252,6 +255,9 @@ const UI = {
     answer._savedToServer = false;
     UI.answers[questionId] = answer;
     Palette.updateStatus(questionId, answer.status);
+    if (window.OfflineQueue && typeof window.OfflineQueue.saveAnswerSnapshot === 'function') {
+      window.OfflineQueue.saveAnswerSnapshot(UI.answers);
+    }
 
     // Save immediately
     UI.saveAnswer(questionId);
@@ -335,6 +341,9 @@ const UI = {
 
     UI.answers[questionId] = answer;
     Palette.updateStatus(questionId, answer.status);
+    if (window.OfflineQueue && typeof window.OfflineQueue.saveAnswerSnapshot === 'function') {
+      window.OfflineQueue.saveAnswerSnapshot(UI.answers);
+    }
 
     // Save cleared state to backend immediately
     UI.saveAnswer(questionId);
