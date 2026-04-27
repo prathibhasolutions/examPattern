@@ -3,6 +3,55 @@
  * Handles all API calls to backend
  */
 
+const buildHttpError = async (response) => {
+  const err = new Error(`HTTP ${response.status}`);
+  err.status = response.status;
+  try {
+    err.data = await response.json();
+  } catch (_e) {
+    err.data = null;
+  }
+  return err;
+};
+
+const buildSubmitBody = async (payload) => {
+  const jsonText = JSON.stringify(payload || {});
+
+  // For tiny payloads, compression overhead can outweigh gains.
+  if (jsonText.length < 4096 || typeof CompressionStream === 'undefined') {
+    return {
+      body: jsonText,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    };
+  }
+
+  try {
+    const encoder = new TextEncoder();
+    const compressedStream = new CompressionStream('gzip');
+    const writer = compressedStream.writable.getWriter();
+    await writer.write(encoder.encode(jsonText));
+    await writer.close();
+
+    const compressedBuffer = await new Response(compressedStream.readable).arrayBuffer();
+    return {
+      body: compressedBuffer,
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Encoding': 'gzip',
+      },
+    };
+  } catch (_e) {
+    return {
+      body: jsonText,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    };
+  }
+};
+
 const API = {
   // Fetch attempt details with all answers
   getAttempt: async (attemptId) => {
@@ -15,7 +64,7 @@ const API = {
         },
         credentials: 'same-origin',
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) throw await buildHttpError(response);
       return await response.json();
     } catch (error) {
       console.error('Error fetching attempt:', error);
@@ -36,7 +85,7 @@ const API = {
         body: JSON.stringify(payload),
         credentials: 'same-origin',
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) throw await buildHttpError(response);
       return await response.json();
     } catch (error) {
       console.error('Error saving answer:', error);
@@ -55,7 +104,7 @@ const API = {
         },
         credentials: 'same-origin',
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) throw await buildHttpError(response);
       return await response.json();
     } catch (error) {
       console.error('Error checking timing:', error);
@@ -66,17 +115,18 @@ const API = {
   // Submit attempt
   submitAttempt: async (attemptId, payload = {}) => {
     try {
+      const prepared = await buildSubmitBody(payload);
       const response = await fetch(`${API_BASE}/attempts/${attemptId}/submit/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
-          'Content-Type': 'application/json',
           'X-CSRFToken': CSRF_TOKEN,
+          ...prepared.headers,
         },
-        body: JSON.stringify(payload),
+        body: prepared.body,
         credentials: 'same-origin',
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) throw await buildHttpError(response);
       return await response.json();
     } catch (error) {
       console.error('Error submitting attempt:', error);
@@ -95,7 +145,7 @@ const API = {
         },
         credentials: 'same-origin',
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) throw await buildHttpError(response);
       return await response.json();
     } catch (error) {
       console.error('Error fetching test:', error);
@@ -118,7 +168,7 @@ const API = {
         }),
         credentials: 'same-origin',
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) throw await buildHttpError(response);
       return await response.json();
     } catch (error) {
       console.error('Error tracking question time:', error);

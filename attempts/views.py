@@ -43,6 +43,41 @@ def _increment_section_timing(attempt_id: int, section_id: int, delta_seconds: i
 
 
 
+def _extract_final_answers(payload) -> list[dict]:
+    """Normalize both legacy and compact submit payload formats.
+
+    Legacy format:
+      {"final_answers": [{"question": 1, "selected_option_ids": [...], "response_text": "", "status": "answered"}]}
+
+    Compact format:
+      {"fa": [{"q": 1, "o": [...], "t": "", "s": "answered"}]}
+    """
+    legacy = payload.get('final_answers')
+    if isinstance(legacy, list):
+        return legacy
+
+    compact = payload.get('fa')
+    if not isinstance(compact, list):
+        return []
+
+    normalized = []
+    for item in compact:
+        if not isinstance(item, dict):
+            continue
+        question_id = item.get('q') or item.get('question')
+        if not question_id:
+            continue
+        row = {'question': question_id}
+        if 'o' in item or 'selected_option_ids' in item:
+            row['selected_option_ids'] = item.get('o', item.get('selected_option_ids')) or []
+        if 't' in item or 'response_text' in item:
+            row['response_text'] = item.get('t', item.get('response_text')) or ''
+        if 's' in item or 'status' in item:
+            row['status'] = item.get('s', item.get('status')) or 'visited'
+        normalized.append(row)
+    return normalized
+
+
 class TestAttemptViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing test attempts and answers.
@@ -144,6 +179,10 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
         response fast.
         """
         attempt = self.get_object()
+
+        if attempt.status == TestAttempt.STATUS_SUBMITTED:
+            serializer = self.get_serializer(attempt)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
         if attempt.status != TestAttempt.STATUS_IN_PROGRESS:
             return Response(

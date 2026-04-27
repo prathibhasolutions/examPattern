@@ -72,6 +72,7 @@ SITE_DOMAIN = os.getenv('SITE_DOMAIN', 'localhost:8000' if DEBUG else 'exampatte
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'mocktest_platform.middleware.GzipRequestDecompressionMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'mocktest_platform.middleware.CSRFExemptAPIMiddleware',  # Exempt /api/ from CSRF
