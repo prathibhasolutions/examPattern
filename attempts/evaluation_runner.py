@@ -89,3 +89,15 @@ def process_attempt_evaluation(attempt_id: int, job_id: int | None = None) -> No
         evaluation_finished_at=timezone.now(),
         evaluation_error='',
     )
+
+    # Trigger a rank/percentile recalculation for the whole test.
+    # This is critical when many students submit simultaneously — each
+    # evaluation stores rank based on however many results exist at that
+    # moment (e.g. rank 1/4 instead of rank 3/100).  The recalculation
+    # queue is debounced: if one is already running a follow-up is scheduled
+    # automatically, so the final run always sees the complete result set.
+    try:
+        from attempts.evaluation_queue import enqueue_recalculation_for_test
+        enqueue_recalculation_for_test(attempt.test_id)
+    except Exception:
+        logger.exception('Failed to enqueue rank recalculation for test %s', attempt.test_id)

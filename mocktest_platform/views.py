@@ -47,7 +47,31 @@ def tests_list(request):
         .filter(is_active=True)
         .annotate(test_count=Count('tests', filter=Q(tests__is_active=True)))
     )
-    return render(request, 'tests_list.html', {'series': series})
+
+    # Determine which series the logged-in user has paid/admin-granted access to.
+    # Used in the template to render the green access badge on series cards.
+    # Staff users are excluded — they have full access by default and don't need the badge.
+    accessible_series_ids = set()
+    all_series_access = False
+    if request.user.is_authenticated and not request.user.is_staff:
+        if getattr(request.user, 'has_legacy_access', False):
+            all_series_access = True
+        else:
+            from payments.models import SeriesAccess
+            accessible_series_ids = set(
+                SeriesAccess.objects.filter(
+                    user=request.user,
+                    is_active=True,
+                ).filter(
+                    Q(expires_at__isnull=True) | Q(expires_at__gt=timezone.now())
+                ).values_list('series_id', flat=True)
+            )
+
+    return render(request, 'tests_list.html', {
+        'series': series,
+        'accessible_series_ids': accessible_series_ids,
+        'all_series_access': all_series_access,
+    })
 
 
 @require_http_methods(["GET"])

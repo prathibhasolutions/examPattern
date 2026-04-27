@@ -706,11 +706,18 @@ const testApp = {
       }
 
       // Flush answers not yet confirmed saved to the server.
-      // Fast students who answered quickly may have answers whose debounced
-      // save timers haven't fired yet — this catches them all in one parallel
-      // round-trip. Also flushes any offline-queued retries.
-      await OfflineQueue.flushUnsavedAnswers();
-      await OfflineQueue.flush();
+      // We race against a 6-second timeout: if the server is slow, we skip
+      // the pre-submit flush and rely on the `fa` payload sent with submit
+      // (which already contains every answered question) instead of blocking
+      // the submission indefinitely.
+      const flushTimeout = new Promise(resolve => setTimeout(resolve, 6000));
+      await Promise.race([OfflineQueue.flushUnsavedAnswers(), flushTimeout]);
+
+      // Fire-and-forget the offline retry queue — sequential saves could stall
+      // submit for a long time if many retries are queued.  The submit payload
+      // (fa) carries the authoritative final answer state anyway.
+      OfflineQueue.flush().catch(() => {});
+
       OfflineQueue.saveAnswerSnapshot(UI.answers || {});
 
       const finalAnswers = [];

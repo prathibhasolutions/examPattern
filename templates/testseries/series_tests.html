@@ -729,7 +729,7 @@
 
     <div class="series-container">
         <div class="series-header" style="max-width:1200px; margin-left:auto; margin-right:auto; margin-bottom:18px;">
-            <h1>{{ series.name }}</h1>
+            <h1>{{ series.name }}{% if has_access and series.price and not user.is_staff %}<span style="display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#1b5e20,#2e7d32);color:#fff;padding:3px 12px;border-radius:20px;font-size:13px;font-weight:700;vertical-align:middle;margin-left:10px;letter-spacing:0.3px;"><i class="fas fa-check-circle" style="font-size:12px;"></i> Access Granted</span>{% endif %}</h1>
             <p>{{ series.description|default:"No description available." }}</p>
         </div>
 

@@ -52,18 +52,34 @@ const buildSubmitBody = async (payload) => {
   }
 };
 
+// Helper: wrap a fetch with an AbortController timeout.
+// If the fetch doesn't resolve within `ms` milliseconds the signal is aborted
+// and the resulting AbortError is re-thrown as a TypeError (network error) so
+// callers don't need special-case handling.
+const fetchWithTimeout = (url, options, ms) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), ms);
+  return fetch(url, { ...options, signal: controller.signal })
+    .then(res => { clearTimeout(id); return res; })
+    .catch(err => {
+      clearTimeout(id);
+      if (err.name === 'AbortError') throw new TypeError(`Request timed out after ${ms}ms: ${url}`);
+      throw err;
+    });
+};
+
 const API = {
   // Fetch attempt details with all answers
   getAttempt: async (attemptId) => {
     try {
-      const response = await fetch(`${API_BASE}/attempts/${attemptId}/`, {
+      const response = await fetchWithTimeout(`${API_BASE}/attempts/${attemptId}/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
           'Content-Type': 'application/json',
         },
         credentials: 'same-origin',
-      });
+      }, 8000); // 8 second timeout
       if (!response.ok) throw await buildHttpError(response);
       return await response.json();
     } catch (error) {
@@ -116,7 +132,7 @@ const API = {
   submitAttempt: async (attemptId, payload = {}) => {
     try {
       const prepared = await buildSubmitBody(payload);
-      const response = await fetch(`${API_BASE}/attempts/${attemptId}/submit/`, {
+      const response = await fetchWithTimeout(`${API_BASE}/attempts/${attemptId}/submit/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
@@ -125,7 +141,7 @@ const API = {
         },
         body: prepared.body,
         credentials: 'same-origin',
-      });
+      }, 30000); // 30 second timeout — long enough for slow networks
       if (!response.ok) throw await buildHttpError(response);
       return await response.json();
     } catch (error) {

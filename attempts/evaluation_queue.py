@@ -16,11 +16,15 @@ logger = logging.getLogger(__name__)
 
 # ── Background recalculation deduplication ──────────────────────────────────
 # Tracks which test IDs currently have a recalculation running so we never
-# start two concurrent recalculations for the same test.  A second enqueue
-# call while one is already running is a no-op — the running job will read
-# the current (already-updated) DB state when it executes.
+# start two concurrent recalculations for the same test.
+# _RECALC_PENDING: if a recalc is already running when a new one is requested,
+# we can't skip the new request — evaluation jobs are still completing and the
+# running recalc started with stale data.  Instead we mark it "pending" so
+# that when the current run finishes it triggers one final re-run that will
+# see all evaluations that completed in the meantime.
 _RECALC_LOCK = threading.Lock()
 _RECALC_IN_PROGRESS: set = set()
+_RECALC_PENDING: set = set()
 
 
 def _resolve_local_workers() -> int:
@@ -180,16 +184,21 @@ def enqueue_recalculation_for_test(test_id: int) -> bool:
     """
     Schedule recalculate_marks_for_test(test) to run in the background thread pool.
 
-    Deduplication: if a recalculation for this test is already running, this call
-    is a no-op and returns False.  The running job reads the current DB state so the
-    result will already reflect any changes that triggered this second enqueue.
+    Deduplication with pending re-run:
+    - If no recalc is running: start one immediately, return True.
+    - If a recalc is already running: mark as pending so a second run fires
+      automatically when the current one finishes.  This guarantees that after
+      a burst of evaluations (e.g. 100 simultaneous submits) at least one
+      recalc runs AFTER all evaluations have completed, fixing stale ranks.
 
-    Returns True if a new background job was submitted, False if one was already running.
+    Returns True if a new background job was submitted, False if one was already
+    running (but the pending flag was set for a follow-up run).
     """
     with _RECALC_LOCK:
         if test_id in _RECALC_IN_PROGRESS:
+            _RECALC_PENDING.add(test_id)
             logger.info(
-                'Recalculation for test %s already in progress — skipping duplicate enqueue.',
+                'Recalculation for test %s already running — queued a follow-up run.',
                 test_id,
             )
             return False
@@ -212,7 +221,14 @@ def enqueue_recalculation_for_test(test_id: int) -> bool:
         finally:
             with _RECALC_LOCK:
                 _RECALC_IN_PROGRESS.discard(test_id)
+                needs_rerun = test_id in _RECALC_PENDING
+                _RECALC_PENDING.discard(test_id)
             connection.close()
+            # If new evaluations completed while we were running, fire one more
+            # recalc now that this one is done so ranks reflect the full set.
+            if needs_rerun:
+                logger.info('Re-running recalculation for test %s (pending follow-up).', test_id)
+                enqueue_recalculation_for_test(test_id)
 
     EVALUATION_EXECUTOR.submit(_worker)
     return True

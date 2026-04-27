@@ -231,27 +231,96 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
         attempt.evaluation_error = ''
 
         # STEP 2 — Save any final answers sent with the submit request.
-        # Autosave handles most answers during the test; this is a safety net.
-        final_answers = request.data.get('final_answers') or []
-        if isinstance(final_answers, list) and final_answers:
-            answer_updates = []
-            for item in final_answers:
-                if not isinstance(item, dict):
-                    continue
-                question_id = item.get('question')
-                if not question_id:
-                    continue
-                answer, _ = Answer.objects.get_or_create(
-                    attempt=attempt,
-                    question_id=question_id,
-                )
-                answer.response_text = item.get('response_text', '') or ''
-                answer.status = item.get('status', answer.status) or answer.status
-                answer_updates.append(answer)
-                if 'selected_option_ids' in item:
-                    answer.selected_options.set(item.get('selected_option_ids') or [])
-            if answer_updates:
-                Answer.objects.bulk_update(answer_updates, ['response_text', 'status'])
+        # The frontend sends a compact `fa` list: [{q, s, o, t}, ...] where
+        #   q = question_id, s = status, o = selected_option_ids, t = response_text
+        # Autosave has already persisted most answers; this is a safety-net that
+        # catches anything not yet flushed to the server.
+        fa_compact = request.data.get('fa') or []
+        # Also accept the legacy full-format key for backwards compatibility.
+        final_answers_full = request.data.get('final_answers') or []
+
+        # Normalise both formats into a single list of dicts:
+        # { question_id, status, response_text, option_ids }
+        items = []
+        if isinstance(fa_compact, list) and fa_compact:
+            for item in fa_compact:
+                if isinstance(item, dict) and item.get('q'):
+                    items.append({
+                        'question_id': int(item['q']),
+                        'status': item.get('s') or 'visited',
+                        'response_text': item.get('t') or '',
+                        'option_ids': item.get('o') or [],
+                    })
+        elif isinstance(final_answers_full, list) and final_answers_full:
+            for item in final_answers_full:
+                if isinstance(item, dict) and item.get('question'):
+                    items.append({
+                        'question_id': int(item['question']),
+                        'status': item.get('status') or 'visited',
+                        'response_text': item.get('response_text') or '',
+                        'option_ids': item.get('selected_option_ids') or [],
+                    })
+
+        if items:
+            question_ids = [x['question_id'] for x in items]
+
+            # ONE query to fetch all existing Answer rows — replaces N get_or_create calls.
+            existing_map = {
+                a.question_id: a
+                for a in Answer.objects.filter(attempt=attempt, question_id__in=question_ids)
+            }
+
+            to_create = []
+            to_update = []
+            option_updates = {}  # question_id → option_ids (only non-empty)
+
+            for item in items:
+                qid = item['question_id']
+                if qid in existing_map:
+                    ans = existing_map[qid]
+                else:
+                    ans = Answer(attempt=attempt, question_id=qid)
+                    to_create.append(ans)
+                ans.response_text = item['response_text']
+                ans.status = item['status']
+                to_update.append(ans)
+                if item['option_ids']:
+                    option_updates[qid] = item['option_ids']
+
+            if to_create:
+                Answer.objects.bulk_create(to_create, ignore_conflicts=True)
+                # Re-fetch to get DB-assigned PKs before bulk_update
+                newly_created = {
+                    a.question_id: a
+                    for a in Answer.objects.filter(attempt=attempt, question_id__in=[a.question_id for a in to_create])
+                }
+                # Patch to_update list with real objects that have PKs
+                to_update = [
+                    newly_created.get(a.question_id, a) if not a.pk else a
+                    for a in to_update
+                ]
+                # Copy back the fields we set before bulk_create (they're overwritten by re-fetch)
+                field_map = {item['question_id']: item for item in items}
+                for ans in to_update:
+                    if ans.question_id in field_map:
+                        ans.response_text = field_map[ans.question_id]['response_text']
+                        ans.status = field_map[ans.question_id]['status']
+
+            if to_update:
+                Answer.objects.bulk_update(to_update, ['response_text', 'status'])
+
+            # M2M selected_options — no bulk API in Django, do per-answer set() calls
+            # but only for answers that actually have options in this payload.
+            if option_updates:
+                ans_with_pk = {
+                    a.question_id: a
+                    for a in Answer.objects.filter(
+                        attempt=attempt, question_id__in=list(option_updates.keys())
+                    ).only('id', 'question_id')
+                }
+                for qid, option_ids in option_updates.items():
+                    if qid in ans_with_pk:
+                        ans_with_pk[qid].selected_options.set(option_ids)
 
         # STEP 3 — Kick off background evaluation.
         # Section timings are materialized inside the evaluation runner.

@@ -499,11 +499,17 @@
                     <div class="series-card-body">
                         <div class="series-description">{{ s.description|default:"No description available." }}</div>
                         {% if s.price %}
-                        <div style="margin-top:8px;">
+                        <div style="margin-top:8px;display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
+                          {% if all_series_access or s.id in accessible_series_ids %}
+                          <span style="background:linear-gradient(135deg,#1b5e20,#2e7d32);color:#fff;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:0.3px;display:inline-flex;align-items:center;gap:4px;">
+                            <i class="fas fa-check-circle" style="font-size:11px;"></i> Access Granted
+                          </span>
+                          {% else %}
                           <span style="background:linear-gradient(135deg,#1e3c72,#2a5298);color:#fff;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:0.3px;">
                             <i class="fas fa-lock" style="font-size:10px;margin-right:3px;"></i> ₹{{ s.price|floatformat:0 }}
                           </span>
-                          <span style="font-size:11px;color:#888;margin-left:6px;">1 free test included</span>
+                          <span style="font-size:11px;color:#888;">1 free test included</span>
+                          {% endif %}
                         </div>
                         {% else %}
                         <div style="margin-top:8px;">
