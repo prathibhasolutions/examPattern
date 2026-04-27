@@ -2,6 +2,18 @@
 __pycache__/
 *.pyc
 
+# Environment / secrets — never commit these
+.env
+.env.local
+.env.*.local
+
+# Database files
+*.sqlite3
+*.sqlite
+*.db
+*.sql
+rds_export*.json
+
 venv/
 *.log
 # Elastic Beanstalk Files

@@ -107,16 +107,30 @@ WSGI_APPLICATION = 'mocktest_platform.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-        'CONN_MAX_AGE': 0,
-        'OPTIONS': {
-            'timeout': int(os.getenv('SQLITE_TIMEOUT_SECONDS', '30')),
-        },
+_DB_ENGINE = os.getenv('DB_ENGINE', 'sqlite3')
+if _DB_ENGINE == 'postgresql':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME', 'exampattern'),
+            'USER': os.getenv('DB_USER', 'examuser'),
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'HOST': os.getenv('DB_HOST', 'localhost'),
+            'PORT': os.getenv('DB_PORT', '5432'),
+            'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '60')),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+            'CONN_MAX_AGE': 0,
+            'OPTIONS': {
+                'timeout': int(os.getenv('SQLITE_TIMEOUT_SECONDS', '30')),
+            },
+        }
+    }
 
 
 # Password validation
@@ -207,7 +221,11 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = (
+    'django.contrib.staticfiles.storage.StaticFilesStorage'
+    if DEBUG
+    else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+)
 
 # Reverse-proxy / HTTPS support
 # On Lightsail (and Elastic Beanstalk) nginx terminates SSL and forwards requests

@@ -635,6 +635,8 @@
     .test-admin-btn--move:hover { background: #d97706; }
     .test-admin-btn--danger { background: #ef4444; }
     .test-admin-btn--danger:hover { background: #dc2626; }
+    .test-admin-btn--download { background: #10b981; }
+    .test-admin-btn--download:hover { background: #059669; text-decoration: none; color: #fff; }
 
     /* Add Test row */
     .add-test-row {
@@ -859,6 +861,7 @@
                                                 <button class="btn btn-sm test-admin-btn test-admin-btn--edit" title="Edit test" onclick="openRenameTestModal({{ test.id }}, '{{ test.name|escapejs }}', {{ test.duration_seconds }}, '{{ test.marks_per_question }}', '{{ test.negative_marks_per_question }}')"><i class="fas fa-pencil-alt"></i></button>
                                                 <button class="btn btn-sm test-admin-btn test-admin-btn--move" title="Move to another section" onclick="openMoveTestModal({{ test.id }}, '{{ test.name|escapejs }}')"><i class="fas fa-exchange-alt"></i></button>
                                                 <button class="btn btn-sm test-admin-btn test-admin-btn--danger" title="Delete test permanently" onclick="deleteTestConfirm({{ test.id }}, '{{ test.name|escapejs }}')"><i class="fas fa-trash"></i></button>
+                                                <a href="{% url 'download_test_paper' test.id %}" class="btn btn-sm test-admin-btn test-admin-btn--download" title="Download question paper" target="_blank"><i class="fas fa-download"></i></a>
                                             </div>
                                             {% endif %}
                                         </div>
@@ -997,6 +1000,7 @@
                                         <button class="btn btn-sm test-admin-btn test-admin-btn--edit" title="Edit test" onclick="openRenameTestModal({{ test.id }}, '{{ test.name|escapejs }}', {{ test.duration_seconds }}, '{{ test.marks_per_question }}', '{{ test.negative_marks_per_question }}')"><i class="fas fa-pencil-alt"></i></button>
                                         <button class="btn btn-sm test-admin-btn test-admin-btn--move" title="Move to another section" onclick="openMoveTestModal({{ test.id }}, '{{ test.name|escapejs }}')"><i class="fas fa-exchange-alt"></i></button>
                                         <button class="btn btn-sm test-admin-btn test-admin-btn--danger" title="Delete test permanently" onclick="deleteTestConfirm({{ test.id }}, '{{ test.name|escapejs }}')"><i class="fas fa-trash"></i></button>
+                                        <a href="{% url 'download_test_paper' test.id %}" class="btn btn-sm test-admin-btn test-admin-btn--download" title="Download question paper" target="_blank"><i class="fas fa-download"></i></a>
                                     </div>
                                     {% endif %}
                                 </div>

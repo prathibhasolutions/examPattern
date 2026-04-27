@@ -1,8 +1,31 @@
+import logging
+
 from django.utils import timezone
 
-from attempts.models import TestAttempt
+from attempts.models import TestAttempt, AttemptSectionTiming
 from evaluation.models import EvaluationJob
 from evaluation.services import evaluate_attempt
+
+logger = logging.getLogger(__name__)
+
+
+def _materialize_section_timings(attempt: TestAttempt) -> None:
+    """Merge hot AttemptSectionTiming rows into the JSON blob on the attempt.
+
+    Moved out of the submit view so the HTTP response is not blocked by
+    this DB read+write.
+    """
+    base_timings = {
+        str(section_id): int(seconds)
+        for section_id, seconds in (attempt.section_timings or {}).items()
+    }
+    rows = AttemptSectionTiming.objects.filter(attempt=attempt).values('section_id', 'time_spent_seconds')
+    section_timings = dict(base_timings)
+    for row in rows:
+        section_key = str(row['section_id'])
+        section_timings[section_key] = section_timings.get(section_key, 0) + int(row['time_spent_seconds'])
+    TestAttempt.objects.filter(pk=attempt.pk).update(section_timings=section_timings)
+    attempt.section_timings = section_timings
 
 
 def process_attempt_evaluation(attempt_id: int, job_id: int | None = None) -> None:
@@ -19,6 +42,13 @@ def process_attempt_evaluation(attempt_id: int, job_id: int | None = None) -> No
             job.error_message = ''
             job.save(update_fields=['status', 'started_at', 'finished_at', 'error_message'])
         return
+
+    # Materialize section timings before evaluating — moved from the submit
+    # view so the HTTP response is not blocked by this DB read+write.
+    try:
+        _materialize_section_timings(attempt)
+    except Exception:
+        logger.exception('Failed to materialize section timings for attempt %s', attempt_id)
 
     if job:
         job.status = EvaluationJob.STATUS_RUNNING

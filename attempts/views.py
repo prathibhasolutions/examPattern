@@ -40,19 +40,7 @@ def _increment_section_timing(attempt_id: int, section_id: int, delta_seconds: i
         ).update(time_spent_seconds=F('time_spent_seconds') + delta_seconds)
 
 
-def _materialize_section_timings_json(attempt: TestAttempt) -> dict:
-    base_timings = {
-        str(section_id): int(seconds)
-        for section_id, seconds in (attempt.section_timings or {}).items()
-    }
-    rows = AttemptSectionTiming.objects.filter(attempt=attempt).values('section_id', 'time_spent_seconds')
-    section_timings = dict(base_timings)
-    for row in rows:
-        section_key = str(row['section_id'])
-        section_timings[section_key] = section_timings.get(section_key, 0) + int(row['time_spent_seconds'])
-    attempt.section_timings = section_timings
-    attempt.save(update_fields=['section_timings'])
-    return section_timings
+
 
 
 class TestAttemptViewSet(viewsets.ModelViewSet):
@@ -149,10 +137,11 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
         Submit a test attempt.
         POST /api/attempts/{id}/submit/
 
-        Returns immediately after marking the attempt as submitted.
-        Evaluation runs in a background thread so the HTTP worker is freed
-        instantly — critical for handling simultaneous submissions without
-        server memory spikes.
+        The attempt is marked as submitted in a single atomic UPDATE before
+        any answer processing — so the student's submission is permanently
+        saved even if the connection drops mid-request. Section timings are
+        materialized inside the background evaluation runner to keep this
+        response fast.
         """
         attempt = self.get_object()
 
@@ -162,8 +151,51 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Compute elapsed time before any DB writes.
+        test_duration = attempt.test.duration_seconds or 0
+        if attempt.time_remaining_seconds is not None and test_duration > 0:
+            elapsed = test_duration - attempt.time_remaining_seconds
+        else:
+            elapsed = int((timezone.now() - attempt.started_at).total_seconds())
+
+        # STEP 1 — Atomic UPDATE to mark submitted FIRST.
+        # This single query runs before answer processing so the attempt is
+        # permanently saved even if the server is killed mid-request.
+        now = timezone.now()
+        updated = TestAttempt.objects.filter(
+            pk=attempt.pk, status=TestAttempt.STATUS_IN_PROGRESS
+        ).update(
+            status=TestAttempt.STATUS_SUBMITTED,
+            submitted_at=now,
+            duration_seconds=max(0, int(elapsed)),
+            time_remaining_seconds=None,
+            evaluation_state=TestAttempt.EVAL_PENDING,
+            evaluation_started_at=None,
+            evaluation_finished_at=None,
+            evaluation_error='',
+        )
+        if not updated:
+            # Race condition — another request already submitted this attempt.
+            return Response(
+                {"error": "Attempt is not in progress"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Update in-memory object to match DB state (avoids extra refresh query).
+        attempt.status = TestAttempt.STATUS_SUBMITTED
+        attempt.submitted_at = now
+        attempt.duration_seconds = max(0, int(elapsed))
+        attempt.time_remaining_seconds = None
+        attempt.evaluation_state = TestAttempt.EVAL_PENDING
+        attempt.evaluation_started_at = None
+        attempt.evaluation_finished_at = None
+        attempt.evaluation_error = ''
+
+        # STEP 2 — Save any final answers sent with the submit request.
+        # Autosave handles most answers during the test; this is a safety net.
         final_answers = request.data.get('final_answers') or []
         if isinstance(final_answers, list) and final_answers:
+            answer_updates = []
             for item in final_answers:
                 if not isinstance(item, dict):
                     continue
@@ -176,34 +208,16 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
                 )
                 answer.response_text = item.get('response_text', '') or ''
                 answer.status = item.get('status', answer.status) or answer.status
-                answer.save(update_fields=['response_text', 'status'])
+                answer_updates.append(answer)
                 if 'selected_option_ids' in item:
                     answer.selected_options.set(item.get('selected_option_ids') or [])
+            if answer_updates:
+                Answer.objects.bulk_update(answer_updates, ['response_text', 'status'])
 
-        # Compute actual active elapsed time.
-        # Use the saved heartbeat timer value when available — more accurate
-        # than wall-clock for tests that were paused or resumed.
-        test_duration = attempt.test.duration_seconds or 0
-        if attempt.time_remaining_seconds is not None and test_duration > 0:
-            elapsed = test_duration - attempt.time_remaining_seconds
-        else:
-            elapsed = int((timezone.now() - attempt.started_at).total_seconds())
-
-        # Commit the submission status immediately so the response is fast.
-        attempt.status = TestAttempt.STATUS_SUBMITTED
-        attempt.submitted_at = timezone.now()
-        attempt.duration_seconds = max(0, int(elapsed))
-        attempt.time_remaining_seconds = None
-        attempt.evaluation_state = TestAttempt.EVAL_PENDING
-        attempt.evaluation_started_at = None
-        attempt.evaluation_finished_at = None
-        attempt.evaluation_error = ''
-        _materialize_section_timings_json(attempt)
-        attempt.save()
-
-        # Kick off evaluation in a background thread — the student is already
-        # redirected to the submitted page which polls for results.
-        transaction.on_commit(lambda: enqueue_attempt_evaluation(attempt.id))
+        # STEP 3 — Kick off background evaluation.
+        # Section timings are materialized inside the evaluation runner.
+        attempt_id = attempt.pk
+        transaction.on_commit(lambda: enqueue_attempt_evaluation(attempt_id))
 
         serializer = self.get_serializer(attempt)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -224,25 +238,12 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
         }
         """
         attempt = self.get_object()
-
-        # Only the attempt owner can poll (admins are allowed via get_queryset override)
         from evaluation.models import EvaluationResult
-        from evaluation.models import EvaluationJob
         ready = EvaluationResult.objects.filter(attempt=attempt).exists()
-
-        pending_jobs = EvaluationJob.objects.filter(status=EvaluationJob.STATUS_PENDING)
-        queue_depth = pending_jobs.count()
-        queue_position = (
-            pending_jobs.filter(queued_at__lt=attempt.submitted_at).count() + 1
-            if attempt.evaluation_state == TestAttempt.EVAL_PENDING and attempt.submitted_at
-            else None
-        )
         return Response({
             'evaluation_ready': ready,
             'evaluation_state': attempt.evaluation_state,
             'evaluation_error': attempt.evaluation_error,
-            'queue_depth': queue_depth,
-            'queue_position': queue_position,
         })
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])

@@ -20,7 +20,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.http import HttpResponse
 
-from .views import tests_list, tests_series_detail, tests_series_about, test_instructions, test_interface, results_page, submitted_page, download_result_pdf, review_solutions, test_results_analysis, series_suggest, privacy_policy, terms_of_service, about_page, refund_policy
+from .views import tests_list, tests_series_detail, tests_series_about, test_instructions, test_interface, results_page, submitted_page, download_result_pdf, review_solutions, test_results_analysis, series_suggest, privacy_policy, terms_of_service, about_page, refund_policy, download_test_paper
 from django.views.generic import RedirectView
 
 def health_check(request):
@@ -43,6 +43,7 @@ urlpatterns = [
     path('results/<int:attempt_id>/', results_page, name='results_page'),
     path('results/<int:attempt_id>/download-pdf/', download_result_pdf, name='download_result_pdf'),
     path('results/<int:attempt_id>/solutions/', review_solutions, name='review_solutions'),
+    path('test/<int:test_id>/download-paper/', download_test_paper, name='download_test_paper'),
     path('about/', about_page, name='about'),
     path('privacy-policy/', privacy_policy, name='privacy_policy'),
     path('terms-of-service/', terms_of_service, name='terms_of_service'),
@@ -57,6 +58,5 @@ urlpatterns = [
     ])),
 ]
 
-# Serve media files in development
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Always serve media files via the dev server (static files are handled by WhiteNoise)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

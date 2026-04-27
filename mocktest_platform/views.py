@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.conf import settings
 from decimal import Decimal
 import os
+import json
 
 
 try:
@@ -786,3 +787,213 @@ def terms_of_service(request):
 
 def refund_policy(request):
     return render(request, 'refund_policy.html')
+
+
+@login_required
+@require_http_methods(["GET"])
+def download_test_paper(request, test_id):
+    """Generate and return a printable HTML question paper for admin download."""
+    if not request.user.is_staff:
+        return HttpResponse("Forbidden", status=403)
+
+    from questions.models import Question, Option
+    from testseries.models import Test, Section
+
+    test = get_object_or_404(Test, id=test_id, is_active=True)
+    sections = Section.objects.filter(test=test, is_active=True).order_by('order')
+
+    hours = test.duration_seconds // 3600
+    minutes = (test.duration_seconds % 3600) // 60
+    total_questions = 0
+    sections_data = []
+
+    for section in sections:
+        questions = (
+            Question.objects
+            .filter(section=section, is_active=True)
+            .prefetch_related('options')
+            .order_by('id')
+        )
+        q_list = []
+        for q in questions:
+            opts = list(q.options.order_by('order'))
+            _cids = q.correct_option_ids
+            if isinstance(_cids, list):
+                correct_ids = _cids
+            elif _cids:
+                correct_ids = json.loads(_cids)
+            else:
+                correct_ids = []
+            q_list.append({
+                'id': q.id,
+                'text': q.text,
+                'image': q.image.name if q.image else '',
+                'explanation': q.explanation or '',
+                'options': [
+                    {
+                        'id': o.id,
+                        'text': o.text,
+                        'image': o.image.name if o.image else '',
+                        'is_correct': o.is_correct,
+                    }
+                    for o in opts
+                ],
+            })
+        sections_data.append({
+            'name': section.name,
+            'mpq': section.marks_per_question,
+            'nmpq': section.negative_marks_per_question,
+            'questions': q_list,
+        })
+        total_questions += len(q_list)
+
+    option_labels = ['A', 'B', 'C', 'D', 'E', 'F']
+
+    html_parts = []
+    html_parts.append(f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{test.name} - Question Paper</title>
+<script>
+MathJax = {{
+  tex: {{
+    inlineMath: [['\\\\(', '\\\\)'], ['$', '$']],
+    displayMath: [['\\\\[', '\\\\]'], ['$$', '$$']],
+    packages: {{'[+]': ['ams']}}
+  }},
+  options: {{ skipHtmlTags: ['script','noscript','style','textarea','pre'] }}
+}};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" crossorigin="anonymous"></script>
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+
+  /* Screen: gray background, A4 page centred */
+  body {{
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 13px;
+    color: #000;
+    background: #e0e0e0;
+    padding: 30px 16px;
+    line-height: 1.6;
+  }}
+  .page {{
+    background: #fff;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 18mm 16mm 18mm 16mm;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+  }}
+
+  .header {{ text-align: center; border: 2px solid #000; padding: 12px 20px; margin-bottom: 16px; }}
+  .header h1 {{ font-size: 20px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }}
+  .header .meta {{ font-size: 12px; display: flex; justify-content: center; gap: 40px; margin-top: 6px; }}
+  .header .meta span {{ font-weight: bold; }}
+
+  .answer-key-badge {{ display: inline-block; background: #1a1a2e; color: #fff; padding: 3px 12px; border-radius: 4px; font-size: 10.5px; font-weight: bold; letter-spacing: 1px; margin-bottom: 16px; }}
+
+  .section-header {{ background: #1a1a2e; color: #fff; padding: 7px 14px; margin: 20px 0 10px 0; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; page-break-before: always; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+  .section-header:first-of-type {{ page-break-before: avoid; }}
+  .section-meta {{ font-size: 11px; color: #555; margin-bottom: 12px; padding-left: 2px; }}
+
+  .question-block {{ margin-bottom: 14px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 3px; page-break-inside: avoid; }}
+  .question-header {{ display: flex; gap: 8px; align-items: flex-start; margin-bottom: 7px; }}
+  .q-number {{ font-weight: bold; font-size: 13px; min-width: 28px; color: #1a1a2e; white-space: nowrap; }}
+  .q-text {{ flex: 1; font-size: 13px; }}
+
+  .options-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; margin-left: 36px; margin-top: 5px; }}
+  .option-item {{ display: flex; align-items: flex-start; gap: 5px; padding: 2px 5px; border-radius: 3px; font-size: 12px; }}
+  .option-item.correct {{ background: #e8f5e9; border: 1px solid #4caf50; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+  .option-label {{ font-weight: bold; min-width: 16px; font-size: 12px; }}
+  .option-label.correct-label {{ color: #2e7d32; }}
+  .correct-tick {{ color: #2e7d32; font-size: 12px; margin-left: 2px; }}
+
+  .explanation {{ margin-left: 36px; margin-top: 7px; padding: 5px 9px; background: #fff8e1; border-left: 3px solid #ffc107; font-size: 11.5px; color: #555; border-radius: 0 3px 3px 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+  .explanation-label {{ font-weight: bold; color: #e65100; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }}
+
+  /* Print: remove gray bg, remove box-shadow, restore page margins */
+  @media print {{
+    body {{ background: #fff; padding: 0; }}
+    .page {{ box-shadow: none; width: 100%; padding: 0; min-height: unset; }}
+    @page {{ margin: 15mm 12mm; size: A4; }}
+  }}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="header">
+  <h1>{test.name}</h1>
+  <div class="meta">
+    <div>Total Questions: <span>{total_questions}</span></div>
+    <div>Duration: <span>{hours}h {minutes}m</span></div>
+    <div>Sections: <span>{len(sections_data)}</span></div>
+  </div>
+</div>
+<div style="text-align:center;">
+  <div class="answer-key-badge">&#10003; ANSWER KEY INCLUDED</div>
+</div>
+""")
+
+    q_global = 1
+    for sec in sections_data:
+        mpq_text = f"Marks per question: {sec['mpq']}" if sec['mpq'] else ""
+        nmpq_text = f" | Negative marks: {sec['nmpq']}" if sec['nmpq'] else ""
+        html_parts.append(f"""
+<div class="section-header">{sec['name']} &nbsp;({len(sec['questions'])} Questions)</div>
+{"<div class='section-meta'>" + mpq_text + nmpq_text + "</div>" if mpq_text else ""}
+""")
+        for q in sec['questions']:
+            opts_html = ""
+            for i, opt in enumerate(q['options']):
+                label = option_labels[i] if i < len(option_labels) else str(i + 1)
+                is_correct = opt['is_correct']
+                cc = ' correct' if is_correct else ''
+                lc = ' correct-label' if is_correct else ''
+                tick = ' <span class="correct-tick">&#10003;</span>' if is_correct else ''
+                opt_text = opt['text']
+                if opt['image']:
+                    img_url = f"/media/{opt['image']}"
+                    opt_text += f'<br><img src="{img_url}" style="max-height:60px;max-width:200px;margin-top:4px;">'
+                opts_html += (
+                    f'<div class="option-item{cc}">'
+                    f'<span class="option-label{lc}">{label}.</span>'
+                    f'<span>{opt_text}{tick}</span>'
+                    f'</div>'
+                )
+
+            q_text = q['text']
+            if q['image']:
+                img_url = f"/media/{q['image']}"
+                q_text += f'<br><img src="{img_url}" style="max-height:120px;max-width:100%;margin-top:6px;">'
+
+            explanation_html = ""
+            if q['explanation'] and q['explanation'].strip():
+                explanation_html = (
+                    f'<div class="explanation">'
+                    f'<div class="explanation-label">Solution</div>'
+                    f'{q["explanation"]}'
+                    f'</div>'
+                )
+
+            html_parts.append(
+                f'<div class="question-block">'
+                f'<div class="question-header">'
+                f'<span class="q-number">Q{q_global}.</span>'
+                f'<span class="q-text">{q_text}</span>'
+                f'</div>'
+                f'<div class="options-grid">{opts_html}</div>'
+                f'{explanation_html}'
+                f'</div>'
+            )
+            q_global += 1
+
+    html_parts.append("</div></body></html>")
+
+    html_content = '\n'.join(html_parts)
+    safe_name = test.name.replace(' ', '_').replace('/', '-')
+    response = HttpResponse(html_content, content_type='text/html; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="test_{test_id}_{safe_name}_paper.html"'
+    return response
