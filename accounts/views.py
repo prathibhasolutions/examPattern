@@ -214,14 +214,23 @@ def forgot_password(request):
                     if reset_form.is_valid():
                         site_domain = getattr(settings, 'SITE_DOMAIN', '').strip()
                         use_https = request.is_secure() or (not settings.DEBUG)
-                        reset_form.save(
-                            request=request,
-                            use_https=use_https,
-                            domain_override=site_domain or None,
-                            email_template_name='registration/password_reset_email.txt',
-                            subject_template_name='registration/password_reset_subject.txt',
-                            from_email=settings.DEFAULT_FROM_EMAIL,
-                        )
+                        try:
+                            reset_form.save(
+                                request=request,
+                                use_https=use_https,
+                                domain_override=site_domain or None,
+                                email_template_name='registration/password_reset_email.txt',
+                                subject_template_name='registration/password_reset_subject.txt',
+                                from_email=settings.DEFAULT_FROM_EMAIL,
+                            )
+                        except Exception:
+                            import logging
+                            logging.getLogger(__name__).exception('Failed to send password reset email to %s', email)
+                            context['error'] = 'Failed to send reset email. Please try again later or contact support.'
+                            context['show_confirm'] = True
+                            context['confirm_email'] = email
+                            context['target_username'] = target.username
+                            return render(request, 'accounts/forgot_password.html', context)
                     context['request_sent'] = True
                     context['target_username'] = target.username
             except CustomUser.DoesNotExist:
