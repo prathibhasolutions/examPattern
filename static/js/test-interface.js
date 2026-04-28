@@ -705,17 +705,12 @@ const testApp = {
         testApp.answerSnapshotHeartbeatId = null;
       }
 
-      // Flush answers not yet confirmed saved to the server.
-      // We race against a 6-second timeout: if the server is slow, we skip
-      // the pre-submit flush and rely on the `fa` payload sent with submit
-      // (which already contains every answered question) instead of blocking
-      // the submission indefinitely.
-      const flushTimeout = new Promise(resolve => setTimeout(resolve, 6000));
-      await Promise.race([OfflineQueue.flushUnsavedAnswers(), flushTimeout]);
-
-      // Fire-and-forget the offline retry queue — sequential saves could stall
-      // submit for a long time if many retries are queued.  The submit payload
-      // (fa) carries the authoritative final answer state anyway.
+      // Skip pre-submit flush — the `fa` payload built below carries every
+      // answered question, so the server processes all answers from the submit
+      // request itself.  Firing 160 parallel save_answer requests here would
+      // flood the server threads and push the submit request to the back of a
+      // long queue, causing it to time out before the server sees it.
+      // Fire-and-forget the offline retry queue only (small, non-blocking).
       OfflineQueue.flush().catch(() => {});
 
       OfflineQueue.saveAnswerSnapshot(UI.answers || {});
