@@ -14,42 +14,13 @@ const buildHttpError = async (response) => {
   return err;
 };
 
-const buildSubmitBody = async (payload) => {
-  const jsonText = JSON.stringify(payload || {});
-
-  // For tiny payloads, compression overhead can outweigh gains.
-  if (jsonText.length < 4096 || typeof CompressionStream === 'undefined') {
-    return {
-      body: jsonText,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    };
-  }
-
-  try {
-    const encoder = new TextEncoder();
-    const compressedStream = new CompressionStream('gzip');
-    const writer = compressedStream.writable.getWriter();
-    await writer.write(encoder.encode(jsonText));
-    await writer.close();
-
-    const compressedBuffer = await new Response(compressedStream.readable).arrayBuffer();
-    return {
-      body: compressedBuffer,
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Encoding': 'gzip',
-      },
-    };
-  } catch (_e) {
-    return {
-      body: jsonText,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    };
-  }
+const buildSubmitBody = (payload) => {
+  return {
+    body: JSON.stringify(payload || {}),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  };
 };
 
 // Helper: wrap a fetch with an AbortController timeout.
@@ -131,7 +102,7 @@ const API = {
   // Submit attempt
   submitAttempt: async (attemptId, payload = {}) => {
     try {
-      const prepared = await buildSubmitBody(payload);
+      const prepared = buildSubmitBody(payload);
       const response = await fetchWithTimeout(`${API_BASE}/attempts/${attemptId}/submit/`, {
         method: 'POST',
         headers: {
